@@ -88,8 +88,7 @@ with the manager, outside this adapter.
   reload before retrying.
 
 - `[["disconnect_owner"]](owner)` tombstones all of that owner's records
-  and returns the previous records for bounded cleanup. Other owners are
-  unaffected.
+  and returns the previous records for bounded cleanup.
 
 Reads expire abandoned refresh claims before returning data. Tombstones
 and transaction IDs remain at least until the original absolute expiry

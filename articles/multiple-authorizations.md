@@ -138,8 +138,7 @@ Without browser retention, connections end with their Shiny session.
 
 Create the manager, store and keys outside `server()`. This memory store
 supports one R process and loses records on restart. For deployment,
-load stable secret keys; keys alone do not make the memory store
-persistent.
+load stable secret keys.
 
 Saved connections also have inactivity and absolute expiry limits. The
 Read handler below records user activity through `auth[["touch"]]()`.

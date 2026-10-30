@@ -3,8 +3,7 @@
 Check a configured
 [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
 for missing settings and recommendations. The result includes a table of
-findings and suggested fixes. The check is read-only: it does not make
-requests, start login or change the configuration.
+findings and suggested fixes.
 
 ## Usage
 
@@ -43,10 +42,10 @@ A `shinyOAuth_oauth21_assessment` list. `checks` is a data frame with
 `reference`, `evidence_source`, `requirement_source` and
 `affects_verdict` columns. Statuses are `pass`, `fail`, `warn`,
 `unknown` and `not_applicable`. Only rows with `affects_verdict = TRUE`
-affect `configuration_compliant`. A compatibility `warn` does not by
-itself fail the verdict. The report also records `draft`,
-`ruleset_version`, `package_version`, `assessed_at`, `assessment_scope`
-and `operations`.
+affect `configuration_compliant`.
+
+The report also records `draft`, `ruleset_version`, `package_version`,
+`assessed_at`, `assessment_scope` and `operations`.
 
 ## Details
 
@@ -69,10 +68,9 @@ together. Provider enforcement, registered redirects, secret storage,
 browser/proxy TLS and future API requests need separate deployment
 checks.
 
-mTLS file paths do not establish that a certificate and key are readable
-and match. The checker does not open them, so applicable
-`mtls.credentials.*` checks remain `unknown` when paths are present;
-missing required paths fail. Actual requests validate the current files.
+The checker does not open mTLS files, so applicable `mtls.credentials.*`
+checks report `unknown` when paths are present; missing required paths
+fail.
 
 `requirement_source` distinguishes protocol requirements from security
 guidance and package policy. Callback capacity thresholds are package
@@ -84,10 +82,7 @@ and state-store methods are not run.
 
 `context = list(nonce_exception = TRUE)` declares independently
 established server assurance for the draft's confidential-client nonce
-exception (section 7.5.1.1). It does not supply observed evidence or
-bypass missing local requirements. S256 PKCE is the default. Assertion
-audience checks are mandatory for JWT authentication; advice about the
-legacy `JWT` assertion type is a recommendation.
+exception (section 7.5.1.1).
 
 ## References
 

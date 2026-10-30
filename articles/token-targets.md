@@ -113,17 +113,14 @@ target status without exposing credentials.
 
 The example limits login to one hour with `reauth_after_seconds`.
 Without a limit, local authentication can outlast every API token;
-`indefinite_session = TRUE` disables that limit. Request methods still
-require usable access for the chosen API. Refresh does not replay a
-failed API request.
+`indefinite_session = TRUE` disables that limit.
 
 ## Refresh and sign in again
 
 For RFC 8707 providers, reduce one target’s permissions with, for
 example,
 `connection$refresh(scopes = "calendar.read", target = "calendar")`. The
-method preserves required scopes and leaves the other target’s
-permissions unchanged.
+selected scopes must include the target’s required permissions.
 
 `auth$reauthorize()` starts a replacement login with the reduced
 permissions. For managed connections, pass the connection ID. Once
@@ -165,9 +162,9 @@ client <- oauth_client(
 ```
 
 `userinfo_required = FALSE` skips the Graph profile request, which would
-be inappropriate for a token intended for another API. Identity
-validation remains enabled. Add `resource_bases` and each target’s
-`resource_ids` if you also want to call `$request()`.
+be inappropriate for a token intended for another API. Add
+`resource_bases` and each target’s `resource_ids` if you also want to
+call `$request()`.
 
 ## Advanced: provider support and declaration limits
 
@@ -180,8 +177,7 @@ Targets require `userinfo_required = FALSE` and cannot be combined with
 SMART configuration or the client’s `resource` argument. Use the
 module’s `connection()` method, since the older
 [`oauth_connection()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connection.md)
-wrapper does not support targets. Up to 16 targets are supported;
-callback and state size limits still apply.
+wrapper does not support targets. Up to 16 targets are supported.
 
 ### Identity and refresh-consent scopes
 
@@ -193,8 +189,7 @@ token.
 
 When narrowing a target, retain any identity and refresh-consent scopes
 you still need. Later refreshes preserve reductions; a replacement OIDC
-login still requests `openid` for its new identity check. Other targets
-keep their own limits.
+login still requests `openid` for its new identity check.
 
 `connection$identity()` returns the last validated identity, which can
 outlast an API token. Each target’s token and request methods check
@@ -227,8 +222,8 @@ and include it in client `scopes`. Put actual permission names in
 was granted.
 
 If the provider returns unusual short permission names containing `:` or
-`/`, declare them in `scope_aliases`. Aliases help interpret responses;
-they do not request permissions or expand the app’s limits.
+`/`, declare them in `scope_aliases` so the package can interpret the
+response.
 
 See Microsoft’s [scope and consent
 guidance](https://learn.microsoft.com/en-us/entra/identity-platform/scopes-oidc)

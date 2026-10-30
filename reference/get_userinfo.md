@@ -63,7 +63,6 @@ returned profile belongs to the validated login. A raw access-token
 string cannot provide that identity check.
 
 `userinfo_required = FALSE` disables automatic profile retrieval.
-Identity and signature checks still apply to manual calls.
 
 ## Advanced response validation
 

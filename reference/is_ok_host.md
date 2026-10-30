@@ -70,7 +70,7 @@ is_ok_host("http://localhost:8100")
 is_ok_host("https://api.example.com", allowed_hosts = c(".example.com"))
 #> [1] TRUE
 
-# A catch-all pattern allows any host; scheme rules still apply.
+# A catch-all pattern allows any host.
 is_ok_host("https://anywhere.example", allowed_hosts = c("*"))
 #> [1] TRUE
 ```

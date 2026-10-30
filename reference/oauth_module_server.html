@@ -118,9 +118,7 @@ operations that remain synchronous.</p></dd>
 <dd><p>If TRUE, the module will not automatically clear
 the token due to access-token expiry or the <code>reauth_after_seconds</code> window,
 and it will not trigger automatic reauthentication when a token expires or
-a refresh fails. API calls may still fail once the provider considers the
-token expired. This option affects only the module's automatic clearing
-and redirect behavior.</p></dd>
+a refresh fails.</p></dd>
 
 
 <dt id="arg-reauth-after-seconds">reauth_after_seconds<a class="anchor" aria-label="anchor" href="#arg-reauth-after-seconds"></a></dt>
@@ -248,8 +246,7 @@ or after the module clears the authorization. The reference and its <code>$id</c
 survive refresh; logout, reauthorization and session closure invalidate it.
 Use <code>connection &lt;- shiny::req(auth$connection())</code> inside reactive code,
 then <code>connection$access_token()</code> for a server-side SDK or database driver.
-Accessor-triggered refresh works without <code>refresh_proactively = TRUE</code>;
-the module's configured expiry/session-clearing policy still applies.</p></li>
+Accessor-triggered refresh works without <code>refresh_proactively = TRUE</code>.</p></li>
 <li><p><code>auth$reauthorize()</code>: invalidate the current local authorization and begin
 replacement with its retained scope limit, without upstream revocation.
 Local state preparation is checked first; rejection preserves current access.
@@ -280,7 +277,7 @@ independently of authentication state. The normal login methods manage
 browser setup automatically.</p></li>
 <li><p><code>auth[["set_browser_token"]]()</code>: asks the browser to establish its binding
 when missing. The token becomes available after the browser reports it
-back to Shiny. An existing token is left unchanged.</p></li>
+back to Shiny.</p></li>
 <li><p><code>auth[["clear_browser_token"]]()</code>: clears the browser binding.
 <code>request_login()</code> manages cookie setup automatically, and <code>logout()</code>
 handles cookie rotation when ending a session.</p></li>

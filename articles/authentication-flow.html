@@ -190,10 +190,8 @@ clean continuation URL carrying a one-time handle.
 <code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code> provides the corresponding path for
 POST callbacks. The wrappers also set no-store and no-referrer response
 headers.</p>
-<p>The HTTP continuation separates callback data from application
-rendering. It does not complete login by itself: the Shiny module still
-checks the initiating browser and consumes the pending transaction
-before code exchange.</p>
+<p>After the HTTP continuation, the Shiny module checks the initiating
+browser and consumes the pending transaction before code exchange.</p>
 <div class="section level3">
 <h3 id="transaction-checks">Transaction checks<a class="anchor" aria-label="anchor" href="#transaction-checks"></a>
 </h3>
@@ -214,9 +212,7 @@ login error.</p>
 by its registered callback route or issuer. Distinct-route mode checks
 the callback address. Issuer mode uses the RFC 9207 <code>iss</code> or
 the JARM response’s issuer as a routing hint; the selected client’s
-issuer, signature, transaction and browser checks establish trust. The
-registry does not treat an incoming issuer string as a new trusted
-provider.</p>
+issuer, signature, transaction and browser checks establish trust.</p>
 </div>
 </div>
 <div class="section level2">
@@ -360,11 +356,10 @@ when obtaining tokens or making requests.</p>
 </h2>
 <p>With <code>async = TRUE</code> and mirai workers or a non-sequential
 future plan, the module dispatches network work to background R
-processes. The validation sequence is the same, while the main process
-can continue servicing Shiny. Authentication state is updated after the
-worker result passes validation. The module checks that a result still
-belongs to the current authorization, so work completing after logout or
-replacement cannot restore the old login.</p>
+processes while the main process continues servicing Shiny. The module
+updates authentication state after the worker result passes validation.
+It checks that a result belongs to the current authorization, so work
+completing after logout or replacement cannot restore the old login.</p>
 <p>State-store access and hosted Request Object publication remain in
 the main process. Signed-request preparation, PAR and query-JARM
 verification can run in workers. Setup-time discovery and POST-wrapper
@@ -410,10 +405,9 @@ request, which may reuse their existing login session.</p>
 <p><code>indefinite_session = TRUE</code> changes local clearing
 behavior: the module retains login state after expiry or refresh
 failure, reports <code>token_stale</code>, and ignores the
-maximum-login-age limit. This does not extend token validity at the
-provider. With token targets, individual API tokens can expire while the
-shared local authorization remains; connection methods check the
-selected target before use.</p>
+maximum-login-age limit. With token targets, individual API tokens can
+expire while the shared local authorization remains; connection methods
+check the selected target before use.</p>
 </div>
 <div class="section level3">
 <h3 id="logout-and-revocation">Logout and revocation<a class="anchor" aria-label="anchor" href="#logout-and-revocation"></a>
@@ -434,8 +428,7 @@ authorizations</a>.</p>
 <div class="section level2">
 <h2 id="optional-protocol-extensions">Optional protocol extensions<a class="anchor" aria-label="anchor" href="#optional-protocol-extensions"></a>
 </h2>
-<p>Configured extensions fit into the same sequence rather than
-requiring a separate application-managed flow:</p>
+<p>Configured extensions add these steps to the sequence:</p>
 <table class="table">
 <colgroup>
 <col width="50%">

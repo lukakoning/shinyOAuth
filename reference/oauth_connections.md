@@ -52,8 +52,7 @@ print(x, ...)
 
   `"shiny"` (default) discards connections at Shiny session end.
   `"browser"` restores the browser owner's connections after navigation;
-  `"account"` uses a trusted local application login. Retention does not
-  request refresh tokens or extend provider authorization.
+  `"account"` uses a trusted local application login.
 
 - retention_seconds:
 

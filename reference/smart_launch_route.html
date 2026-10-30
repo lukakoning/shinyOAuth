@@ -116,9 +116,7 @@ can obtain additional browser owners, so network-level ingress limits belong
 to the hosting layer.</p>
 <p>The HTTP response uses no-store and no-referrer policy and redirects to an
 opaque, owner-bound continuation. The package's external JavaScript removes that ticket from browser
-history before Shiny connects. The ticket alone cannot authorize a connection.
-No inline script permission or additional CSP nonce is needed for the handoff.
-Normal callback issuer checks and single-use browser/state checks still apply.</p>
+history before Shiny connects.</p>
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>

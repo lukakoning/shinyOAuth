@@ -136,9 +136,6 @@ to copy each endpoint and supported feature manually:</p>
 <code class="sourceCode R"><span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider_oidc_discover.html">oauth_provider_oidc_discover</a></span><span class="op">(</span></span>
 <span>  issuer <span class="op">=</span> <span class="st">"https://id.example.com"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>Published support does not configure your individual app
-registration. Select the authentication method and credentials agreed
-with your provider.</p>
 </div>
 <div class="section level2">
 <h2 id="jwt-client-authentication">JWT client authentication<a class="anchor" aria-label="anchor" href="#jwt-client-authentication"></a>
@@ -204,10 +201,9 @@ provider:</p>
 <span>  <span class="co"># Require the matching certificate when access tokens are used</span></span>
 <span>  mtls_certificate_bound_access_tokens <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>Certificate files alone do not enable certificate-bound tokens; the
-example selects that policy explicitly. The default also requires
-shinyOAuth to observe and verify the token’s certificate binding. If
-your provider uses opaque tokens, see the <a href="#certificate-binding-and-platform-requirements">certificate-binding
+<p>By default, shinyOAuth requires visible confirmation of the token’s
+certificate binding and verifies it. If your provider uses opaque
+tokens, see the <a href="#certificate-binding-and-platform-requirements">certificate-binding
 details below</a>.</p>
 <p>On Windows, separate PEM certificate and key files require curl’s
 OpenSSL backend. Follow the platform setup in that section before
@@ -240,9 +236,6 @@ long URLs.</p>
 <span>  redirect_uri <span class="op">=</span> <span class="st">"https://app.example.com/auth/callback"</span>,</span>
 <span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"profile"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>Use the provider’s published PAR endpoint.
-<code>par_required = TRUE</code> records its requirement; it does not
-enable PAR on the provider’s server.</p>
 </div>
 <div class="section level2">
 <h2 id="jwt-secured-authorization-request-jar">JWT-secured authorization request (JAR)<a class="anchor" aria-label="anchor" href="#jwt-secured-authorization-request-jar"></a>
@@ -300,9 +293,8 @@ the matching wrapper:</p>
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="va">app</span> <span class="op">&lt;-</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span>, uiPattern <span class="op">=</span> <span class="st">".*"</span><span class="op">)</span></span></code></pre></div>
-<p>The UI wrapper and server module use the same ID and client in this
-example. <code>uiPattern = ".*"</code> allows Shiny to serve the
-dedicated callback path.</p>
+<p><code>uiPattern = ".*"</code> allows Shiny to serve the dedicated
+callback path.</p>
 <p>If your proxy accepts HTTPS but forwards HTTP to Shiny, the wrapper
 needs a trusted way to recover the public callback address. See the <a href="#deployment-behind-an-https-proxy">HTTPS proxy example
 below</a>.</p>
@@ -392,8 +384,7 @@ transaction; browser setup and binding rotation happen automatically
 through the UI wrapper.</p>
 <p>Session storage is scoped to the app’s origin and tab. Cookies are
 shared across ports on a hostname, and scripts on the app’s origin can
-access its storage. These browser boundaries still apply when the
-package’s binding checks pass.</p>
+access its storage.</p>
 <p>With <code><a href="../reference/oauth_ui.html">oauth_ui()</a></code> or <code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code>,
 callbacks are processed before application UI loads. Low-level
 integrations built directly on <code><a href="../reference/prepare_call.html">prepare_call()</a></code> and
@@ -440,13 +431,12 @@ has its own authentication method and audience.
 </h2>
 <p><code>mtls_certificate_bound_access_tokens = TRUE</code> enables
 certificate presentation and mTLS endpoint selection, independently of
-the client authentication method. Certificate files alone do not enable
-it.</p>
+the client authentication method.</p>
 <p>By default, <code>mtls_require_observed_cnf = TRUE</code> requires
 visible binding data that matches the certificate. Some providers use
 opaque tokens whose binding only their servers can check.
 <code>mtls_require_observed_cnf = FALSE</code> permits missing local
-confirmation while requests still present the certificate:</p>
+confirmation for opaque tokens:</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
 <span>  provider <span class="op">=</span> <span class="va">provider</span>,</span>
@@ -457,8 +447,8 @@ confirmation while requests still present the certificate:</p>
 <span>  mtls_certificate_bound_access_tokens <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  mtls_require_observed_cnf <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>shinyOAuth still presents the certificate and rejects any observed
-mismatch. The provider and API must enforce binding; see <a href="https://www.rfc-editor.org/rfc/rfc8705.html#section-3" class="external-link">RFC 8705
+<p>Any observed certificate mismatch is rejected. The provider and API
+enforce binding; see <a href="https://www.rfc-editor.org/rfc/rfc8705.html#section-3" class="external-link">RFC 8705
 section 3</a>.</p>
 <p>On Windows, separate PEM certificate/key files require curl’s OpenSSL
 backend. Set <code>CURL_SSL_BACKEND=openssl</code> in
@@ -549,8 +539,7 @@ the same client and state store as the server. Multiple R processes need
 a shared store with atomic <code>take()</code>; see <a href="https://lukakoning.github.io/shinyOAuth/reference/custom_cache.html">custom_cache()</a>.</p>
 <p>A live retrieval handle permits one-time consumption of the object.
 Signing leaves its claims readable; Request Object encryption supplies
-confidentiality. The hosted record’s protection is separate from
-pending-login state sealing.</p>
+confidentiality.</p>
 <p>The <code>"minimal"</code> front-channel mode is for compatible PAR
 providers; it is not available for OIDC inline or app-hosted signed
 requests.</p>
@@ -577,9 +566,8 @@ mounted app path:</p>
 <span>  request_uri_resolver <span class="op">=</span> <span class="va">trusted_proxy_uri</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>This resolver accepts forwarded metadata from the configured proxy
-address. The wrapper still compares its result with the registered
-redirect origin and callback path; forwarded headers alone do not
-establish a trusted address.</p>
+address. The wrapper checks the result against the registered redirect
+origin and callback path.</p>
 </div>
 <div class="section level2">
 <h2 id="encrypted-authorization-responses">Encrypted authorization responses<a class="anchor" aria-label="anchor" href="#encrypted-authorization-responses"></a>
@@ -602,8 +590,7 @@ establish a trusted address.</p>
 <p>Use <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> and, for
 <code>form_post.jwt</code>, <code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code>. Encrypted
 callbacks use a temporary local R process, so hosting must permit
-subprocesses and allow for startup time. The decrypted response still
-needs signature and login-state validation.</p>
+subprocesses and allow for startup time.</p>
 </div>
 <div class="section level2">
 <h2 id="token-binding-requirements-and-validation">Token binding requirements and validation<a class="anchor" aria-label="anchor" href="#token-binding-requirements-and-validation"></a>
@@ -708,8 +695,7 @@ issuer legitimately includes another trusted audience, configure
 in <code>aud</code> and a matching <code>azp</code> when present.
 Trusted multiple audiences do not require an <code>azp</code> claim
 under <a href="https://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation" class="external-link">OIDC
-Core section 3.1.3.7</a>. Other audiences, incorrect authorized parties,
-and invalid signatures are rejected.</p>
+Core section 3.1.3.7</a>.</p>
 </div>
 <div class="section level2">
 <h2 id="signature-and-encryption-support">Signature and encryption support<a class="anchor" aria-label="anchor" href="#signature-and-encryption-support"></a>
@@ -750,8 +736,7 @@ available for registrations requiring RS384.</p>
 </table>
 <p>Outgoing RSA-PSS and Ed448 signatures are unsupported. For
 encryption, <code>RSA-OAEP-256</code> and GCM JWE modes are unsupported,
-as are encrypted ID tokens and encrypted UserInfo. Unsupported metadata
-does not trigger a fallback algorithm.</p>
+as are encrypted ID tokens and encrypted UserInfo.</p>
 <p>Incoming signature policies are separate. See <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.html">oauth_provider()</a>
 and the <code>jarm_*</code> settings in <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_client.html">oauth_client()</a>.</p>
 </div>

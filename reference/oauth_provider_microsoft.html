@@ -89,9 +89,8 @@ issuer</p></dd>
 
 <dt id="arg-userinfo-required">userinfo_required<a class="anchor" aria-label="anchor" href="#arg-userinfo-required"></a></dt>
 <dd><p>Retrieve profile information from Microsoft Graph.
-Set FALSE for an API token with a different audience. ID-token validation
-and nonce checks remain enabled according to <code>id_token_validation</code>.
-Manual <code><a href="get_userinfo.html">get_userinfo()</a></code> calls still require the complete validated
+Set FALSE for an API token with a different audience.
+Manual <code><a href="get_userinfo.html">get_userinfo()</a></code> calls require the complete validated
 <a href="OAuthToken.html">OAuthToken</a> when OIDC validation is enabled.</p></dd>
 
 </dl></div>
@@ -106,8 +105,7 @@ allows work or school accounts, <code>"consumers"</code> allows personal Microso
 accounts, and <code>"common"</code> allows both. Your app registration and app access
 rules must also permit the intended accounts.</p>
 <p>Profiles are fetched from Microsoft Graph by default. Set
-<code>userinfo_required = FALSE</code> for an API token that cannot call Graph;
-<code>connection$identity()</code> still provides the validated login identity.</p>
+<code>userinfo_required = FALSE</code> for an API token that cannot call Graph.</p>
     </div>
     <div class="section level2">
     <h2 id="advanced-identity-settings">Advanced identity settings<a class="anchor" aria-label="anchor" href="#advanced-identity-settings"></a></h2>

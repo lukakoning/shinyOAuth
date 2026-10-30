@@ -39,10 +39,9 @@ oauth_provider_microsoft(
 - userinfo_required:
 
   Retrieve profile information from Microsoft Graph. Set FALSE for an
-  API token with a different audience. ID-token validation and nonce
-  checks remain enabled according to `id_token_validation`. Manual
+  API token with a different audience. Manual
   [`get_userinfo()`](https://lukakoning.github.io/shinyOAuth/reference/get_userinfo.md)
-  calls still require the complete validated
+  calls require the complete validated
   [OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
   when OIDC validation is enabled.
 
@@ -60,8 +59,7 @@ registration and app access rules must also permit the intended
 accounts.
 
 Profiles are fetched from Microsoft Graph by default. Set
-`userinfo_required = FALSE` for an API token that cannot call Graph;
-`connection$identity()` still provides the validated login identity.
+`userinfo_required = FALSE` for an API token that cannot call Graph.
 
 ## Advanced identity settings
 

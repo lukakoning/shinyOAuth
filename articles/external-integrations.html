@@ -217,8 +217,7 @@ constructor. The reactive expression builds a client for the current
 connection and rebuilds it when login changes; its callback remains
 bound to that connection.</p>
 <p>If a database driver only accepts a token string, acquire it just
-before opening or updating the database connection. A copied string
-cannot refresh itself.</p>
+before opening or updating the database connection.</p>
 <p>Exported bearer tokens carry the provider’s full grant, even when the
 app applies narrower local permission checks.
 <code>$access_token()</code> rejects DPoP and certificate-bound tokens;
@@ -235,9 +234,8 @@ replacement gets a new connection ID. See <a href="multiple-authorizations.html"
 <p>For one login with separate tokens for several APIs, see <a href="token-targets.html">Token targets</a>.</p>
 <p>For Microsoft APIs other than Graph, configure
 <code>userinfo_required = FALSE</code> on the provider to skip the Graph
-profile request. Identity-token checks remain enabled;
-<code>connection$identity()</code> reads selected previously validated
-identity fields without fetching a new profile.</p>
+profile request. <code>connection$identity()</code> reads selected
+previously validated identity fields.</p>
 </div>
 <div class="section level2">
 <h2 id="advanced-connection-lifetime-and-permissions">Advanced: connection lifetime and permissions<a class="anchor" aria-label="anchor" href="#advanced-connection-lifetime-and-permissions"></a>
@@ -257,14 +255,13 @@ retained login.</p>
 <p><code>$refresh(scopes = ...)</code> can reduce permissions while
 preserving required scopes. Later refreshes and reauthorization keep
 that reduction. <code>required_scopes</code> on
-<code>$access_token()</code> checks permissions without changing them. A
-provider can reject narrowing; <a href="token-targets.html#advanced-microsoft-permissions-and-consent">Microsoft
+<code>$access_token()</code> specifies the permissions needed for that
+operation. A provider can reject narrowing; <a href="token-targets.html#advanced-microsoft-permissions-and-consent">Microsoft
 targets</a> do not support explicit API narrowing.</p>
 <p>For OIDC, include <code>offline_access</code> when explicitly
 narrowing if later reauthorization should still request refresh consent.
 Automatic refresh does not remove that request just because the response
-omits it. Refresh cannot add consent that was never granted or has been
-removed.</p>
+omits it.</p>
 <p>Standalone SMART replacements keep requested patient and encounter
 context. Narrowing can remove optional encounter context, while retained
 patient permissions still require patient context. See <a href="smart-on-fhir.html">SMART on FHIR</a>.</p>

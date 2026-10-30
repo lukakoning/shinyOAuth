@@ -176,8 +176,7 @@ exposing credentials.</p>
 <p>The example limits login to one hour with
 <code>reauth_after_seconds</code>. Without a limit, local authentication
 can outlast every API token; <code>indefinite_session = TRUE</code>
-disables that limit. Request methods still require usable access for the
-chosen API. Refresh does not replay a failed API request.</p>
+disables that limit.</p>
 </div>
 <div class="section level2">
 <h2 id="refresh-and-sign-in-again">Refresh and sign in again<a class="anchor" aria-label="anchor" href="#refresh-and-sign-in-again"></a>
@@ -185,8 +184,7 @@ chosen API. Refresh does not replay a failed API request.</p>
 <p>For RFC 8707 providers, reduce one target’s permissions with, for
 example,
 <code>connection$refresh(scopes = "calendar.read", target = "calendar")</code>.
-The method preserves required scopes and leaves the other target’s
-permissions unchanged.</p>
+The selected scopes must include the target’s required permissions.</p>
 <p><code>auth$reauthorize()</code> starts a replacement login with the
 reduced permissions. For managed connections, pass the connection ID.
 Once replacement starts, cancelling does not restore the old login. An
@@ -225,9 +223,9 @@ exports tokens to another package:</p>
 <span><span class="op">)</span></span></code></pre></div>
 <p><code>userinfo_required = FALSE</code> skips the Graph profile
 request, which would be inappropriate for a token intended for another
-API. Identity validation remains enabled. Add
-<code>resource_bases</code> and each target’s <code>resource_ids</code>
-if you also want to call <code>$request()</code>.</p>
+API. Add <code>resource_bases</code> and each target’s
+<code>resource_ids</code> if you also want to call
+<code>$request()</code>.</p>
 </div>
 <div class="section level2">
 <h2 id="advanced-provider-support-and-declaration-limits">Advanced: provider support and declaration limits<a class="anchor" aria-label="anchor" href="#advanced-provider-support-and-declaration-limits"></a>
@@ -240,8 +238,7 @@ only after confirming provider support; discovery does not infer it.</p>
 combined with SMART configuration or the client’s <code>resource</code>
 argument. Use the module’s <code>connection()</code> method, since the
 older <code><a href="../reference/oauth_connection.html">oauth_connection()</a></code> wrapper does not support targets.
-Up to 16 targets are supported; callback and state size limits still
-apply.</p>
+Up to 16 targets are supported.</p>
 <div class="section level3">
 <h3 id="identity-and-refresh-consent-scopes">Identity and refresh-consent scopes<a class="anchor" aria-label="anchor" href="#identity-and-refresh-consent-scopes"></a>
 </h3>
@@ -254,7 +251,7 @@ issue a refresh token.</p>
 <p>When narrowing a target, retain any identity and refresh-consent
 scopes you still need. Later refreshes preserve reductions; a
 replacement OIDC login still requests <code>openid</code> for its new
-identity check. Other targets keep their own limits.</p>
+identity check.</p>
 <p><code>connection$identity()</code> returns the last validated
 identity, which can outlast an API token. Each target’s token and
 request methods check current API access.</p>
@@ -289,8 +286,8 @@ permission names in <code>required_scopes</code>; <code>.default</code>
 itself is not evidence that a permission was granted.</p>
 <p>If the provider returns unusual short permission names containing
 <code>:</code> or <code>/</code>, declare them in
-<code>scope_aliases</code>. Aliases help interpret responses; they do
-not request permissions or expand the app’s limits.</p>
+<code>scope_aliases</code> so the package can interpret the
+response.</p>
 <p>See Microsoft’s <a href="https://learn.microsoft.com/en-us/entra/identity-platform/scopes-oidc" class="external-link">scope
 and consent guidance</a> and <a href="https://learn.microsoft.com/en-us/entra/identity-platform/refresh-tokens" class="external-link">refresh-token
 guidance</a>.</p>

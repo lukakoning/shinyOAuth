@@ -123,16 +123,15 @@ multi-server authorization mode, even when the manager contains one client.</p><
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>With <code>shinyApp(..., uiPattern = ".*")</code>, callback paths reach the wrapper.
 With browser retention, a cookie lets the returning browser
-find its saved connections; tokens remain on the server. Account and session-only
-retention do not add that owner cookie.</p>
+find its saved connections.</p>
     </div>
     <div class="section level2">
     <h2 id="advanced-browser-and-proxy-requirements">Advanced browser and proxy requirements<a class="anchor" aria-label="anchor" href="#advanced-browser-and-proxy-requirements"></a></h2>
 
 
 <p>With Strict cookies, returning from another site may briefly show an intermediate
-page before Shiny starts. This lets the browser send its existing cookie; it
-does not create a new owner or exchange credentials. Proxies must preserve
+page before Shiny starts. This lets the browser send its existing cookie.
+Proxies must preserve
 same-origin Fetch Metadata, <code>Referer</code> or <code>Origin</code> information for recovery.
 The <code>shinyOAuth_owner_recovery</code> query parameter is reserved for this flow.</p>
 <p>A managed login return must still belong to a valid local owner. An ordinary

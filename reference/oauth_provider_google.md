@@ -32,8 +32,7 @@ This preset uses a restricted Google OIDC profile: ID tokens must have
 issuer. Google's [ID token validation
 guidance](https://developers.google.com/identity/openid-connect/openid-connect#validatinganidtoken)
 also permits `"accounts.google.com"`; this alternate issuer is not
-accepted by this preset. Issuer comparison remains exact, as for other
-OIDC providers.
+accepted by this preset.
 
 ## Examples
 

@@ -11,8 +11,7 @@ for
 [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
 or
 [`oauth_connections()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections.md),
-with an approved API named `"fhir"`. Discovery does not register your
-app or grant access.
+with an approved API named `"fhir"`.
 
 ## Usage
 
@@ -164,12 +163,11 @@ smart_client(
   server out of band for initial access tokens. Used only when an
   initial response omits `expires_in`; an explicit response value takes
   precedence. Default `NULL` requires the response to include a
-  lifetime. This does not apply to refresh responses or change ordinary
-  OAuth defaults.
+  lifetime.
 
 - label:
 
-  Display label, default `"FHIR server"`; no credentials or context.
+  Display label, default `"FHIR server"`.
 
 - state_store, state_key, state_payload_max_age:
 
@@ -181,9 +179,7 @@ smart_client(
 An
 [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
 for the module or connection manager. Its `resource_bases` contains the
-approved `fhir` API. The object holds app registration settings, not a
-user's token or patient context; create it outside `server()`. Its
-`smart` property records the selected profile.
+approved `fhir` API; its `smart` property records the selected profile.
 
 ## Details
 
@@ -201,8 +197,7 @@ for a complete app.
 The constructor applies SMART App Launch 2.2 permission rules, S256 PKCE
 and the exact FHIR base as the authorization request's `aud`.
 `identity = "openid"` requires signed identity-token and nonce checks;
-`"fhirUser"` also requires the user's FHIR reference. `"none"` does not
-enable OIDC automatically.
+`"fhirUser"` also requires the user's FHIR reference.
 
 Supported flows use direct authorization and query or form POST
 callbacks. Claims requests, remote authentication-freshness overrides,
@@ -213,8 +208,7 @@ launch handles are single-use.
 Tokens need a positive lifetime. Only an initial response may omit
 `expires_in`, and only with an explicit `initial_expires_in_fallback`.
 Refresh responses must supply a lifetime. Requests require TLS 1.2 or
-newer; a stronger configured minimum is preserved. Ordinary clients also
-default to TLS 1.2.
+newer.
 
 ## References
 

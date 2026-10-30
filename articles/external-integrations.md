@@ -157,8 +157,7 @@ rebuilds it when login changes; its callback remains bound to that
 connection.
 
 If a database driver only accepts a token string, acquire it just before
-opening or updating the database connection. A copied string cannot
-refresh itself.
+opening or updating the database connection.
 
 Exported bearer tokens carry the provider’s full grant, even when the
 app applies narrower local permission checks. `$access_token()` rejects
@@ -177,9 +176,8 @@ targets](https://lukakoning.github.io/shinyOAuth/articles/token-targets.md).
 
 For Microsoft APIs other than Graph, configure
 `userinfo_required = FALSE` on the provider to skip the Graph profile
-request. Identity-token checks remain enabled; `connection$identity()`
-reads selected previously validated identity fields without fetching a
-new profile.
+request. `connection$identity()` reads selected previously validated
+identity fields.
 
 ## Advanced: connection lifetime and permissions
 
@@ -197,15 +195,15 @@ activity for a retained login.
 
 `$refresh(scopes = ...)` can reduce permissions while preserving
 required scopes. Later refreshes and reauthorization keep that
-reduction. `required_scopes` on `$access_token()` checks permissions
-without changing them. A provider can reject narrowing; [Microsoft
+reduction. `required_scopes` on `$access_token()` specifies the
+permissions needed for that operation. A provider can reject narrowing;
+[Microsoft
 targets](https://lukakoning.github.io/shinyOAuth/articles/token-targets.html#advanced-microsoft-permissions-and-consent)
 do not support explicit API narrowing.
 
 For OIDC, include `offline_access` when explicitly narrowing if later
 reauthorization should still request refresh consent. Automatic refresh
-does not remove that request just because the response omits it. Refresh
-cannot add consent that was never granted or has been removed.
+does not remove that request just because the response omits it.
 
 Standalone SMART replacements keep requested patient and encounter
 context. Narrowing can remove optional encounter context, while retained

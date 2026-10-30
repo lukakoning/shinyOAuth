@@ -111,8 +111,7 @@ possible. Signed JWT responses retain arrays as lists.</p>
 <code>get_userinfo(client, auth[["token"]])</code>. The provider needs a <code>userinfo_url</code>.
 For OIDC, shinyOAuth checks that the returned profile belongs to the validated
 login. A raw access-token string cannot provide that identity check.</p>
-<p><code>userinfo_required = FALSE</code> disables automatic profile retrieval. Identity
-and signature checks still apply to manual calls.</p>
+<p><code>userinfo_required = FALSE</code> disables automatic profile retrieval.</p>
     </div>
     <div class="section level2">
     <h2 id="advanced-response-validation">Advanced response validation<a class="anchor" aria-label="anchor" href="#advanced-response-validation"></a></h2>

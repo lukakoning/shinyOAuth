@@ -174,20 +174,15 @@ text during debugging. That text can still contain private provider
 data. URLs omit paths unless an approved path scrubber supplies a route
 label. Tokens, codes and raw login state stay out of ordinary span
 attributes.</p>
-<p>These protections cover records emitted through shinyOAuth. Direct
-SDK calls and requests sent with <code><a href="https://httr2.r-lib.org/reference/req_perform.html" class="external-link">httr2::req_perform()</a></code>
-follow their own telemetry settings. <code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code>
-applies shinyOAuth’s request handling.</p>
 </div>
 </div>
 <div class="section level2">
 <h2 id="span-catalog">Span catalog<a class="anchor" aria-label="anchor" href="#span-catalog"></a>
 </h2>
 <p>HTTP spans time network calls; worker spans identify background
-processing. Attributes appear only when relevant and available. Useful
-fields include <code>oauth.phase</code>, <code>server.address</code> and
-<code>http.response.status_code</code>, alongside provider and session
-digests.</p>
+processing. Useful fields include <code>oauth.phase</code>,
+<code>server.address</code> and <code>http.response.status_code</code>,
+alongside provider and session digests.</p>
 <table class="table">
 <colgroup>
 <col width="50%">

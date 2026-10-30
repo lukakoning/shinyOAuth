@@ -235,9 +235,7 @@ accepts.</p>
 <li><p><code>options(shinyOAuth.access_token_cnf = "opaque")</code> –
 use <code>"opaque"</code> to avoid decoding access-token binding data.
 The compatibility default <code>"jwt"</code> reads <code>cnf</code>
-without signature verification. DPoP and mTLS still check available
-binding and present their configured credentials. Requiring visible
-confirmation is a separate client policy.</p></li>
+without signature verification.</p></li>
 <li><p><code>options(shinyOAuth.leeway = 30)</code> – default clock skew
 leeway (seconds) for ID token
 <code>exp</code>/<code>iat</code>/<code>nbf</code> checks and state
@@ -275,10 +273,8 @@ two set random bounds. Positive delays block R even with
 constant-time validation.</p></li>
 </ul>
 <p><code>allowed_hosts</code> patterns support globs (<code>*</code>,
-<code>?</code>). A catch-all such as <code>"*"</code> accepts any host;
-scheme restrictions still apply. Restrict access to your domains, for
-example <code>c(".example.com")</code>, unless you intend to accept any
-host.</p>
+<code>?</code>). For example, <code>c(".example.com")</code> matches the
+domain and its subdomains; <code>"*"</code> accepts any host.</p>
 </div>
 <div class="section level2">
 <h2 id="state-store">State store<a class="anchor" aria-label="anchor" href="#state-store"></a>
@@ -360,16 +356,14 @@ handle query parameter</p></li>
 <code>shinyOAuth_form_post_id</code> module-id query parameter</p></li>
 </ul>
 <p>These limits reject oversized callback URLs and POST bodies before
-they cause excessive processing or logging. The options set the accepted
-response budget.</p>
+they cause excessive processing or logging.</p>
 <p>Generated login state must fit both
 <code>shinyOAuth.callback_max_state_bytes</code> and the state envelope
 limits above. Their outer-token defaults both allow 8192 bytes
 (base64url state is ASCII). Lowering either limit can restrict ordinary
 logins with many scopes or other state metadata.
 <code><a href="../reference/prepare_call.html">prepare_call()</a></code> checks both budgets before storing pending
-login state, publishing a Request Object, or sending PAR. Increasing
-only one limit does not override the other.</p>
+login state, publishing a Request Object, or sending PAR.</p>
 </div>
 </div>
 <div class="section level2">
@@ -410,10 +404,6 @@ sessions.</li>
 <div class="section level2">
 <h2 id="advanced-transport-constraints">Advanced transport constraints<a class="anchor" aria-label="anchor" href="#advanced-transport-constraints"></a>
 </h2>
-<p>The TLS policy preserves stronger supplied minima and custom CA
-settings, while rejecting incompatible maxima or disabled certificate
-checks. It does not enable HTTP development exceptions or configure
-browser and proxy TLS.</p>
 <p>Response limits cover both downloaded and decoded gzip data; other
 encodings are rejected. Use
 <code>perform_resource_req(token, request)</code> to retain the decoded
@@ -432,18 +422,11 @@ and provider arguments.</p>
 client authentication from accidental overrides.</p>
 <p>Set the callback format with
 <code>oauth_client(response_mode = ...)</code>.</p>
-<p>The options below unblock selected parameters; transaction and
-credential fields retain the protections described for each option.</p>
 <ul>
 <li><p><code>options(shinyOAuth.unblock_auth_params = c("redirect_uri"))</code>
-– allow selected authorization-parameter overrides. Transaction,
-credential and PKCE fields remain protected.</p></li>
-<li><p>State, nonce, credentials, PKCE and protocol transaction fields
-remain protected. Allowed overrides replace names case-insensitively
-without adding duplicates.</p></li>
+– allow selected authorization-parameter overrides.</p></li>
 <li><p><code>options(shinyOAuth.unblock_token_params = c(...))</code> –
-allow selected token-exchange parameter overrides, subject to protected
-transaction and credential fields.</p></li>
+allow selected token-exchange parameter overrides.</p></li>
 <li><p><code>options(shinyOAuth.unblock_token_headers = c("authorization"))</code>
 – allow selected token-header overrides, matched case-insensitively.
 <code>Authorization</code> and <code>Cookie</code> are blocked by

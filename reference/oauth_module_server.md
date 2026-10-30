@@ -66,9 +66,7 @@ oauth_module_server(
   If TRUE, the module will not automatically clear the token due to
   access-token expiry or the `reauth_after_seconds` window, and it will
   not trigger automatic reauthentication when a token expires or a
-  refresh fails. API calls may still fail once the provider considers
-  the token expired. This option affects only the module's automatic
-  clearing and redirect behavior.
+  refresh fails.
 
 - reauth_after_seconds:
 
@@ -218,8 +216,7 @@ The object also supplies:
   `connection <- shiny::req(auth$connection())` inside reactive code,
   then `connection$access_token()` for a server-side SDK or database
   driver. Accessor-triggered refresh works without
-  `refresh_proactively = TRUE`; the module's configured
-  expiry/session-clearing policy still applies.
+  `refresh_proactively = TRUE`.
 
 - `auth$reauthorize()`: invalidate the current local authorization and
   begin replacement with its retained scope limit, without upstream
@@ -261,7 +258,7 @@ The object also supplies:
 
 - `auth[["set_browser_token"]]()`: asks the browser to establish its
   binding when missing. The token becomes available after the browser
-  reports it back to Shiny. An existing token is left unchanged.
+  reports it back to Shiny.
 
 - `auth[["clear_browser_token"]]()`: clears the browser binding.
   `request_login()` manages cookie setup automatically, and `logout()`

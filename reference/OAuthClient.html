@@ -249,8 +249,7 @@ client intends to request RFC 8705 certificate-bound access tokens when
 the provider advertises that capability. Default is <code>FALSE</code>.</p>
 <p>When <code>TRUE</code>, authorization-server requests prefer discovered
 <code>mtls_endpoint_aliases</code>, even when <code>token_auth_style</code> is not an mTLS auth
-style. Token and protected-resource requests present the certificate.
-Certificate/key configuration alone does not enable this mode.</p>
+style. Token and protected-resource requests present the certificate.</p>
 <p>Requires <code>mtls_client_cert_file</code> and <code>mtls_client_key_file</code>, and the
 provider must be configured with
 <code>mtls_client_certificate_bound_access_tokens = TRUE</code>.
@@ -585,7 +584,7 @@ for examples, provider-specific permission rules and declaration limits.</p></dd
 <dt id="arg-default-token-target">default_token_target<a class="anchor" aria-label="anchor" href="#arg-default-token-target"></a></dt>
 <dd><p>Name of the API to use when a connection method
 omits <code>target</code>. Required with several targets; the sole target is selected
-automatically. Selecting a target for one call does not change this default.</p></dd>
+automatically.</p></dd>
 
 
 <dt id="arg-authorization-server-mode">authorization_server_mode<a class="anchor" aria-label="anchor" href="#arg-authorization-server-mode"></a></dt>
@@ -686,12 +685,9 @@ remaining <code>exp</code> window at validation time. Applies only when
 <dd><p>Logical, default <code>TRUE</code>. When
 <code>mtls_certificate_bound_access_tokens = TRUE</code>, require <code>cnf[["x5t#S256"]]</code>
 in the token response, JWT access token, or introspection and verify that
-it matches the configured certificate. The default preserves strict
-local assurance. Set <code>FALSE</code> for server-enforced opaque bindings that
-the client cannot observe; this does not disable certificate presentation
-or mTLS endpoint selection. Missing confirmation is then allowed, but
-any observed confirmation is still validated, including mismatches and
-conflicting claims. This flag does not independently enable mTLS.</p></dd>
+it matches the configured certificate. <code>FALSE</code> allows missing confirmation
+for server-enforced opaque bindings. Observed confirmation is validated;
+mismatches and conflicting claims are rejected.</p></dd>
 
 
 <dt id="arg-trusted-id-token-audiences">trusted_id_token_audiences<a class="anchor" aria-label="anchor" href="#arg-trusted-id-token-audiences"></a></dt>
@@ -720,18 +716,14 @@ its own issuer protection without requiring a redundant outer <code>iss</code>.<
 <dd><p>JWT header <code>typ</code> for client authentication.
 Defaults to <code>"JWT"</code> for existing providers. Use
 <code>"client-authentication+jwt"</code> with <code>client_assertion_audience</code> set to the
-provider's trusted issuer identifier for RFC7523bis-11 / OAuth 2.1 draft 16.
-The explicit type is recommended; it does not replace audience validation.
-This setting does not change JAR, JARM, ID token or DPoP types, or the
-OAuth form parameter <code>client_assertion_type</code>.</p></dd>
+provider's trusted issuer identifier for RFC7523bis-11 / OAuth 2.1 draft 16.</p></dd>
 
 
 <dt id="arg-resource-bases">resource_bases<a class="anchor" aria-label="anchor" href="#arg-resource-bases"></a></dt>
 <dd><p>Optional named character vector of approved API base
-URLs for <code><a href="oauth_connection.html">oauth_connection()</a></code> and <code><a href="oauth_connections.html">oauth_connections()</a></code>. The default
-<code><a href="https://rdrr.io/r/base/character.html" class="external-link">character()</a></code> leaves the existing token/request APIs unchanged. Each resource
-ID starts with a letter and contains letters, digits, <code>_</code> or <code>-</code> (at most
-64 bytes). Up to 64 bases are supported. HTTPS is required except for
+URLs for <code><a href="oauth_connection.html">oauth_connection()</a></code> and <code><a href="oauth_connections.html">oauth_connections()</a></code>, default <code><a href="https://rdrr.io/r/base/character.html" class="external-link">character()</a></code>.
+Each resource ID starts with a letter and contains letters, digits, <code>_</code> or
+<code>-</code> (at most 64 bytes). Up to 64 bases are supported. HTTPS is required except for
 loopback development URLs. Requests through a connection stay within the
 exact scheme, host, effective port and base path; redirects are disabled.
 Bases exclude user information, query strings, fragments, dot segments,
@@ -762,8 +754,7 @@ patient context.</p></dd>
 request: <code>"GET"</code> (default) or provider-supported <code>"POST"</code>. POST submits form
 fields instead of a URL query.
 Use the module's <code>request_login()</code> or <code><a href="prepare_authorization_request.html">prepare_authorization_request()</a></code>; URL-only
-helpers reject POST. This does not select the callback <code>response_mode</code> or
-replace a provider's PAR or signed Request Object requirements.</p></dd>
+helpers reject POST.</p></dd>
 
 
 <dt id="arg-scope-policy">scope_policy<a class="anchor" aria-label="anchor" href="#arg-scope-policy"></a></dt>

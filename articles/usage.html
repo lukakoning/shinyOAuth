@@ -336,8 +336,7 @@ time. OAuth-only providers can only be given an ordinary authorization
 request.</p>
 <p><code>indefinite_session = TRUE</code> retains local login state
 after token expiry or refresh failure, and disables the
-<code>reauth_after_seconds</code> limit. The provider can still reject
-an expired token.</p>
+<code>reauth_after_seconds</code> limit.</p>
 </div>
 <div class="section level2">
 <h2 id="provider-configuration-and-oidc-discovery">Provider configuration and OIDC discovery<a class="anchor" aria-label="anchor" href="#provider-configuration-and-oidc-discovery"></a>
@@ -347,7 +346,7 @@ an expired token.</p>
 <code><a href="../reference/oauth_provider_microsoft.html">oauth_provider_microsoft()</a></code>, or
 <code><a href="../reference/oauth_provider_keycloak.html">oauth_provider_keycloak()</a></code>. Each helper’s help page
 describes its setup. For an OpenID Connect service, discovery reads its
-published settings so you do not have to copy each endpoint:</p>
+published settings:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider_oidc_discover.html">oauth_provider_oidc_discover</a></span><span class="op">(</span></span>
 <span>  issuer <span class="op">=</span> <span class="st">"https://login.example.com"</span></span>
@@ -415,9 +414,6 @@ URL. With a dedicated route such as <code>/callback</code>, retain that
 callback path in the registration, but open the app’s entry URL to start
 login.</li>
 </ol>
-<p>The module may print a hosting reminder even when you opened the app
-correctly. It does not test whether the browser is showing an embedded
-preview.</p>
 </div>
 <div class="section level3">
 <h3 id="multiple-r-processes">Multiple R processes<a class="anchor" aria-label="anchor" href="#multiple-r-processes"></a>

@@ -124,7 +124,7 @@ envelope and mark the record <code>"uncertain"</code>. Returns the record or <co
 then returns <code>list(record, previous)</code> for bounded remote cleanup. Conflicts
 return <code>NULL</code>; the caller must reload before retrying.</p></li>
 <li><p><code>[["disconnect_owner"]](owner)</code> tombstones all of that owner's records and returns
-the previous records for bounded cleanup. Other owners are unaffected.</p></li>
+the previous records for bounded cleanup.</p></li>
 </ul><p>Reads expire abandoned refresh claims before returning data. Tombstones and
 transaction IDs remain at least until the original absolute expiry so late completions
 cannot restore a disconnected grant. Operations are synchronous and do not yield

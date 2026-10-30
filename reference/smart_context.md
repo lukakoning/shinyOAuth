@@ -56,16 +56,13 @@ FHIR search, write, batch and pagination helpers are outside these two
 convenience methods.
 
 Patient IDs and user identity are different: the first identifies a
-chart, the second the authenticated user. Neither changes the local
-connection owner. General summaries omit this data. A context change
-does not clear data already held by the application. Experimental
-`fhirContext` and styling extensions remain raw data and are not
-automatically fetched or interpreted. Location-specific
-`authorization_details` apply scope, patient and encounter overrides
-only for the configured FHIR base, with omitted fields falling back to
-this response's top-level values. Other locations never add
-destinations. Malformed details or multiple entries matching this base
-are rejected.
+chart, the second the authenticated user. General summaries omit this
+data. Experimental `fhirContext` and styling extensions are retained as
+raw data. Location-specific `authorization_details` apply scope, patient
+and encounter overrides only for the configured FHIR base, with omitted
+fields falling back to this response's top-level values. Other locations
+never add destinations. Malformed details or multiple entries matching
+this base are rejected.
 
 ## See also
 

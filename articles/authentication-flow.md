@@ -101,10 +101,8 @@ a one-time handle.
 provides the corresponding path for POST callbacks. The wrappers also
 set no-store and no-referrer response headers.
 
-The HTTP continuation separates callback data from application
-rendering. It does not complete login by itself: the Shiny module still
-checks the initiating browser and consumes the pending transaction
-before code exchange.
+After the HTTP continuation, the Shiny module checks the initiating
+browser and consumes the pending transaction before code exchange.
 
 ### Transaction checks
 
@@ -125,8 +123,7 @@ For a configured client registry, the HTTP wrapper selects the client by
 its registered callback route or issuer. Distinct-route mode checks the
 callback address. Issuer mode uses the RFC 9207 `iss` or the JARM
 response’s issuer as a routing hint; the selected client’s issuer,
-signature, transaction and browser checks establish trust. The registry
-does not treat an incoming issuer string as a new trusted provider.
+signature, transaction and browser checks establish trust.
 
 ## Exchanging the code for tokens
 
@@ -222,12 +219,11 @@ obtaining tokens or making requests.
 ## Asynchronous execution
 
 With `async = TRUE` and mirai workers or a non-sequential future plan,
-the module dispatches network work to background R processes. The
-validation sequence is the same, while the main process can continue
-servicing Shiny. Authentication state is updated after the worker result
-passes validation. The module checks that a result still belongs to the
-current authorization, so work completing after logout or replacement
-cannot restore the old login.
+the module dispatches network work to background R processes while the
+main process continues servicing Shiny. The module updates
+authentication state after the worker result passes validation. It
+checks that a result belongs to the current authorization, so work
+completing after logout or replacement cannot restore the old login.
 
 State-store access and hosted Request Object publication remain in the
 main process. Signed-request preparation, PAR and query-JARM
@@ -274,10 +270,10 @@ session.
 
 `indefinite_session = TRUE` changes local clearing behavior: the module
 retains login state after expiry or refresh failure, reports
-`token_stale`, and ignores the maximum-login-age limit. This does not
-extend token validity at the provider. With token targets, individual
-API tokens can expire while the shared local authorization remains;
-connection methods check the selected target before use.
+`token_stale`, and ignores the maximum-login-age limit. With token
+targets, individual API tokens can expire while the shared local
+authorization remains; connection methods check the selected target
+before use.
 
 ### Logout and revocation
 
@@ -296,8 +292,7 @@ authorizations](https://lukakoning.github.io/shinyOAuth/articles/multiple-author
 
 ## Optional protocol extensions
 
-Configured extensions fit into the same sequence rather than requiring a
-separate application-managed flow:
+Configured extensions add these steps to the sequence:
 
 | Extension | Package behavior |
 |----|----|

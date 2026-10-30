@@ -79,9 +79,7 @@ the old connection; obtain a new one after the next login. A connection manager
 can retain the underlying login across navigation, but a new session gets its
 own connection reference.</p>
 <p>Methods check the owning Shiny session. <code>$is_usable()</code> returns <code>FALSE</code> when
-access is unavailable; request and token methods raise errors.
-Permission checks do not prove the API will accept a request. The connection ID
-is read-only, is not a credential and cannot be used to authorize a request.</p>
+access is unavailable; request and token methods raise errors.</p>
     </div>
     <div class="section level2">
     <h2 id="advanced-lifecycle-behavior">Advanced lifecycle behavior<a class="anchor" aria-label="anchor" href="#advanced-lifecycle-behavior"></a></h2>
@@ -106,8 +104,7 @@ reactive across logins and does not support those features.</p>
 <dd><p>Read-only opaque character string identifying this reference.
 A single module preserves it across refresh and replaces it on login.
 A manager uses the stored grant's ID across sessions and refreshes;
-<code><a href="oauth_connection.html">oauth_connection()</a></code> generates an ID lasting only for that reference.
-The ID is never an access token and does not authorize access by itself.</p></dd>
+<code><a href="oauth_connection.html">oauth_connection()</a></code> generates an ID lasting only for that reference.</p></dd>
 
 
 </dl><p></p></div>
@@ -196,7 +193,7 @@ requesting new permissions or retrying the SDK operation.</p><div class="section
 <h4 id="arguments-1">Arguments<a class="anchor" aria-label="anchor" href="#arguments-1"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>required_scopes</code></dt>
 <dd><p>Permissions needed for this operation, in addition to
-client requirements. This checks permissions without changing the grant.</p></dd>
+client requirements.</p></dd>
 
       <dt><code>min_valid_for</code></dt>
 <dd><p>Minimum remaining lifetime in seconds (default 60).
@@ -204,8 +201,7 @@ Allow time for the operation and clock differences. Unknown or insufficient
 expiry triggers refresh; an unusable replacement raises an error.</p></dd>
 
       <dt><code>force_refresh</code></dt>
-<dd><p>Require a new token even if a cached one is usable.
-Refresh coordination and provider retry delays still apply.</p></dd>
+<dd><p>Require a new token even if a cached one is usable.</p></dd>
 
       <dt><code>async</code></dt>
 <dd><p>If <code>TRUE</code>, return a promise, including for a cached token.
@@ -231,8 +227,7 @@ for error recovery and async examples.</p>
 <p>DPoP and mTLS-bound tokens require their signing key or certificate; use
 <code>$request()</code> instead of exporting a bearer string. Exported tokens retain all
 provider-issued permissions, which may exceed the app's local operation limits.
-Recheck the current login and permissions before using an async token snapshot.
-Acquiring a token does not extend a managed owner's inactivity limit.</p>
+Recheck the current login and permissions before using an async token snapshot.</p>
 </div><p></p><div class="section">
 <h4 id="returns-1">Returns<a class="anchor" aria-label="anchor" href="#returns-1"></a></h4>
 <p>A bearer-token string, or a promise resolving to one. Token failures
@@ -244,9 +239,8 @@ Argument and configuration errors can occur before a promise is returned.</p>
 
 <p></p><hr><a id="method-OAuthConnection-has_scopes"></a><div class="section">
 <h3 id="oauthconnection-has-scopes-"><code>OAuthConnection$has_scopes()</code><a class="anchor" aria-label="anchor" href="#oauthconnection-has-scopes-"></a></h3>
-<p>Check recorded operation permissions without refreshing or requiring an
-unexpired access token. This is suitable for optional-feature UI; the
-actual operation must still check scopes and remote resource permissions.</p><div class="section">
+<p>Check recorded operation permissions for optional-feature UI, without
+refreshing or requiring an unexpired access token.</p><div class="section">
 <h4 id="usage-2">Usage<a class="anchor" aria-label="anchor" href="#usage-2"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">OAuthConnection</span><span class="op">$</span><span class="fu">has_scopes</span><span class="op">(</span><span class="va">scopes</span>, target <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
@@ -272,8 +266,7 @@ otherwise FALSE. Malformed arguments raise input errors.</p>
 <h3 id="oauthconnection-is-usable-"><code>OAuthConnection$is_usable()</code><a class="anchor" aria-label="anchor" href="#oauthconnection-is-usable-"></a></h3>
 <p>Check whether the current token is locally usable. This checks token
 presence, known unexpired lifetime and the client's required scopes.
-It does not refresh the token, contact the provider or guarantee remote
-authorization. Request-specific scopes are checked by <code>[["request"]]()</code>.</p><div class="section">
+Request-specific scopes are checked by <code>[["request"]]()</code>.</p><div class="section">
 <h4 id="usage-3">Usage<a class="anchor" aria-label="anchor" href="#usage-3"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">OAuthConnection</span><span class="op">$</span><span class="fu">is_usable</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
@@ -376,8 +369,7 @@ identifies the locally ended connection passed to <code>reauthorize()</code>.</p
 <p></p><hr><a id="method-OAuthConnection-identity"></a><div class="section">
 <h3 id="oauthconnection-identity-"><code>OAuthConnection$identity()</code><a class="anchor" aria-label="anchor" href="#oauthconnection-identity-"></a></h3>
 <p>Read explicitly selected fields from the authorization's cryptographically
-validated OIDC identity.
-This method never returns raw tokens or fetches profile data.</p><div class="section">
+validated OIDC identity.</p><div class="section">
 <h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">OAuthConnection</span><span class="op">$</span><span class="fu">identity</span><span class="op">(</span>claims <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"iss"</span>, <span class="st">"sub"</span><span class="op">)</span>, userinfo <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
@@ -395,22 +387,15 @@ the validated ID token before any requested profile fields are returned.</p></dd
 </dl><p></p></div>
 </div><p></p><div class="section">
 <h4 id="details-4">Details<a class="anchor" aria-label="anchor" href="#details-4"></a></h4>
-<p>Call inside the owning session's reactive context. The result contains
-sensitive identity data: select only what the application needs and keep
-it out of logs and generic status displays. <code>[["summary"]]()</code> and printing
-continue to omit identity. Ordinary OAuth connections without validated
-OIDC identity cannot use this accessor.</p>
+<p>Available inside the owning session's reactive context for connections
+with validated OIDC identity.</p>
 <p>Ordinary connections require a usable access token with <code>openid</code> currently
 granted. Target connections retain their validated identity while the
 authorization remains available in the owning session, even when the
 primary access token expires or its current scopes no longer include
-<code>openid</code>. Identity availability does not establish permission to call an
-API; use <code>$has_scopes()</code> and <code>$access_token()</code> or <code>$request()</code> to check the
-selected target's current permissions and token lifetime.</p>
+<code>openid</code>.</p>
 <p>These are the last validated identity/profile snapshots; an OAuth refresh
-can retain earlier ID-token claims and does not establish fresh user
-authentication. This accessor does not log the user into your application
-or establish an account-retention owner. It does not count as owner activity.</p>
+can retain earlier ID-token claims.</p>
 </div><p></p><div class="section">
 <h4 id="returns-6">Returns<a class="anchor" aria-label="anchor" href="#returns-6"></a></h4>
 <p>A list with <code>id_token_claims</code> and <code>userinfo</code>, each containing only
@@ -555,7 +540,7 @@ raises an error before an authenticated request is sent.</p>
 <p></p><hr><a id="method-OAuthConnection-print"></a><div class="section">
 <h3 id="oauthconnection-print-"><code>OAuthConnection$print()</code><a class="anchor" aria-label="anchor" href="#oauthconnection-print-"></a></h3>
 <p>Print the class name and session-binding description, with credentials
-redacted. This does not resolve the current token.</p><div class="section">
+redacted.</p><div class="section">
 <h4 id="usage-11">Usage<a class="anchor" aria-label="anchor" href="#usage-11"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">OAuthConnection</span><span class="op">$</span><span class="fu">print</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">

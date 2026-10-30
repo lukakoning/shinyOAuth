@@ -261,8 +261,7 @@ OAuth-only providers can only be given an ordinary authorization
 request.
 
 `indefinite_session = TRUE` retains local login state after token expiry
-or refresh failure, and disables the `reauth_after_seconds` limit. The
-provider can still reject an expired token.
+or refresh failure, and disables the `reauth_after_seconds` limit.
 
 ## Provider configuration and OIDC discovery
 
@@ -272,8 +271,7 @@ Use a built-in helper when available, such as
 or
 [`oauth_provider_keycloak()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_keycloak.md).
 Each helper’s help page describes its setup. For an OpenID Connect
-service, discovery reads its published settings so you do not have to
-copy each endpoint:
+service, discovery reads its published settings:
 
 ``` r
 
@@ -341,10 +339,6 @@ embedded app preview.
     your provider. In the minimal example this is the app URL. With a
     dedicated route such as `/callback`, retain that callback path in
     the registration, but open the app’s entry URL to start login.
-
-The module may print a hosting reminder even when you opened the app
-correctly. It does not test whether the browser is showing an embedded
-preview.
 
 ### Multiple R processes
 

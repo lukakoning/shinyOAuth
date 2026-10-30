@@ -582,7 +582,7 @@ userinfo[["sub"]]
   login and refresh assume `"Bearer"` only when the field is absent.
   Explicit null, empty, invalid, or unsupported values still fail
   validation. The fallback never applies to clients configured with
-  DPoP; other token and binding checks remain enforced.
+  DPoP.
 
 - token_target_mode:
 

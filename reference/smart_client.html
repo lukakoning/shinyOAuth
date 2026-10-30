@@ -3,13 +3,11 @@
 Configure your Shiny app to access a hospital's FHIR API. Start with
 smart_discover(), then supply the app registration and requested permissions.
 The result is an OAuthClient for oauth_module_server() or
-oauth_connections(), with an approved API named &quot;fhir&quot;.
-Discovery does not register your app or grant access."><meta property="og:description" content="
+oauth_connections(), with an approved API named &quot;fhir&quot;."><meta property="og:description" content="
 Configure your Shiny app to access a hospital's FHIR API. Start with
 smart_discover(), then supply the app registration and requested permissions.
 The result is an OAuthClient for oauth_module_server() or
-oauth_connections(), with an approved API named &quot;fhir&quot;.
-Discovery does not register your app or grant access."></head><body>
+oauth_connections(), with an approved API named &quot;fhir&quot;."></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -60,8 +58,7 @@ Discovery does not register your app or grant access."></head><body>
 <p>Configure your Shiny app to access a hospital's FHIR API. Start with
 <code><a href="smart_discover.html">smart_discover()</a></code>, then supply the app registration and requested permissions.
 The result is an <a href="OAuthClient.html">OAuthClient</a> for <code><a href="oauth_module_server.html">oauth_module_server()</a></code> or
-<code><a href="oauth_connections.html">oauth_connections()</a></code>, with an approved API named <code>"fhir"</code>.
-Discovery does not register your app or grant access.</p>
+<code><a href="oauth_connections.html">oauth_connections()</a></code>, with an approved API named <code>"fhir"</code>.</p>
     </div>
 
     <div class="section level2">
@@ -204,12 +201,11 @@ modes, when present, must allow the selection.</p></dd>
 <dd><p>Optional positive lifetime in seconds, supplied by
 the authorization server out of band for initial access tokens. Used only
 when an initial response omits <code>expires_in</code>; an explicit response value
-takes precedence. Default <code>NULL</code> requires the response to include a lifetime.
-This does not apply to refresh responses or change ordinary OAuth defaults.</p></dd>
+takes precedence. Default <code>NULL</code> requires the response to include a lifetime.</p></dd>
 
 
 <dt id="arg-label">label<a class="anchor" aria-label="anchor" href="#arg-label"></a></dt>
-<dd><p>Display label, default <code>"FHIR server"</code>; no credentials or context.</p></dd>
+<dd><p>Display label, default <code>"FHIR server"</code>.</p></dd>
 
 
 <dt id="arg-state-store-state-key-state-payload-max-age">state_store, state_key, state_payload_max_age<a class="anchor" aria-label="anchor" href="#arg-state-store-state-key-state-payload-max-age"></a></dt>
@@ -219,9 +215,8 @@ This does not apply to refresh responses or change ordinary OAuth defaults.</p><
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>An <a href="OAuthClient.html">OAuthClient</a> for the module or connection manager. Its
-<code>resource_bases</code> contains the approved <code>fhir</code> API. The object holds app
-registration settings, not a user's token or patient context; create it
-outside <code>server()</code>. Its <code>smart</code> property records the selected profile.</p>
+<code>resource_bases</code> contains the approved <code>fhir</code> API; its <code>smart</code> property
+records the selected profile.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -240,16 +235,14 @@ for a complete app.</p>
 <p>The constructor applies SMART App Launch 2.2 permission rules, S256 PKCE and
 the exact FHIR base as the authorization request's <code>aud</code>. <code>identity = "openid"</code>
 requires signed identity-token and nonce checks; <code>"fhirUser"</code> also requires
-the user's FHIR reference. <code>"none"</code> does not enable OIDC automatically.</p>
+the user's FHIR reference.</p>
 <p>Supported flows use direct authorization and query or form POST callbacks.
 Claims requests, remote authentication-freshness overrides, JAR, PAR, JARM,
 DPoP and mTLS are not supported by this constructor. The manager establishes
 a fresh registered transaction for each EHR launch; launch handles are single-use.</p>
 <p>Tokens need a positive lifetime. Only an initial response may omit
 <code>expires_in</code>, and only with an explicit <code>initial_expires_in_fallback</code>.
-Refresh responses must supply a lifetime. Requests require TLS 1.2 or newer;
-a stronger configured minimum is preserved. Ordinary clients also default
-to TLS 1.2.</p>
+Refresh responses must supply a lifetime. Requests require TLS 1.2 or newer.</p>
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>

@@ -81,9 +81,7 @@ API destination. Request helpers obtain credentials from the connection.
 | `patient/Observation.s` | Search Observations for that patient.        |
 
 Here `.r` means read and `.s` means search. `required_scopes` lets the
-app keep working if optional Observation access is declined. The server
-decides what to grant; receiving a patient ID alone does not grant
-permission to read records.
+app keep working if optional Observation access is declined.
 
 ### 2. Configure retained connections
 
@@ -207,9 +205,7 @@ result.
 ## Search with the same connection
 
 Add `actionButton("search", "Search observations")` to the UI and this
-observer inside `server()`. The patient filter selects the records to
-search; the server still enforces access and the connection checks the
-required permission.
+observer inside `server()`.
 
 ``` r
 
@@ -262,8 +258,7 @@ FHIR user reference, use
 [`smart_context()`](https://lukakoning.github.io/shinyOAuth/reference/smart_context.md)
 and
 [smart_fhir_user()](https://lukakoning.github.io/shinyOAuth/reference/smart_context.html);
-it only fetches within the configured FHIR base. Patient context and
-browser retention remain separate from verified user identity.
+it only fetches within the configured FHIR base.
 
 ## Start from an EHR instead
 
@@ -356,13 +351,12 @@ client <- smart_client(
 ```
 
 The server must advertise the chosen method and algorithm. The package
-creates and signs the assertion; app code does not assemble JWTs. See
-[SMART asymmetric client
+creates and signs the assertion. See [SMART asymmetric client
 authentication](https://hl7.org/fhir/smart-app-launch/STU2.2/client-confidential-asymmetric.html).
 
 The `offline_access` scope requests longer-lived access when supported
-by the server and registration. Browser retention does not request a
-refresh token; if one is issued, the manager can refresh access.
+by the server and registration. When a refresh token is issued, the
+manager can renew access.
 
 SMART refresh responses need a positive `expires_in`. If the initial
 response omits it, set `initial_expires_in_fallback` only to a lifetime

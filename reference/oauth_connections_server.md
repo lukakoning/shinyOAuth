@@ -78,9 +78,8 @@ A server-side list with:
   revocation. Local state preparation is checked first; rejection
   preserves current access. The replacement summary includes
   `replaces_connection_id`. Failed/cancelled replacement leaves the old
-  reference invalid. Unrelated authorizations remain usable;
-  shared-credential protections still apply. EHR-only clients require a
-  fresh EHR launch instead.
+  reference invalid. EHR-only clients require a fresh EHR launch
+  instead.
 
 - `touch()`: record explicit user activity after checking the current
   owner; returns `TRUE` invisibly.

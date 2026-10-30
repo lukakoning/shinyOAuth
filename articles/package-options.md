@@ -168,10 +168,7 @@ accepts.
 
 - `options(shinyOAuth.access_token_cnf = "opaque")` – use `"opaque"` to
   avoid decoding access-token binding data. The compatibility default
-  `"jwt"` reads `cnf` without signature verification. DPoP and mTLS
-  still check available binding and present their configured
-  credentials. Requiring visible confirmation is a separate client
-  policy.
+  `"jwt"` reads `cnf` without signature verification.
 
 - `options(shinyOAuth.leeway = 30)` – default clock skew leeway
   (seconds) for ID token `exp`/`iat`/`nbf` checks and state payload
@@ -212,10 +209,9 @@ accepts.
   Positive delays block R even with `async = TRUE`; they add timing
   noise rather than constant-time validation.
 
-`allowed_hosts` patterns support globs (`*`, `?`). A catch-all such as
-`"*"` accepts any host; scheme restrictions still apply. Restrict access
-to your domains, for example `c(".example.com")`, unless you intend to
-accept any host.
+`allowed_hosts` patterns support globs (`*`, `?`). For example,
+`c(".example.com")` matches the domain and its subdomains; `"*"` accepts
+any host.
 
 ## State store
 
@@ -287,8 +283,7 @@ memory during decoding and decryption.
   parameter
 
 These limits reject oversized callback URLs and POST bodies before they
-cause excessive processing or logging. The options set the accepted
-response budget.
+cause excessive processing or logging.
 
 Generated login state must fit both
 `shinyOAuth.callback_max_state_bytes` and the state envelope limits
@@ -297,8 +292,7 @@ is ASCII). Lowering either limit can restrict ordinary logins with many
 scopes or other state metadata.
 [`prepare_call()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_call.md)
 checks both budgets before storing pending login state, publishing a
-Request Object, or sending PAR. Increasing only one limit does not
-override the other.
+Request Object, or sending PAR.
 
 ## Configuration assessments
 
@@ -327,11 +321,6 @@ for an example and the specification revision assessed.
 
 ## Advanced transport constraints
 
-The TLS policy preserves stronger supplied minima and custom CA
-settings, while rejecting incompatible maxima or disabled certificate
-checks. It does not enable HTTP development exceptions or configure
-browser and proxy TLS.
-
 Response limits cover both downloaded and decoded gzip data; other
 encodings are rejected. Use `perform_resource_req(token, request)` to
 retain the decoded size limit, adding `client` for DPoP or mTLS. Direct
@@ -350,20 +339,11 @@ overrides.
 
 Set the callback format with `oauth_client(response_mode = ...)`.
 
-The options below unblock selected parameters; transaction and
-credential fields retain the protections described for each option.
-
 - `options(shinyOAuth.unblock_auth_params = c("redirect_uri"))` – allow
-  selected authorization-parameter overrides. Transaction, credential
-  and PKCE fields remain protected.
-
-- State, nonce, credentials, PKCE and protocol transaction fields remain
-  protected. Allowed overrides replace names case-insensitively without
-  adding duplicates.
+  selected authorization-parameter overrides.
 
 - `options(shinyOAuth.unblock_token_params = c(...))` – allow selected
-  token-exchange parameter overrides, subject to protected transaction
-  and credential fields.
+  token-exchange parameter overrides.
 
 - `options(shinyOAuth.unblock_token_headers = c("authorization"))` –
   allow selected token-header overrides, matched case-insensitively.

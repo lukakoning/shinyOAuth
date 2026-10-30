@@ -61,17 +61,16 @@ The client selects `authorization_method = "POST"` explicitly; support
 depends on the provider.
 [`smart_client()`](https://lukakoning.github.io/shinyOAuth/reference/smart_client.md)
 additionally requires the `authorize-post` capability. The outgoing
-method is independent of the callback `response_mode`. Configured PAR
-and Request Object requirements still apply. Each result belongs to one
-login attempt with single-use state.
+method is independent of the callback `response_mode`. Each result
+belongs to one login attempt with single-use state.
 
 POST preserves the authorization endpoint's fixed query and sends newly
 composed fields in the body. It permits up to 256 fields and 128 KiB of
 encoded form data; CR/LF and the browser-reserved `_charset_` field are
-rejected to prevent the browser changing field values. Existing state
-and callback size limits also apply. Configure your app's Content
-Security Policy `form-action` to allow the authorization endpoint.
-Custom callers must preserve browser binding and callback handling.
+rejected to prevent the browser changing field values. Configure your
+app's Content Security Policy `form-action` to allow the authorization
+endpoint. Custom callers must preserve browser binding and callback
+handling.
 
 ## Examples
 

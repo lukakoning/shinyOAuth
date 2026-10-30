@@ -159,9 +159,7 @@ credentials from the connection.</p>
 </table>
 <p>Here <code>.r</code> means read and <code>.s</code> means search.
 <code>required_scopes</code> lets the app keep working if optional
-Observation access is declined. The server decides what to grant;
-receiving a patient ID alone does not grant permission to read
-records.</p>
+Observation access is declined.</p>
 </div>
 <div class="section level3">
 <h3 id="configure-retained-connections">2. Configure retained connections<a class="anchor" aria-label="anchor" href="#configure-retained-connections"></a>
@@ -278,9 +276,7 @@ previous result.</p>
 <h2 id="search-with-the-same-connection">Search with the same connection<a class="anchor" aria-label="anchor" href="#search-with-the-same-connection"></a>
 </h2>
 <p>Add <code>actionButton("search", "Search observations")</code> to the
-UI and this observer inside <code>server()</code>. The patient filter
-selects the records to search; the server still enforces access and the
-connection checks the required permission.</p>
+UI and this observer inside <code>server()</code>.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html" class="external-link">observeEvent</a></span><span class="op">(</span><span class="va">input</span><span class="op">[[</span><span class="st">"search"</span><span class="op">]</span><span class="op">]</span>, <span class="op">{</span></span>
 <span>  <span class="va">health</span><span class="op">[[</span><span class="st">"touch"</span><span class="op">]</span><span class="op">]</span><span class="op">(</span><span class="op">)</span></span>
@@ -325,8 +321,7 @@ identity verification.</p>
 <p>Read selected identity fields with
 <code>connection[["identity"]]()</code>. For a FHIR user reference, use
 <code><a href="../reference/smart_context.html">smart_context()</a></code> and <a href="https://lukakoning.github.io/shinyOAuth/reference/smart_context.html">smart_fhir_user()</a>;
-it only fetches within the configured FHIR base. Patient context and
-browser retention remain separate from verified user identity.</p>
+it only fetches within the configured FHIR base.</p>
 </div>
 <div class="section level2">
 <h2 id="start-from-an-ehr-instead">Start from an EHR instead<a class="anchor" aria-label="anchor" href="#start-from-an-ehr-instead"></a>
@@ -433,13 +428,11 @@ private key.</p>
 <span>  label <span class="op">=</span> <span class="st">"My hospital"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>The server must advertise the chosen method and algorithm. The
-package creates and signs the assertion; app code does not assemble
-JWTs. See <a href="https://hl7.org/fhir/smart-app-launch/STU2.2/client-confidential-asymmetric.html" class="external-link">SMART
+package creates and signs the assertion. See <a href="https://hl7.org/fhir/smart-app-launch/STU2.2/client-confidential-asymmetric.html" class="external-link">SMART
 asymmetric client authentication</a>.</p>
 <p>The <code>offline_access</code> scope requests longer-lived access
-when supported by the server and registration. Browser retention does
-not request a refresh token; if one is issued, the manager can refresh
-access.</p>
+when supported by the server and registration. When a refresh token is
+issued, the manager can renew access.</p>
 <p>SMART refresh responses need a positive <code>expires_in</code>. If
 the initial response omits it, set
 <code>initial_expires_in_fallback</code> only to a lifetime supplied by

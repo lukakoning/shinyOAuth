@@ -106,10 +106,8 @@ An R6 object exposing cachem-like
 
 ## Details
 
-This helper adapts your storage functions; it does not create a
-database, open connections, or make process-local storage shared. Your
-backend must preserve stored R values and expire entries after their
-configured lifetime.
+Backend functions must preserve stored R values and expire entries after
+their configured lifetime.
 
 ## Shared login state in multi-worker deployments
 

@@ -3,9 +3,7 @@
 **\[experimental\]**
 
 Read and validate the SMART App Launch STU 2.2 discovery document for a
-configured FHIR server. This returns server metadata for application
-setup; it does not register an app, choose client credentials, or start
-authorization.
+configured FHIR server. Returns server metadata for application setup.
 
 ## Usage
 
@@ -30,9 +28,8 @@ smart_discover(fhir_base, endpoint_hosts = NULL, allow_http_loopback = FALSE)
 - allow_http_loopback:
 
   Logical, default `FALSE`. Explicit development exception permitting
-  HTTP only at `localhost`, `127.0.0.1`, or `::1`. This applies to the
-  base and metadata URLs and does not change global options. It does not
-  establish production TLS interoperability.
+  HTTP only at `localhost`, `127.0.0.1`, or `::1`. Applies to the base
+  and metadata URLs.
 
 ## Value
 
@@ -40,9 +37,8 @@ A plain named list with `fhir_base` (the supplied identifier),
 `discovery_url` (the requested URL), `smart_version` (`"2.2.0"`, the
 validation baseline, not a detected server version), `metadata` (the
 parsed document, with JSON arrays as lists), `endpoint_hosts` (the
-normalized policy), and `allow_http_loopback`. No client, token, or live
-cache is stored in the result. Invalid input or endpoint policy raises a
-`shinyOAuth_config_error`; malformed metadata raises a
+normalized policy), and `allow_http_loopback`. Invalid input or endpoint
+policy raises a `shinyOAuth_config_error`; malformed metadata raises a
 `shinyOAuth_parse_error`; failed HTTP requests raise a
 `shinyOAuth_http_error`.
 
@@ -51,8 +47,7 @@ cache is stored in the result. Invalid input or endpoint policy raises a
 Call once during application setup, outside `server()`. The request
 appends `/.well-known/smart-configuration` to the full FHIR base,
 removing its terminal slash first. The supplied base and returned
-endpoint/issuer strings are retained exactly, so discovery does not
-change protocol identifiers.
+endpoint/issuer strings are retained exactly.
 
 This is separate from
 [`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md).
@@ -89,17 +84,14 @@ of port. This is a discovery policy; it does not authorize resource
 requests. The generic `shinyOAuth.allowed_hosts` option can further
 restrict these URLs.
 
-The request carries no OAuth credentials. Redirects are refused even
-when the generic redirect option is enabled. Existing package TLS,
-timeout, response-size, and retry protections apply. JSON must be an
-object with no duplicate members; arrays and recognized URL fields have
-bounded validation. Errors do not include response bodies or returned
-metadata values.
+Redirects are refused even when the generic redirect option is enabled.
+JSON must be an object with no duplicate members; arrays and recognized
+URL fields have bounded validation. Errors do not include response
+bodies or returned metadata values.
 
 Unknown extensions, including `associated_endpoints`, are retained as
 data only. Their URLs are not fetched or approved for credential use.
-Each call reads a fresh snapshot. Existing clients and retained grants
-remain bound to the configuration with which they were created.
+Each call reads a fresh snapshot.
 
 ## References
 
