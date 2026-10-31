@@ -24,7 +24,7 @@ reference:
 - title: Shiny login
   desc: >-
     Add login with a UI wrapper, server module, and configured client.
-    See the [usage guide](../articles/usage.html) for a complete app.
+    See the [usage guide](../articles/usage.html) for help.
   contents:
   - oauth_ui
   - oauth_module_server
@@ -50,10 +50,6 @@ reference:
   - -oauth_provider_oidc_discover
 
 - title: Tokens and API requests
-  desc: >-
-    See [external integrations](../articles/external-integrations.html) for SDK
-    and database access, or [token targets](../articles/token-targets.html) for
-    separate API tokens.
   contents:
   - perform_resource_req
   - resource_req
