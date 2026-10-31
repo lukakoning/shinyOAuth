@@ -2,7 +2,10 @@
 
 ## Shiny login
 
-Add login with a UI wrapper, server module, and configured client.
+Add login with a UI wrapper, server module, and configured client. See
+the [usage
+guide](https://lukakoning.github.io/shinyOAuth/articles/usage.md) for
+help.
 
 - [`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md)
   : Set up a Shiny UI for shinyOAuth
