@@ -2,10 +2,7 @@
 
 ## Shiny login
 
-Add login with a UI wrapper, server module, and configured client. See
-the [usage
-guide](https://lukakoning.github.io/shinyOAuth/articles/usage.md) for a
-complete app.
+Add login with a UI wrapper, server module, and configured client.
 
 - [`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md)
   : Set up a Shiny UI for shinyOAuth
@@ -72,12 +69,6 @@ complete app.
   : Configure institutional sign-in with SURFconext
 
 ## Tokens and API requests
-
-See [external
-integrations](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.md)
-for SDK and database access, or [token
-targets](https://lukakoning.github.io/shinyOAuth/articles/token-targets.md)
-for separate API tokens.
 
 - [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
   : Call an API with an access token
