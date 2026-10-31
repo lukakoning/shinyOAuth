@@ -1,19 +1,15 @@
 # Package index
 
-## Shiny integration
+## Shiny login
+
+The main helpers for adding login to a Shiny app.
 
 - [`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md)
   : Set up a Shiny UI for shinyOAuth
-- [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
-  : Configure OAuth/OIDC client credentials and login settings
-- [`oauth_token_target()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_token_target.md)
-  : Declare an API token target
 - [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
   : OAuth 2.0 authorization and OIDC authentication module for Shiny
-- [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
-  : Wrap a Shiny UI to enable OAuth 2.0/OIDC form_post callbacks
-- [`use_shinyOAuth()`](https://lukakoning.github.io/shinyOAuth/reference/use_shinyOAuth.md)
-  : Add JavaScript dependency to the UI of a Shiny app
+- [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
+  : Configure OAuth/OIDC client credentials and login settings
 
 ## Object reference
 
@@ -72,24 +68,6 @@
 - [`oauth_provider_surfconext()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_surfconext.md)
   : Configure institutional sign-in with SURFconext
 
-## Provider-specific client settings
-
-- [`oauth_client_mtls_registration()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client_mtls_registration.md)
-  : Prepare client-certificate registration settings (mTLS)
-- [`oauth_client_secret_apple()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client_secret_apple.md)
-  : Create a client secret for Sign in with Apple
-
-## Custom login handling
-
-### Advanced helpers for managing login without the Shiny module
-
-- [`prepare_call()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_call.md)
-  : Prepare an OAuth 2.0 authorization request and build its URL
-- [`prepare_authorization_request()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_authorization_request.md)
-  : Prepare a browser authorization request using GET or POST
-- [`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md)
-  : Validate an OAuth 2.0 callback and retrieve tokens
-
 ## Tokens and API requests
 
 - [`oauth_connection()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connection.md)
@@ -124,6 +102,9 @@
 
   Alias for
   [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
+
+- [`oauth_token_target()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_token_target.md)
+  : Declare an API token target
 
 ## Deployment helpers
 
@@ -167,3 +148,25 @@
   [`smart_patient()`](https://lukakoning.github.io/shinyOAuth/reference/smart_context.md)
   [`smart_fhir_user()`](https://lukakoning.github.io/shinyOAuth/reference/smart_context.md)
   **\[experimental\]** : Read a connection's current SMART context
+
+## Advanced login handling
+
+Helpers for POST callbacks and custom login flows.
+
+- [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
+  : Wrap a Shiny UI to enable OAuth 2.0/OIDC form_post callbacks
+- [`use_shinyOAuth()`](https://lukakoning.github.io/shinyOAuth/reference/use_shinyOAuth.md)
+  : Add JavaScript dependency to the UI of a Shiny app
+- [`prepare_call()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_call.md)
+  : Prepare an OAuth 2.0 authorization request and build its URL
+- [`prepare_authorization_request()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_authorization_request.md)
+  : Prepare a browser authorization request using GET or POST
+- [`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md)
+  : Validate an OAuth 2.0 callback and retrieve tokens
+
+## Provider-specific client settings
+
+- [`oauth_client_mtls_registration()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client_mtls_registration.md)
+  : Prepare client-certificate registration settings (mTLS)
+- [`oauth_client_secret_apple()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client_secret_apple.md)
+  : Create a client secret for Sign in with Apple

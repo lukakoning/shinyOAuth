@@ -44,9 +44,9 @@
     </div>
 
     <div class="section level2">
-      <h2 id="shiny-integration">Shiny integration<a class="anchor" aria-label="anchor" href="#shiny-integration"></a></h2>
+      <h2 id="shiny-login">Shiny login<a class="anchor" aria-label="anchor" href="#shiny-login"></a></h2>
 
-
+      <div class="section-desc"><p>The main helpers for adding login to a Shiny app.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -62,20 +62,6 @@
 
         <dt>
 
-          <code><a href="oauth_client.html">oauth_client()</a></code>
-
-        </dt>
-        <dd>Configure OAuth/OIDC client credentials and login settings</dd>
-
-        <dt>
-
-          <code><a href="oauth_token_target.html">oauth_token_target()</a></code>
-
-        </dt>
-        <dd>Declare an API token target</dd>
-
-        <dt>
-
           <code><a href="oauth_module_server.html">oauth_module_server()</a></code>
 
         </dt>
@@ -83,17 +69,10 @@
 
         <dt>
 
-          <code><a href="oauth_form_post_ui.html">oauth_form_post_ui()</a></code>
+          <code><a href="oauth_client.html">oauth_client()</a></code>
 
         </dt>
-        <dd>Wrap a Shiny UI to enable OAuth 2.0/OIDC form_post callbacks</dd>
-
-        <dt>
-
-          <code><a href="use_shinyOAuth.html">use_shinyOAuth()</a></code>
-
-        </dt>
-        <dd>Add JavaScript dependency to the UI of a Shiny app</dd>
+        <dd>Configure OAuth/OIDC client credentials and login settings</dd>
       </dl></div><div class="section level2">
       <h2 id="object-reference">Object reference<a class="anchor" aria-label="anchor" href="#object-reference"></a></h2>
 
@@ -288,64 +267,6 @@
         </dt>
         <dd>Configure institutional sign-in with SURFconext</dd>
       </dl></div><div class="section level2">
-      <h2 id="provider-specific-client-settings">Provider-specific client settings<a class="anchor" aria-label="anchor" href="#provider-specific-client-settings"></a></h2>
-
-
-
-      <dl></dl></div><div class="section level2">
-
-
-
-
-      <dl><dt>
-
-          <code><a href="oauth_client_mtls_registration.html">oauth_client_mtls_registration()</a></code>
-
-        </dt>
-        <dd>Prepare client-certificate registration settings (mTLS)</dd>
-
-        <dt>
-
-          <code><a href="oauth_client_secret_apple.html">oauth_client_secret_apple()</a></code>
-
-        </dt>
-        <dd>Create a client secret for Sign in with Apple</dd>
-      </dl></div><div class="section level2">
-      <h2 id="custom-login-handling">Custom login handling<a class="anchor" aria-label="anchor" href="#custom-login-handling"></a></h2>
-
-
-
-      <dl></dl></div><div class="section level2">
-
-      <h3 id="advanced-helpers-for-managing-login-without-the-shiny-module">Advanced helpers for managing login without the Shiny module<a class="anchor" aria-label="anchor" href="#advanced-helpers-for-managing-login-without-the-shiny-module"></a></h3>
-
-
-      <dl></dl></div><div class="section level2">
-
-
-
-
-      <dl><dt>
-
-          <code><a href="prepare_call.html">prepare_call()</a></code>
-
-        </dt>
-        <dd>Prepare an OAuth 2.0 authorization request and build its URL</dd>
-
-        <dt>
-
-          <code><a href="prepare_authorization_request.html">prepare_authorization_request()</a></code>
-
-        </dt>
-        <dd>Prepare a browser authorization request using GET or POST</dd>
-
-        <dt>
-
-          <code><a href="handle_callback.html">handle_callback()</a></code>
-
-        </dt>
-        <dd>Validate an OAuth 2.0 callback and retrieve tokens</dd>
-      </dl></div><div class="section level2">
       <h2 id="tokens-and-api-requests">Tokens and API requests<a class="anchor" aria-label="anchor" href="#tokens-and-api-requests"></a></h2>
 
 
@@ -417,6 +338,13 @@
           <span class="badge lifecycle lifecycle-deprecated">deprecated</span>
         </dt>
         <dd>Alias for <code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code></dd>
+
+        <dt>
+
+          <code><a href="oauth_token_target.html">oauth_token_target()</a></code>
+
+        </dt>
+        <dd>Declare an API token target</dd>
       </dl></div><div class="section level2">
       <h2 id="deployment-helpers">Deployment helpers<a class="anchor" aria-label="anchor" href="#deployment-helpers"></a></h2>
 
@@ -535,6 +463,73 @@
           <span class="badge lifecycle lifecycle-experimental">experimental</span>
         </dt>
         <dd>Read a connection's current SMART context</dd>
+      </dl></div><div class="section level2">
+      <h2 id="advanced-login-handling">Advanced login handling<a class="anchor" aria-label="anchor" href="#advanced-login-handling"></a></h2>
+
+      <div class="section-desc"><p>Helpers for POST callbacks and custom login flows.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="oauth_form_post_ui.html">oauth_form_post_ui()</a></code>
+
+        </dt>
+        <dd>Wrap a Shiny UI to enable OAuth 2.0/OIDC form_post callbacks</dd>
+
+        <dt>
+
+          <code><a href="use_shinyOAuth.html">use_shinyOAuth()</a></code>
+
+        </dt>
+        <dd>Add JavaScript dependency to the UI of a Shiny app</dd>
+
+        <dt>
+
+          <code><a href="prepare_call.html">prepare_call()</a></code>
+
+        </dt>
+        <dd>Prepare an OAuth 2.0 authorization request and build its URL</dd>
+
+        <dt>
+
+          <code><a href="prepare_authorization_request.html">prepare_authorization_request()</a></code>
+
+        </dt>
+        <dd>Prepare a browser authorization request using GET or POST</dd>
+
+        <dt>
+
+          <code><a href="handle_callback.html">handle_callback()</a></code>
+
+        </dt>
+        <dd>Validate an OAuth 2.0 callback and retrieve tokens</dd>
+      </dl></div><div class="section level2">
+      <h2 id="provider-specific-client-settings">Provider-specific client settings<a class="anchor" aria-label="anchor" href="#provider-specific-client-settings"></a></h2>
+
+
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="oauth_client_mtls_registration.html">oauth_client_mtls_registration()</a></code>
+
+        </dt>
+        <dd>Prepare client-certificate registration settings (mTLS)</dd>
+
+        <dt>
+
+          <code><a href="oauth_client_secret_apple.html">oauth_client_secret_apple()</a></code>
+
+        </dt>
+        <dd>Create a client secret for Sign in with Apple</dd>
       </dl></div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
