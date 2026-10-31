@@ -46,7 +46,7 @@
     <div class="section level2">
       <h2 id="shiny-login">Shiny login<a class="anchor" aria-label="anchor" href="#shiny-login"></a></h2>
 
-      <div class="section-desc"><p>The main helpers for adding login to a Shiny app.</p></div>
+      <div class="section-desc"><p>Add login with a UI wrapper, server module, and configured client. See the <a href="../articles/usage.html">usage guide</a> for a complete app.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -269,7 +269,7 @@
       </dl></div><div class="section level2">
       <h2 id="tokens-and-api-requests">Tokens and API requests<a class="anchor" aria-label="anchor" href="#tokens-and-api-requests"></a></h2>
 
-
+      <div class="section-desc"><p>See <a href="../articles/external-integrations.html">external integrations</a> for SDK and database access, or <a href="../articles/token-targets.html">token targets</a> for separate API tokens.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -278,12 +278,42 @@
 
       <dl><dt>
 
+          <code><a href="perform_resource_req.html">perform_resource_req()</a></code>
+
+        </dt>
+        <dd>Call an API with an access token</dd>
+
+        <dt>
+
+          <code><a href="resource_req.html">resource_req()</a></code>
+
+        </dt>
+        <dd>Prepare an API request with an access token</dd>
+
+        <dt>
+
           <code><a href="oauth_connection.html">oauth_connection()</a></code>
 
         </dt>
         <dd>Wrap an existing reactive token as a connection</dd>
 
         <dt>
+
+          <code><a href="oauth_token_target.html">oauth_token_target()</a></code>
+
+        </dt>
+        <dd>Declare an API token target</dd>
+      </dl></div><div class="section level2">
+
+      <h3 id="manual-token-operations">Manual token operations<a class="anchor" aria-label="anchor" href="#manual-token-operations"></a></h3>
+      <div class="section-desc"><p>The Shiny module manages the usual login and refresh flow. These helpers provide direct token operations.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
 
           <code><a href="get_userinfo.html">get_userinfo()</a></code>
 
@@ -310,41 +340,6 @@
 
         </dt>
         <dd>Introspect an OAuth 2.0 token</dd>
-
-        <dt>
-
-          <code><a href="resource_req.html">resource_req()</a></code>
-
-        </dt>
-        <dd>Prepare an API request with an access token</dd>
-
-        <dt>
-
-          <code><a href="perform_resource_req.html">perform_resource_req()</a></code>
-
-        </dt>
-        <dd>Call an API with an access token</dd>
-
-        <dt>
-
-          <code><a href="client_bearer_req.html">client_bearer_req()</a></code>
-          <span class="badge lifecycle lifecycle-deprecated">deprecated</span>
-        </dt>
-        <dd>Alias for <code><a href="../reference/resource_req.html">resource_req()</a></code></dd>
-
-        <dt>
-
-          <code><a href="perform_client_bearer_req.html">perform_client_bearer_req()</a></code>
-          <span class="badge lifecycle lifecycle-deprecated">deprecated</span>
-        </dt>
-        <dd>Alias for <code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code></dd>
-
-        <dt>
-
-          <code><a href="oauth_token_target.html">oauth_token_target()</a></code>
-
-        </dt>
-        <dd>Declare an API token target</dd>
       </dl></div><div class="section level2">
       <h2 id="deployment-helpers">Deployment helpers<a class="anchor" aria-label="anchor" href="#deployment-helpers"></a></h2>
 
@@ -375,15 +370,8 @@
 
         </dt>
         <dd>Create a custom state store or signing-key cache</dd>
-
-        <dt>
-
-          <code><a href="error_on_softened.html">error_on_softened()</a></code>
-          <span class="badge lifecycle lifecycle-deprecated">deprecated</span>
-        </dt>
-        <dd>Check selected debugging options (deprecated)</dd>
       </dl></div><div class="section level2">
-      <h2 id="multiple-retained-connections">Multiple retained connections<a class="anchor" aria-label="anchor" href="#multiple-retained-connections"></a></h2>
+      <h2 id="multiple-services-and-accounts">Multiple services and accounts<a class="anchor" aria-label="anchor" href="#multiple-services-and-accounts"></a></h2>
 
 
 
@@ -530,6 +518,36 @@
 
         </dt>
         <dd>Create a client secret for Sign in with Apple</dd>
+      </dl></div><div class="section level2">
+      <h2 id="deprecated">Deprecated<a class="anchor" aria-label="anchor" href="#deprecated"></a></h2>
+
+
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="client_bearer_req.html">client_bearer_req()</a></code>
+          <span class="badge lifecycle lifecycle-deprecated">deprecated</span>
+        </dt>
+        <dd>Alias for <code><a href="../reference/resource_req.html">resource_req()</a></code></dd>
+
+        <dt>
+
+          <code><a href="perform_client_bearer_req.html">perform_client_bearer_req()</a></code>
+          <span class="badge lifecycle lifecycle-deprecated">deprecated</span>
+        </dt>
+        <dd>Alias for <code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code></dd>
+
+        <dt>
+
+          <code><a href="error_on_softened.html">error_on_softened()</a></code>
+          <span class="badge lifecycle lifecycle-deprecated">deprecated</span>
+        </dt>
+        <dd>Check selected debugging options (deprecated)</dd>
       </dl></div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>

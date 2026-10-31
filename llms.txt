@@ -198,7 +198,10 @@ deployments are in `integration/gcp/` for Google Cloud Run and
 
 ## Shiny login
 
-The main helpers for adding login to a Shiny app.
+Add login with a UI wrapper, server module, and configured client. See
+the [usage
+guide](https://lukakoning.github.io/shinyOAuth/articles/usage.md) for a
+complete app.
 
 - [`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md)
   : Set up a Shiny UI for shinyOAuth
@@ -266,41 +269,34 @@ The main helpers for adding login to a Shiny app.
 
 ## Tokens and API requests
 
-- [`oauth_connection()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connection.md)
-  : Wrap an existing reactive token as a connection
-
-- [`get_userinfo()`](https://lukakoning.github.io/shinyOAuth/reference/get_userinfo.md)
-  : Fetch a user's profile (UserInfo)
-
-- [`refresh_token()`](https://lukakoning.github.io/shinyOAuth/reference/refresh_token.md)
-  : Refresh an OAuth 2.0 token
-
-- [`revoke_token()`](https://lukakoning.github.io/shinyOAuth/reference/revoke_token.md)
-  : Revoke an OAuth 2.0 token
-
-- [`introspect_token()`](https://lukakoning.github.io/shinyOAuth/reference/introspect_token.md)
-  : Introspect an OAuth 2.0 token
-
-- [`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md)
-  : Prepare an API request with an access token
+See [external
+integrations](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.md)
+for SDK and database access, or [token
+targets](https://lukakoning.github.io/shinyOAuth/articles/token-targets.md)
+for separate API tokens.
 
 - [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
   : Call an API with an access token
-
-- [`client_bearer_req()`](https://lukakoning.github.io/shinyOAuth/reference/client_bearer_req.md)
-  **\[deprecated\]** :
-
-  Alias for
-  [`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md)
-
-- [`perform_client_bearer_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_client_bearer_req.md)
-  **\[deprecated\]** :
-
-  Alias for
-  [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
-
+- [`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md)
+  : Prepare an API request with an access token
+- [`oauth_connection()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connection.md)
+  : Wrap an existing reactive token as a connection
 - [`oauth_token_target()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_token_target.md)
   : Declare an API token target
+
+### Manual token operations
+
+The Shiny module manages the usual login and refresh flow. These helpers
+provide direct token operations.
+
+- [`get_userinfo()`](https://lukakoning.github.io/shinyOAuth/reference/get_userinfo.md)
+  : Fetch a user's profile (UserInfo)
+- [`refresh_token()`](https://lukakoning.github.io/shinyOAuth/reference/refresh_token.md)
+  : Refresh an OAuth 2.0 token
+- [`revoke_token()`](https://lukakoning.github.io/shinyOAuth/reference/revoke_token.md)
+  : Revoke an OAuth 2.0 token
+- [`introspect_token()`](https://lukakoning.github.io/shinyOAuth/reference/introspect_token.md)
+  : Introspect an OAuth 2.0 token
 
 ## Deployment helpers
 
@@ -310,10 +306,8 @@ The main helpers for adding login to a Shiny app.
   : Check a URL against the package's host policy
 - [`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.md)
   : Create a custom state store or signing-key cache
-- [`error_on_softened()`](https://lukakoning.github.io/shinyOAuth/reference/error_on_softened.md)
-  **\[deprecated\]** : Check selected debugging options (deprecated)
 
-## Multiple retained connections
+## Multiple services and accounts
 
 - [`oauth_connections()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections.md)
   [`print(`*`<OAuthConnections>`*`)`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections.md)
@@ -366,6 +360,23 @@ Helpers for POST callbacks and custom login flows.
   : Prepare client-certificate registration settings (mTLS)
 - [`oauth_client_secret_apple()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client_secret_apple.md)
   : Create a client secret for Sign in with Apple
+
+## Deprecated
+
+- [`client_bearer_req()`](https://lukakoning.github.io/shinyOAuth/reference/client_bearer_req.md)
+  **\[deprecated\]** :
+
+  Alias for
+  [`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md)
+
+- [`perform_client_bearer_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_client_bearer_req.md)
+  **\[deprecated\]** :
+
+  Alias for
+  [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
+
+- [`error_on_softened()`](https://lukakoning.github.io/shinyOAuth/reference/error_on_softened.md)
+  **\[deprecated\]** : Check selected debugging options (deprecated)
 
 # Articles
 
