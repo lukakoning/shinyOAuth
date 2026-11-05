@@ -49,11 +49,18 @@ testthat::test_that("explicit state failure delays remain supported", {
   testthat::expect_equal(sleeps, 0.020)
 
   options(shinyOAuth.state_fail_delay_ms = c(10, 30))
+  draws <- list()
+  testthat::local_mocked_bindings(
+    runif = function(n, min, max) {
+      draws[[length(draws) + 1L]] <<- c(n, min, max)
+      20
+    },
+    .package = "stats"
+  )
   testthat::expect_error(
     shinyOAuth:::state_decrypt_gcm("not_base64url!!!", key),
     class = "shinyOAuth_state_error"
   )
-  testthat::expect_length(sleeps, 2L)
-  testthat::expect_gte(sleeps[[2]], 0.010)
-  testthat::expect_lte(sleeps[[2]], 0.030)
+  testthat::expect_identical(draws, list(c(1, 10, 30)))
+  testthat::expect_identical(sleeps, c(0.020, 0.020))
 })

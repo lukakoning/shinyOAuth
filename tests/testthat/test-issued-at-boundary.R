@@ -1,6 +1,7 @@
 test_that("issued_at boundary behavior around max_age", {
-  # Small max_age to keep tests fast and deterministic
   cli <- make_test_client(state_max_age = 600, state_payload_max_age = 2)
+  fixed_now <- as.POSIXct(1700000000, origin = "1970-01-01", tz = "UTC")
+  local_mocked_bindings(Sys.time = function() fixed_now, .package = "base")
 
   now <- as.numeric(Sys.time())
   base <- list(
@@ -17,12 +18,16 @@ test_that("issued_at boundary behavior around max_age", {
 
   # Just under max_age should pass
   just_under <- base
-  just_under[["issued_at"]] <- now - 1.9
+  just_under[["issued_at"]] <- now - 1.875
   expect_silent(shinyOAuth:::payload_verify_issued_at(cli, just_under))
+
+  at_boundary <- base
+  at_boundary[["issued_at"]] <- now - 2
+  expect_silent(shinyOAuth:::payload_verify_issued_at(cli, at_boundary))
 
   # Just over max_age should fail
   just_over <- base
-  just_over[["issued_at"]] <- now - 2.1
+  just_over[["issued_at"]] <- now - 2.125
   expect_error(
     shinyOAuth:::payload_verify_issued_at(cli, just_over),
     class = "shinyOAuth_state_error",
@@ -36,9 +41,10 @@ test_that("issued_at boundary behavior around max_age", {
 })
 
 test_that("issued_at future check respects leeway", {
-  # Use a small leeway to test the boundary precisely
   cli <- make_test_client(state_max_age = 600, state_payload_max_age = 300)
   cli@provider@leeway <- 5
+  fixed_now <- as.POSIXct(1700000000, origin = "1970-01-01", tz = "UTC")
+  local_mocked_bindings(Sys.time = function() fixed_now, .package = "base")
 
   now <- as.numeric(Sys.time())
   base <- list(
@@ -53,9 +59,9 @@ test_that("issued_at future check respects leeway", {
   # issued_at at now should pass
   expect_silent(shinyOAuth:::payload_verify_issued_at(cli, base))
 
-  # issued_at in future within leeway (now + 4s with 5s leeway) should pass
+  # issued_at just inside the future leeway should pass
   within_leeway <- base
-  within_leeway[["issued_at"]] <- now + 4
+  within_leeway[["issued_at"]] <- now + 4.875
   expect_silent(shinyOAuth:::payload_verify_issued_at(cli, within_leeway))
 
   # issued_at exactly at leeway boundary (now + 5s with 5s leeway) should pass
@@ -63,9 +69,9 @@ test_that("issued_at future check respects leeway", {
   at_boundary[["issued_at"]] <- now + 5
   expect_silent(shinyOAuth:::payload_verify_issued_at(cli, at_boundary))
 
-  # issued_at beyond leeway (now + 10s with 5s leeway) should fail
+  # issued_at just beyond leeway should fail
   beyond_leeway <- base
-  beyond_leeway[["issued_at"]] <- now + 10
+  beyond_leeway[["issued_at"]] <- now + 5.125
   expect_error(
     shinyOAuth:::payload_verify_issued_at(cli, beyond_leeway),
     class = "shinyOAuth_state_error",

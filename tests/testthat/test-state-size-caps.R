@@ -1,3 +1,23 @@
+test_that("environment state size caps apply unless an option overrides them", {
+  withr::local_options(list(
+    shinyOAuth.state_max_token_chars = NULL,
+    shinyOAuth.state_fail_delay_ms = 0
+  ))
+  withr::local_envvar(c(shinyOAuth_STATE_MAX_TOKEN_CHARS = "128"))
+  key <- strrep("k", 64)
+  payload <- list(state = strrep("x", 128), issued_at = 1)
+  token <- shinyOAuth:::state_encrypt_gcm(payload, key)
+
+  expect_error(
+    shinyOAuth:::state_decrypt_gcm(token, key),
+    class = "shinyOAuth_state_error"
+  )
+
+  withr::local_options(shinyOAuth.state_max_token_chars = 8192)
+  decrypted <- shinyOAuth:::state_decrypt_gcm(token, key)
+  expect_identical(decrypted[["state"]], payload[["state"]])
+})
+
 test_that("state_decrypt_gcm enforces size caps and is configurable", {
   key <- strrep("k", 64)
 
