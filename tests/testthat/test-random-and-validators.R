@@ -1,3 +1,16 @@
+test_that("OIDC nonce validation includes both byte-length boundaries", {
+  expect_silent(shinyOAuth:::validate_oidc_nonce(strrep("a", 22)))
+  expect_silent(shinyOAuth:::validate_oidc_nonce(strrep("a", 255)))
+  expect_error(
+    shinyOAuth:::validate_oidc_nonce(strrep("a", 21)),
+    class = "shinyOAuth_oidc_nonce_error"
+  )
+  expect_error(
+    shinyOAuth:::validate_oidc_nonce(strrep("a", 256)),
+    class = "shinyOAuth_oidc_nonce_error"
+  )
+})
+
 test_that("random_urlsafe produces correct length and charset", {
   x <- shinyOAuth:::random_urlsafe(16)
   expect_type(x, "character")
