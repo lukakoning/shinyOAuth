@@ -5,6 +5,28 @@ collect_rendered_output <- function(x) {
   )
 }
 
+test_that("installed authorization objects redact state for ordinary callers", {
+  prepared <- shinyOAuth:::prepare_authorization(
+    make_test_client(),
+    valid_browser_token()
+  )
+  rendered <- callr::r(
+    function(prepared) {
+      loadNamespace("shinyOAuth")
+      c(
+        format = paste(format(prepared), collapse = "\n"),
+        print = paste(capture.output(print(prepared)), collapse = "\n")
+      )
+    },
+    args = list(prepared = prepared),
+    libpath = .libPaths()
+  )
+  for (output in rendered) {
+    expect_false(grepl(prepared[["state"]], output, fixed = TRUE))
+    expect_match(output, "transaction data redacted", fixed = TRUE)
+  }
+})
+
 test_that("UserInfo member names cannot inject or flood token displays", {
   member_names <- c(
     "name\nforged-event\033[31m",

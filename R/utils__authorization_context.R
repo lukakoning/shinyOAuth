@@ -213,12 +213,12 @@ prepare_authorization <- function(
   )
 }
 
-#' @export
+#' @exportS3Method base::format
 format.shinyOAuth_authorization <- function(x, ...) {
   "<shinyOAuth_authorization: redirect and transaction data redacted>"
 }
 
-#' @export
+#' @exportS3Method base::print
 print.shinyOAuth_authorization <- function(x, ...) {
   cat(format(x), "\n")
   invisible(x)
