@@ -1,3 +1,5 @@
+# shinyOAuth (development version)
+
 # shinyOAuth 0.7.0
 
 * Use your Shiny login with other R packages:
