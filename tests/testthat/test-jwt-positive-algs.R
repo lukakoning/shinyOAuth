@@ -1,3 +1,32 @@
+test_that("signature verification rejects cryptographic backend errors", {
+  key <- openssl::rsa_keygen(bits = 2048)
+  header <- shinyOAuth:::base64url_encode(charToRaw('{"alg":"RS256"}'))
+  payload <- shinyOAuth:::base64url_encode(charToRaw('{"sub":"fixture"}'))
+  input <- paste(header, payload, sep = ".")
+  signature <- openssl::signature_create(
+    openssl::sha256(charToRaw(input)),
+    hash = NULL,
+    key = key
+  )
+  jwt <- paste(input, shinyOAuth:::base64url_encode(signature), sep = ".")
+  expect_true(shinyOAuth:::verify_jws_signature_no_time(
+    jwt, key[["pubkey"]], "RS256"
+  ))
+
+  called <- FALSE
+  local_mocked_bindings(
+    signature_verify = function(...) {
+      called <<- TRUE
+      stop("synthetic verification backend failure")
+    },
+    .package = "openssl"
+  )
+  expect_false(shinyOAuth:::verify_jws_signature_no_time(
+    jwt, key[["pubkey"]], "RS256"
+  ))
+  expect_true(called)
+})
+
 for (test_alg in c("Ed25519", "EdDSA", "RS256")) {
   test_that(paste("validate_id_token accepts a valid", test_alg, "JWT"), {
     testthat::skip_if_not_installed("jose")
