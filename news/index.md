@@ -1,5 +1,7 @@
 # Changelog
 
+## shinyOAuth (development version)
+
 ## shinyOAuth 0.7.0
 
 CRAN release: 2026-10-31
