@@ -2,6 +2,8 @@
 
 ## shinyOAuth 0.7.0
 
+CRAN release: 2026-10-31
+
 - Use your Shiny login with other R packages:
 
   - [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
