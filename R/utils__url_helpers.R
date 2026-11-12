@@ -311,7 +311,8 @@ validate_discovery_issuer <- function(
             p_dc[["scheme"]],
             p_dc[["host"]]
           )
-        )
+        ),
+        context = list(claim = "iss", reason = "discovery_issuer_mismatch")
       )
     }
 
@@ -328,7 +329,8 @@ validate_discovery_issuer <- function(
           issuer_discovered
         ),
         "i" = "Set issuer_match = 'host' to compare only scheme+host (not recommended)"
-      )
+      ),
+      context = list(claim = "iss", reason = "discovery_issuer_mismatch")
     )
   }
 

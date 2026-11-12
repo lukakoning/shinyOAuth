@@ -33,6 +33,50 @@ test_that("validate_discovery_issuer returns discovered on match", {
   )
 })
 
+test_that("discovery issuer mismatch audits identify the check without issuer values", {
+  events <- list()
+  local_options(
+    shinyOAuth.expose_error_body = FALSE,
+    shinyOAuth.audit_hook = function(event) {
+      events[[length(events) + 1L]] <<- event
+    }
+  )
+  for (policy in c("url", "host")) {
+    events <- list()
+    failure <- tryCatch(
+      validate_discovery_issuer(
+        "https://private-expected.example/tenant",
+        "https://private-received.example/tenant",
+        issuer_match = policy
+      ),
+      error = identity
+    )
+    expect_s3_class(failure, "shinyOAuth_config_error")
+    expect_identical(failure[["context"]][["claim"]], "iss")
+    expect_identical(
+      failure[["context"]][["reason"]],
+      "discovery_issuer_mismatch"
+    )
+    errors <- Filter(
+      function(event) {
+        identical(event[["error_class"]], "shinyOAuth_config_error")
+      },
+      events
+    )
+    expect_length(errors, 1L)
+    expect_identical(errors[[1L]][["claim"]], "iss")
+    expect_identical(errors[[1L]][["reason"]], "discovery_issuer_mismatch")
+    expect_null(errors[[1L]][["message"]])
+    encoded <- as.character(jsonlite::toJSON(
+      events,
+      auto_unbox = TRUE,
+      null = "null"
+    ))
+    expect_false(grepl("private-expected", encoded, fixed = TRUE))
+    expect_false(grepl("private-received", encoded, fixed = TRUE))
+  }
+})
+
 test_that("validate_discovery_issuer can be overridden via arg", {
   f <- shinyOAuth:::validate_discovery_issuer
   expect_identical(
@@ -187,7 +231,16 @@ test_that("document inputs retain exact root and path issuer identifiers", {
       paste0(base, "/other/"),
       "https://other.example.com/"
     )) {
-      expect_error(oauth_provider_oidc_discover(document), "issuer mismatch")
+      failure <- tryCatch(
+        oauth_provider_oidc_discover(document),
+        error = identity
+      )
+      expect_s3_class(failure, "shinyOAuth_config_error")
+      expect_match(conditionMessage(failure), "issuer mismatch")
+      expect_identical(
+        failure[["context"]][["reason"]],
+        "discovery_issuer_mismatch"
+      )
     }
   }
 })

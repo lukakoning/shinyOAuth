@@ -195,7 +195,8 @@ oauth_provider_oidc_discover <- function(
     .discover_assert_valid_issuer(disc[["issuer"]])
     if (!identical(rtrim_slash(disc[["issuer"]]), issuer)) {
       err_config(
-        "OIDC discovery issuer mismatch: issuer does not map to the requested metadata location"
+        "OIDC discovery issuer mismatch: issuer does not map to the requested metadata location",
+        context = list(claim = "iss", reason = "discovery_issuer_mismatch")
       )
     }
     expected_issuer <- disc[["issuer"]]
