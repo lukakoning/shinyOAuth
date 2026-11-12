@@ -17,6 +17,8 @@ docs
 /integration/keycloak/_problems
 /integration/smart/.artifacts/
 /integration/connections/.artifacts/
+/integration/openid/.artifacts/
+/integration/openid/.generated/
 
 # Environment files (secrets)
 .env

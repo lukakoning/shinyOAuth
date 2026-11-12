@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "source_repository": "https://gitlab.com/openid/conformance-suite",
+  "source_revision": "410812ef6bc72a84723c1685725edce3558e31e3",
+  "source_description": "release-v5.3.4-47-g410812e",
+  "images": {
+    "server": "registry.gitlab.com/openid/conformance-suite@sha256:a84e164e59bba31bbca83732a8506f522a746660864da7221428bab4e3157225",
+    "proxy": "registry.gitlab.com/openid/conformance-suite/nginx@sha256:bd5b238130cdfbc1847493c2273ba27e8a5088deca6fb42030ace906315f62cd",
+    "database": "mongo:6.0.13@sha256:b415b12f638e2685d06c58ab7fb5943577c50fadec6d9340ef67d21aeac72070"
+  },
+  "required_plans": [
+    "oidcc-client-basic-certification-test-plan",
+    "oidcc-client-config-certification-test-plan",
+    "oidcc-client-formpost-basic-certification-test-plan",
+    "oidcc-client-refreshtoken-test-plan",
+    "oidcc-client-test-plan",
+    "fapi2-security-profile-final-client-test-plan",
+    "fapi2-message-signing-final-client-test-plan"
+  ],
+  "provenance": {
+    "checked_on": "2026-11-12",
+    "method": "Extracted BOOT-INF/classes/git.properties from the digest-pinned server jar; git.commit.id matches source_revision and git.dirty is false.",
+    "upstream_verification_modified": false,
+    "proxy_configuration": "Local transport configuration; temporary certificate and mapped loopback ports. No suite assertions are changed."
+  }
+}

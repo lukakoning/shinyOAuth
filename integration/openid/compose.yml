@@ -1,0 +1,38 @@
+# All images and bind paths come from the runner, with no hosted credentials.
+services:
+  mongodb:
+    image: ${OPENID_DATABASE_IMAGE:?runner supplies pinned image}
+    volumes:
+      - data:/data/db
+  server:
+    image: ${OPENID_SERVER_IMAGE:?runner supplies pinned image}
+    environment:
+      BASE_URL: ${OPENID_ORIGIN:?runner supplies HTTPS origin}
+      BASE_MTLS_URL: ${OPENID_MTLS_ORIGIN:?runner supplies mTLS origin}
+      MONGODB_HOST: mongodb
+      SPRING_PROFILES_ACTIVE: dev
+      OIDC_GOOGLE_CLIENTID: local-unused
+      OIDC_GOOGLE_SECRET: local-unused
+      OIDC_GITLAB_CLIENTID: local-unused
+      OIDC_GITLAB_SECRET: local-unused
+      JAVA_TOOL_OPTIONS: -Xmx768m
+    depends_on:
+      - mongodb
+  proxy:
+    image: ${OPENID_PROXY_IMAGE:?runner supplies pinned image}
+    ports:
+      - "127.0.0.1:${OPENID_HTTPS_PORT:?runner supplies port}:8443"
+      - "127.0.0.1:${OPENID_MTLS_PORT:?runner supplies port}:8444"
+    volumes:
+      - type: bind
+        source: ${OPENID_TLS_DIR:?runner supplies TLS directory}
+        target: /test-tls
+        read_only: true
+      - type: bind
+        source: ${OPENID_NGINX_CONFIG:?runner supplies configuration}
+        target: /etc/nginx/nginx.conf
+        read_only: true
+    depends_on:
+      - server
+volumes:
+  data:
