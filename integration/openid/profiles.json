@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "source_revision": "410812ef6bc72a84723c1685725edce3558e31e3",
+  "plan": "oidcc-client-basic-certification-test-plan",
+  "plan_variant": {"client_registration": "static_client", "request_type": "plain_http_request"},
+  "module_variant": {"client_auth_type": "client_secret_basic", "response_type": "code", "response_mode": "default"},
+  "available_modules": [
+    "oidcc-client-test",
+    "oidcc-client-test-invalid-iss",
+    "oidcc-client-test-missing-sub",
+    "oidcc-client-test-invalid-aud",
+    "oidcc-client-test-missing-iat",
+    "oidcc-client-test-kid-absent-single-jwks",
+    "oidcc-client-test-kid-absent-multiple-jwks",
+    "oidcc-client-test-idtoken-sig-rs256",
+    "oidcc-client-test-idtoken-sig-none",
+    "oidcc-client-test-invalid-sig-rs256",
+    "oidcc-client-test-userinfo-invalid-sub",
+    "oidcc-client-test-nonce-invalid",
+    "oidcc-client-test-scope-userinfo-claims",
+    "oidcc-client-test-client-secret-basic"
+  ],
+  "profiles": {
+    "smoke": {
+      "complete_profile": false,
+      "modules": [
+        {"module": "oidcc-client-test", "outcome": "authenticated"},
+        {"module": "oidcc-client-test-invalid-iss", "outcome": "rejected", "claim": "iss"},
+        {"module": "oidcc-client-test-nonce-invalid", "outcome": "rejected", "claim": "nonce"}
+      ]
+    }
+  }
+}

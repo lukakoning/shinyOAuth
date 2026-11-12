@@ -4,7 +4,8 @@ Prepared 2026-11-12 against shinyOAuth commit
 `25318cc6488a2a98bfc83d484cbbdb3190854967` (version `0.7.0.9000`).
 Status: implementation started. The original investigation ran no external
 tests. C01 supplies a working local suite preflight, and C02 supplies a validated
-Shiny fixture. Client conformance flows remain pending.
+Shiny fixture. C03 adds the suite API driver and evidence validator; browser
+conformance flows remain pending.
 
 Execution record (2026-11-12): C00 is `d0b62ff`; C01 is `4dee03d`. C01 validated the exact server
 image/source correspondence, required plans, R certificate/hostname validation,
@@ -25,7 +26,13 @@ Follow-up validation also requires the failed setup's private diagnostic to
 identify an issuer mismatch, so an unrelated app crash cannot satisfy that check.
 The follow-up preflight and fixture checks both passed, along with the 11 helper
 assertions, `jarl check integration/openid`, `air format integration/openid
---check` and patch whitespace validation. C03 is the next pending commit.
+--check` and patch whitespace validation.
+
+C03 passed 51 evidence assertions with no failures or skips. Its live API check
+created the pinned Basic plan, checked all module variants, retrieved a waiting
+module's issuer, rejected an unknown instance and verified interruption on
+cancellation. Owned Docker resources were removed. Its sanitized report marks
+client conformance unattempted and keeps the conformance gate false. C04 is next.
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second

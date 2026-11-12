@@ -15,6 +15,27 @@ own containers, network and database volume before recording a pass. Missing
 prerequisites, changed versions and unavailable services fail the command.
 It does not perform client login or establish conformance.
 
+Exercise the suite API and evidence validator:
+
+```sh
+Rscript integration/openid/run-tests.R --check-api
+```
+
+This checks the pinned Basic plan's complete module/variant list, creates a
+private static registration, waits for a live module, checks its exported
+issuer, rejects an unknown instance and confirms cancellation. The command
+also runs 51 evidence assertions with zero skips. Its report keeps
+`gate_passed = false` and `coverage_complete = false`: API readiness does not
+establish client conformance. Unknown command flags fail.
+
+The [profile manifest](profiles.json) freezes the upstream Basic plan and the
+three intended smoke cases. The evidence validator binds each result to its
+run, attempt, checkout, source revision, plan, instance and variants, then
+requires both a completed passing suite verdict and the expected app outcome.
+Missing results, app failures, warnings, skipped modules and timeouts cannot
+pass the initial policy. A completed smoke selection still reports partial
+profile coverage. Later profiles will extend this explicit policy.
+
 Check the Shiny app plumbing separately:
 
 ```sh

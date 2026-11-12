@@ -1,9 +1,11 @@
 **Coverage scope**
 
-Current stage: environment preflight and Shiny fixture plumbing. No client
+Current stage: environment preflight, suite API/evidence validation and Shiny fixture plumbing. No client
 conformance profile has run yet. `required_plans_present` proves suite capability.
 The separate fixture checks prove a browser authorization request using local
 synthetic metadata, with no token issuance or external conformance verdict.
+The API check creates and cancels a waiting suite module; it does not count
+that interrupted run as a client test pass.
 
 | Target | Existing local evidence | Planned independent gate |
 | --- | --- | --- |
