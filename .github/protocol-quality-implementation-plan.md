@@ -5,7 +5,8 @@ Prepared 2026-11-12 against shinyOAuth commit
 Status: implementation started. The original investigation ran no external
 tests. C01 supplies a working local suite preflight, and C02 supplies a validated
 Shiny fixture. C03 adds the suite API driver and evidence validator. C04 executes
-three real-browser smoke modules; full Basic profile coverage remains pending.
+three real-browser smoke modules. C05 extends the runner to all fourteen Basic
+RP modules for the pinned static-registration, synchronous code-flow variant.
 
 Execution record (2026-11-12): C00 is `d0b62ff`; C01 is `4dee03d`. C01 validated the exact server
 image/source correspondence, required plans, R certificate/hostname validation,
@@ -41,7 +42,7 @@ claim values or changing validation. Its focused signed-token regression checks
 and neighboring ID-token checks passed: 162 assertions, zero failures, warnings
 or skips.
 
-C04 adds the real Chrome driver, app-stop failure control, callback cleanup
+C04 is `d723b6b`. It adds the real Chrome driver, app-stop failure control, callback cleanup
 checks and a manual Ubuntu workflow. Two complete Windows smoke runs passed
 all three modules with matching app evidence and owned-resource cleanup. The
 evidence validator now has 54 passing assertions. Coverage remains partial;
@@ -55,6 +56,42 @@ Sanitized reports retained locally under `integration/openid/.artifacts/`:
 `smoke-20261112-225410-77d6e303d949/evidence.json` (Windows), plus
 `smoke-20261112-220117-83dd3e2312e6/evidence.json` (Linux). Each reports a
 passing smoke gate, verified cleanup and incomplete full-profile coverage.
+
+`02e677e` extends safe ID-token audit classification to audience, subject,
+issued-at, disallowed algorithms and invalid signatures. The signed-token
+regressions and neighboring claim checks passed 263 assertions with no failures,
+warnings or skips. Validation behavior remains unchanged.
+
+C05 executes all fourteen modules and requires the corresponding app evidence.
+Thirteen require `FINISHED/PASSED`; only `oidcc-client-test-idtoken-sig-none`
+requires `FINISHED/SKIPPED`, matching the pinned suite's documented optional
+unsigned-token support and shinyOAuth's `disallowed_algorithm` rejection.
+The gate also requires no UserInfo completion for rejected ID tokens. For a
+UserInfo subject mismatch, the typed error and suite verdict establish the
+UserInfo response, while the token-exchange completion audit establishes the
+preceding validated ID token. A UserInfo rejection can precede its completion
+audit; an initial Linux run caught and corrected that harness assumption.
+
+The evidence validator passes 115 assertions, including all-module coverage,
+the exact unsigned-token exception and rejection-category checks. The complete
+Windows Basic run took 90.35 seconds for its module loop, and a later smoke run
+took 23.31 seconds. Those timings include per-case app/browser startup and
+suite waits, but exclude package installation, suite startup, the app-stop
+control and stack teardown. The Ubuntu workflow now runs smoke on relevant
+pull requests and offers Basic through manual dispatch. Full Basic stays manual
+until GitHub runner timings are measured; no GitHub run has executed yet.
+
+Windows reports retained under `integration/openid/.artifacts/`:
+`basic-20261112-230808-fe5a9984784b/evidence.json` (complete Basic module coverage)
+and `smoke-20261112-231056-3e4d6d264675/evidence.json` (partial coverage).
+Both gates pass with verified owned-resource cleanup. C06 is next.
+
+The corrected full Basic gate also passed as a non-root Linux user with R 4.5.0
+and Chromium 156. Its module loop took 77.75 seconds; the retained report is
+`integration/openid/.artifacts/basic-20261112-221342-9dbc14ec0352/evidence.json`.
+All fourteen modules finished with their expected verdict and app evidence,
+the app-stop control passed, and owned-resource cleanup completed. R lint,
+formatting, actionlint and patch whitespace checks pass.
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second

@@ -6,15 +6,15 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
       setequal(args[c(1L, 3L)], c("--profile", "--transport"))
     if (!valid) {
       stop(
-        "Usage: Rscript integration/openid/run-tests.R --check-api | --profile smoke --transport sync"
+        "Usage: Rscript integration/openid/run-tests.R --check-api | --profile smoke|basic --transport sync"
       )
     }
     options <- setNames(args[c(2L, 4L)], args[c(1L, 3L)])
     if (
-      !identical(options[["--profile"]], "smoke") ||
+      !options[["--profile"]] %in% c("smoke", "basic") ||
         !identical(options[["--transport"]], "sync")
     ) {
-      stop("Only the smoke profile with sync transport is implemented")
+      stop("Only smoke and basic profiles with sync transport are implemented")
     }
   }
   Sys.setenv(CURL_SSL_BACKEND = "openssl")
@@ -32,7 +32,8 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
     "httpuv",
     "testthat"
   ))
-  output <- openid_output(".", if (api_mode) "api" else "smoke")
+  profile <- if (api_mode) "api" else options[["--profile"]]
+  output <- openid_output(".", profile)
   report <- list(
     schema_version = 1L,
     status = "failed",
@@ -65,7 +66,7 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
     openid_require(c("shiny", "callr", "chromote"))
     report <- openid_report_context(
       ".",
-      "smoke",
+      profile,
       "sync",
       read.dcf("DESCRIPTION")[[1L, "Version"]]
     )
@@ -89,7 +90,8 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
     context[["plan_id"]] <- plan[["id"]]
     report[["plan_id"]] <- plan[["id"]]
     report[["images"]] <- stack[["lock"]][["images"]]
-    for (expectation in manifest[["profiles"]][["smoke"]][["modules"]]) {
+    started <- Sys.time()
+    for (expectation in manifest[["profiles"]][[profile]][["modules"]]) {
       report[["results"]][[
         length(report[["results"]]) + 1L
       ]] <- openid_run_case(
@@ -102,17 +104,26 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
         library
       )
     }
+    report[["module_runtime_seconds"]] <- round(
+      as.numeric(difftime(Sys.time(), started, units = "secs")),
+      2
+    )
     openid_stop_app(transport)
     openid_stop(stack)
     report[["cleanup_verified"]] <- TRUE
     check <- openid_check_report(report, context, manifest)
     report[names(check)] <- check
     if (!isTRUE(check[["gate_passed"]])) {
-      stop("OpenID smoke gate failed: ", check[["reason"]])
+      stop("OpenID ", profile, " gate failed: ", check[["reason"]])
     }
     report[["status"]] <- "passed"
     cat(
-      "OpenID smoke selection passed; full profile coverage remains incomplete.\n"
+      "OpenID ",
+      profile,
+      " selection passed; coverage_complete = ",
+      check[["coverage_complete"]],
+      ".\n",
+      sep = ""
     )
     return(invisible(report))
   }

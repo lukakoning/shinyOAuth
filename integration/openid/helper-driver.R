@@ -105,6 +105,7 @@ openid_run_case <- function(
   row[["app"]] <- snapshot
   row[["browser_version"]] <- chrome
   row[["callback_cleaned"]] <- TRUE
+  row[["optional_policy"]] <- expectation[["optional_policy"]]
   openid_stop_app(app)
   openid_close_browser(browser)
   cat(

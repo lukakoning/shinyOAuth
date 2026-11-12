@@ -34,6 +34,7 @@ openid_fixture_app <- function(config) {
   )
   audit[["errors"]] <- character()
   audit[["claims"]] <- character()
+  audit[["reasons"]] <- character()
   audit[["sessions"]] <- 0L
   options(
     shinyOAuth.expose_error_body = FALSE,
@@ -51,6 +52,7 @@ openid_fixture_app <- function(config) {
         c(
           "shinyOAuth_id_token_error",
           "shinyOAuth_userinfo_error",
+          "shinyOAuth_userinfo_mismatch",
           "shinyOAuth_state_error",
           "shinyOAuth_token_error",
           "shinyOAuth_callback_error",
@@ -73,6 +75,13 @@ openid_fixture_app <- function(config) {
             "auth_time",
             "at_hash"
           )
+        )
+      ))
+      audit[["reasons"]] <- unique(c(
+        audit[["reasons"]],
+        intersect(
+          event[["reason"]],
+          c("disallowed_algorithm", "invalid_signature")
         )
       ))
     }
@@ -151,6 +160,21 @@ openid_fixture_app <- function(config) {
           id_token_validated = !is.null(token) &&
             isTRUE(token@id_token_validated),
           userinfo_present = !is.null(token) && length(token@userinfo) > 0L,
+          userinfo_claims = if (is.null(token)) {
+            list()
+          } else {
+            as.list(intersect(
+              names(token@userinfo),
+              c(
+                "sub",
+                "name",
+                "given_name",
+                "family_name",
+                "email",
+                "email_verified"
+              )
+            ))
+          },
           error_code = if (is.null(error)) {
             NULL
           } else if (error %in% allowed_errors) {
@@ -160,6 +184,7 @@ openid_fixture_app <- function(config) {
           },
           error_classes = as.list(audit[["errors"]]),
           claims = as.list(audit[["claims"]]),
+          reasons = as.list(audit[["reasons"]]),
           operations = as.list(audit[["counts"]]),
           package_version = as.character(utils::packageVersion("shinyOAuth"))
         ),

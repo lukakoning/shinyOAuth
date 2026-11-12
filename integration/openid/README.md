@@ -44,25 +44,44 @@ from the privacy-preserving audit hook. Tokens, identities and claim values
 stay out of the report. Every case must finish with the suite's `PASSED` verdict
 and matching app evidence, with the callback query removed from the browser URL.
 
+Run every module in the pinned Basic RP plan:
+
+```sh
+Rscript integration/openid/run-tests.R --profile basic --transport sync
+```
+
+This selection executes all fourteen modules, including missing required claims,
+single/multiple signing keys without `kid`, RS256, invalid signatures, UserInfo
+subject mismatch, scoped UserInfo claims and HTTP Basic client authentication.
+The [scope record](scope.md) maps every module to its expected app outcome.
+The unsigned-token module must finish `SKIPPED` with the app's
+`disallowed_algorithm` rejection and no UserInfo request. That exact outcome
+implements the pinned suite's documented optional support for `alg=none`;
+the report retains the original verdict. Every other module must finish
+`PASSED`. A waiting module or an unrelated app error cannot satisfy this policy.
+
 Each run first stops a real app after clicking login and requires the driver to
 fail for that exact reason. This control uses a separate suite plan; its
 interrupted module is never counted as a conformance pass. A passing report also
 requires this control and verified cleanup of the apps, browsers, TLS proxy and
 owned Docker resources.
 
-The [manual workflow](../../.github/workflows/openid-conformance.yml) runs
-preflight, API checks and this smoke selection on Ubuntu. It needs no external
-account or provider credentials and uploads only explicit sanitized report
-paths. Pull-request triggers wait for C05.
+The [workflow](../../.github/workflows/openid-conformance.yml) runs preflight,
+API checks and smoke on pull requests affecting the package or this harness.
+Manual dispatch offers `smoke` or `basic`; full Basic runs remain manual while
+GitHub runner timings are unmeasured. It needs no external account or provider
+credentials and uploads only explicit sanitized report paths.
 
 The [profile manifest](profiles.json) freezes the upstream Basic plan and the
-three smoke cases. The evidence validator binds each result to its
+both selections. The evidence validator binds each result to its
 run, attempt, checkout, source revision, plan, instance and variants, then
-requires both a completed passing suite verdict and the expected app outcome.
-Missing results, app failures, warnings, skipped modules and timeouts cannot
-pass the initial policy. A completed smoke selection has `gate_passed = true`
-but keeps `coverage_complete = false`. It does not establish full Basic RP
-coverage or OpenID certification. Later profiles will extend this explicit policy.
+requires both a completed allowed suite verdict and the expected app outcome.
+Missing results, app failures, warnings, unexpected skips and timeouts fail.
+A passing smoke selection keeps `coverage_complete = false`; a passing Basic
+selection reports `coverage_complete = true` for the pinned Basic plan with
+static registration, synchronous code flow, query callbacks and
+`client_secret_basic`. This is local test evidence. OpenID certification needs
+its separate submission and review, and other profiles remain pending.
 
 Check the Shiny app plumbing separately:
 
@@ -80,8 +99,8 @@ discovery issuer, and checks that the synthetic client secret stays out of the
 DOM and private app logs. It does not issue tokens or establish RP conformance.
 
 The fixture's provider configuration stays in the child R process. Its page
-exposes only an opaque run ID, status flags, allowlisted error classes/claim
-names and operation counters. It uses public shinyOAuth discovery, UI and module
+exposes only an opaque run ID, status flags, allowlisted error classes, reason
+codes, claim names and operation counters. It uses public shinyOAuth discovery, UI and module
 APIs with their validation enabled. A loopback TLS proxy preserves the original
 Host header; the callback resolver checks that host and the loopback peer before
 reconstructing the fixed public origin, without trusting forwarded headers.
@@ -115,6 +134,9 @@ broad artifact glob. Preflight writes `evidence.json` there even on failure.
 Validation includes repeated smoke passes on Windows 11 using Docker Desktop
 4.48.0 with Linux containers, R 4.5.1 and Chrome through chromote 0.5.1.
 Preflight, API checks and smoke also pass as a non-root Linux user with R 4.5.0
-and Chromium 156. The Ubuntu GitHub workflow has not run yet.
+and Chromium 156. Complete Basic runs pass on both platforms, with thirteen
+`PASSED` verdicts and the documented unsigned-token `SKIPPED` verdict. The module
+loops took about 90 seconds on Windows and 78 seconds on Linux, excluding suite
+and package setup. The Ubuntu GitHub workflow has not run yet.
 The [implementation plan](../../.github/protocol-quality-implementation-plan.md)
 records execution evidence and the remaining profile and CI work.

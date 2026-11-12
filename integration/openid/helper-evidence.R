@@ -21,11 +21,37 @@ openid_app_matches <- function(app, expectation, case_id, package_version) {
         isTRUE(app[["has_token"]]) &&
         isTRUE(app[["id_token_validated"]]) &&
         isTRUE(app[["userinfo_present"]]) &&
+        all(
+          unlist(expectation[["userinfo_claims"]]) %in%
+            unlist(app[["userinfo_claims"]])
+        ) &&
         is.null(app[["error_code"]]) &&
         !length(app[["error_classes"]]) &&
         openid_count(app[["operations"]][["audit_token_exchange"]], 1L) &&
         openid_count(app[["operations"]][["audit_userinfo"]], 1L)
     )
+  }
+  expected_class <- expectation[["error_class"]]
+  if (is.null(expected_class)) {
+    expected_class <- "shinyOAuth_id_token_error"
+  }
+  category <- if (!is.null(expectation[["claim"]])) {
+    expectation[["claim"]] %in% unlist(app[["claims"]])
+  } else if (!is.null(expectation[["reason"]])) {
+    expectation[["reason"]] %in% unlist(app[["reasons"]])
+  } else {
+    identical(expected_class, "shinyOAuth_userinfo_mismatch")
+  }
+  userinfo_count <- app[["operations"]][["audit_userinfo"]]
+  operations_match <- if (
+    identical(expected_class, "shinyOAuth_userinfo_mismatch")
+  ) {
+    # Subject validation can fail before the UserInfo completion audit. Its
+    # typed error and the suite verdict establish that exchange; token
+    # exchange completion establishes the preceding validated ID token.
+    openid_count(app[["operations"]][["audit_token_exchange"]], 1L)
+  } else {
+    openid_count(userinfo_count) && userinfo_count == 0L
   }
   identical(expectation[["outcome"]], "rejected") &&
     identical(app[["authenticated"]], FALSE) &&
@@ -33,8 +59,9 @@ openid_app_matches <- function(app, expectation, case_id, package_version) {
     identical(app[["id_token_validated"]], FALSE) &&
     identical(app[["userinfo_present"]], FALSE) &&
     identical(app[["error_code"]], "token_exchange_error") &&
-    "shinyOAuth_id_token_error" %in% unlist(app[["error_classes"]]) &&
-    expectation[["claim"]] %in% unlist(app[["claims"]]) &&
+    expected_class %in% unlist(app[["error_classes"]]) &&
+    isTRUE(category) &&
+    isTRUE(operations_match) &&
     openid_count(app[["operations"]][["audit_login_success"]]) &&
     app[["operations"]][["audit_login_success"]] == 0L
 }
@@ -77,6 +104,12 @@ openid_check_report <- function(report, context, manifest) {
         function(x) x[["module"]],
         character(1)
       )
+      if (
+        isTRUE(profile[["complete_profile"]]) &&
+          !setequal(names_expected, unlist(manifest[["available_modules"]]))
+      ) {
+        stop("Complete profile does not select every pinned module")
+      }
       results <- report[["results"]]
       if (!length(expected) || length(results) != length(expected)) {
         stop("Incomplete module selection")
@@ -119,12 +152,28 @@ openid_check_report <- function(report, context, manifest) {
         ) {
           stop("Stale or mismatched module evidence")
         }
+        expected_verdict <- "PASSED"
+        if (
+          identical(
+            expectation[["optional_policy"]],
+            "reject_unsigned_id_token"
+          ) &&
+            identical(
+              result[["module"]],
+              "oidcc-client-test-idtoken-sig-none"
+            ) &&
+            identical(expectation[["outcome"]], "rejected") &&
+            identical(expectation[["reason"]], "disallowed_algorithm") &&
+            identical(expectation[["suite_result"]], "SKIPPED")
+        ) {
+          expected_verdict <- "SKIPPED"
+        }
         if (
           !identical(result[["suite_status"]], "FINISHED") ||
-            !identical(result[["suite_result"]], "PASSED") ||
+            !identical(result[["suite_result"]], expected_verdict) ||
             !is.null(result[["exception"]])
         ) {
-          stop("Module did not finish with a passing suite verdict")
+          stop("Module did not finish with the expected suite verdict")
         }
         if (
           !isTRUE(result[["callback_cleaned"]]) ||

@@ -1,7 +1,25 @@
-name: OpenID client smoke
+name: OpenID client conformance
 
 on:
   workflow_dispatch:
+    inputs:
+      profile:
+        description: Client module selection
+        type: choice
+        default: smoke
+        options:
+          - smoke
+          - basic
+  pull_request:
+    paths:
+      - "R/**"
+      - "DESCRIPTION"
+      - "NAMESPACE"
+      - ".Rbuildignore"
+      - "integration/openid/**"
+      - "integration/connections/tls-proxy.py"
+      - ".github/workflows/openid-conformance.yml"
+      - ".github/actions/setup-r-dependencies/**"
 
 permissions:
   contents: read
@@ -13,6 +31,7 @@ jobs:
     env:
       CURL_SSL_BACKEND: openssl
       NOT_CRAN: "true"
+      OPENID_PROFILE: ${{ inputs.profile || 'smoke' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -54,18 +73,19 @@ jobs:
       - name: Check suite API and evidence validation
         run: Rscript integration/openid/run-tests.R --check-api
 
-      - name: Run real browser smoke selection
-        run: Rscript integration/openid/run-tests.R --profile smoke --transport sync
+      - name: Run real browser client selection
+        run: Rscript integration/openid/run-tests.R --profile "$OPENID_PROFILE" --transport sync
 
       - name: Upload sanitized reports
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: openid-client-smoke-evidence
+          name: openid-client-${{ env.OPENID_PROFILE }}-evidence
           path: |
             integration/openid/.artifacts/preflight-*/evidence.json
             integration/openid/.artifacts/api-*/evidence.json
             integration/openid/.artifacts/smoke-*/evidence.json
+            integration/openid/.artifacts/basic-*/evidence.json
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
