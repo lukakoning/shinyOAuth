@@ -2,6 +2,10 @@
 
 ## shinyOAuth (development version)
 
+- Discovery issuer mismatches now identify the failed issuer check in
+  audit events using a claim name and reason code, without including
+  issuer values.
+
 - ID-token issuer and nonce validation errors now identify the failed
   claim in audit events. Event context contains the claim name without
   its value.

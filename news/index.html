@@ -46,7 +46,8 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
-<ul><li><p>ID-token issuer and nonce validation errors now identify the failed claim in audit events. Event context contains the claim name without its value.</p></li>
+<ul><li><p>Discovery issuer mismatches now identify the failed issuer check in audit events using a claim name and reason code, without including issuer values.</p></li>
+<li><p>ID-token issuer and nonce validation errors now identify the failed claim in audit events. Event context contains the claim name without its value.</p></li>
 <li><p>ID-token audience, subject and issued-at errors also identify the failed claim. Algorithm and signature rejections include stable reason codes in audit events.</p></li>
 </ul></div>
     <div class="section level2">

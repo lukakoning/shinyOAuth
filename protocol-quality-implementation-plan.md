@@ -9,7 +9,9 @@ external tests. C01 supplies a working local suite preflight, and C02
 supplies a validated Shiny fixture. C03 adds the suite API driver and
 evidence validator. C04 executes three real-browser smoke modules. C05
 extends the runner to all fourteen Basic RP modules for the pinned
-static-registration, synchronous code-flow variant.
+static-registration, synchronous code-flow variant. C06 now executes all
+six Configuration modules, with cached-key refresh coverage still
+incomplete because the pinned suite’s JWKS responses prohibit storage.
 
 Execution record (2026-11-12): C00 is `d0b62ff`; C01 is `4dee03d`. C01
 validated the exact server image/source correspondence, required plans,
@@ -73,8 +75,8 @@ signed-token regressions and neighboring claim checks passed 263
 assertions with no failures, warnings or skips. Validation behavior
 remains unchanged.
 
-C05 executes all fourteen modules and requires the corresponding app
-evidence. Thirteen require `FINISHED/PASSED`; only
+C05 is `c4ae74e`. It executes all fourteen modules and requires the
+corresponding app evidence. Thirteen require `FINISHED/PASSED`; only
 `oidcc-client-test-idtoken-sig-none` requires `FINISHED/SKIPPED`,
 matching the pinned suite’s documented optional unsigned-token support
 and shinyOAuth’s `disallowed_algorithm` rejection. The gate also
@@ -109,6 +111,64 @@ All fourteen modules finished with their expected verdict and app
 evidence, the app-stop control passed, and owned-resource cleanup
 completed. R lint, formatting, actionlint and patch whitespace checks
 pass.
+
+C06 execution: `65fb2cb` adds a safe `discovery_issuer_mismatch` audit
+reason and the `iss` claim label without changing validation. Discovery
+and neighboring JWKS tests passed 234 assertions with no failures,
+warnings or skips. The runner now resolves separate Basic/Configuration
+plans, verifies the exact six-module Configuration list and schedules
+both upstream-ignored rotation modules. Discovery-only results earn no
+login credit. A failed discovery setup must identify the expected issuer
+check through typed audit evidence.
+
+The first live Configuration run completed all six suite modules, but
+its local gate rejected the cache evidence. A separate module confirmed
+that JWKS is sent with
+`Cache-Control: no-cache, no-store, max-age=0, must-revalidate`.
+shinyOAuth correctly leaves those keys unstored. No suite headers,
+response bodies, assertions or client cache policy were changed to force
+a warm cache. The recorded limitation is
+`suite_jwks_no_store_prevents_cached_key_refresh_test`.
+
+The before-signing scenario prefetches through the installed package’s
+internal JWKS helper, then requires a validated token with a different
+signing-key ID. The repeated-login scenario requires two validated
+ID-token/UserInfo outcomes, different key IDs, a local logout between
+them and the same R app/cache instances throughout. Only key-ID digests
+leave the fixture. The driver waits for the next callback session, which
+prevents a logged-out state from satisfying the second-login wait. The
+evidence validator passes 168 assertions; focused HTTP-cache,
+invalidation, signature and refresh-throttle regressions add 74 passing
+assertions with no failures, warnings or skips.
+
+Configuration gates pass on Windows (R 4.5.1, Chrome 157) and non-root
+Linux (R 4.5.0, Chromium 156): five modules are `FINISHED/PASSED`, and
+unsigned-token rejection is `FINISHED/SKIPPED` under its existing
+optional policy. Both runs verify owned-resource cleanup. Their module
+loops took 38.35 and 29.79 seconds. Sanitized reports retained under
+`integration/openid/.artifacts/` are
+`config-20261112-233608-c8bf6297fde2/evidence.json` (Windows) and
+`config-20261112-223608-312b32a78ab4/evidence.json` (Linux). Manifest
+and client-evidence schemas are now version 2. Manual workflow dispatch
+offers `config`; pull requests continue to run smoke. The full Basic
+profile also passed again on non-root Linux after the plan and driver
+changes, with all fourteen expected module outcomes and complete Basic
+coverage. Its retained schema-2 report is
+`integration/openid/.artifacts/basic-20261112-223754-36fbb02417e4/evidence.json`;
+the module loop took 80.85 seconds. R lint, formatting, actionlint and
+patch whitespace checks pass. No owned suite containers remain after
+validation.
+
+C06 acceptance remains partial: reports keep
+`selection_complete = true`, `coverage_complete = false` and
+`cached_key_refresh_tested = false`, even if the manifest accidentally
+requests a complete-coverage label. A follow-up must test warm-cache key
+replacement against an independent cacheable provider (an applicable
+Keycloak scenario or C13’s second provider), or a reviewed suite
+configuration/version that permits caching. Preserve the current
+no-store runs as their own evidence. C07’s form-post work can proceed
+independently; the first OIDC milestone retains this C06 coverage gap
+until that follow-up passes.
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
