@@ -1,7 +1,8 @@
 evidence_fixture <- function(profile = "smoke") {
   manifest <- openid_profiles("../..")
+  spec <- openid_plan_spec(manifest, profile)
   context <- list(
-    schema_version = 1L,
+    schema_version = 2L,
     run_id = "run",
     attempt_id = "attempt",
     checkout_revision = paste(rep("a", 40), collapse = ""),
@@ -26,8 +27,8 @@ evidence_fixture <- function(profile = "smoke") {
       row[["module"]] <- expected[["module"]]
       row[["suite_id"]] <- paste0("instance", i)
       row[["variant"]] <- utils::modifyList(
-        manifest[["plan_variant"]],
-        manifest[["module_variant"]]
+        spec[["plan_variant"]],
+        spec[["module_variant"]]
       )
       row[["suite_status"]] <- "FINISHED"
       row[["suite_result"]] <- if (is.null(expected[["suite_result"]])) {
@@ -36,6 +37,7 @@ evidence_fixture <- function(profile = "smoke") {
         expected[["suite_result"]]
       }
       row[["callback_cleaned"]] <- TRUE
+      row[["action"]] <- "login"
       row[["browser_version"]] <- "Chrome/test"
       row[["app"]] <- list(
         run_id = paste0("run-instance", i),
@@ -84,6 +86,269 @@ testthat::test_that("a passing smoke selection remains partial profile coverage"
   testthat::expect_true(check[["gate_passed"]])
   testthat::expect_true(check[["selection_complete"]])
   testthat::expect_false(check[["coverage_complete"]])
+})
+
+testthat::test_that("fixture key-ID digests serialize as plain JSON strings", {
+  fixture <- new.env(parent = baseenv())
+  sys.source("fixture-app.R", fixture)
+  digest <- fixture[["openid_fixture_digest"]]("public-key-id")
+  testthat::expect_type(digest, "character")
+  testthat::expect_null(attr(digest, "class"))
+  testthat::expect_match(digest, "^[a-f0-9]{64}$")
+  encoded <- jsonlite::toJSON(list(key_id = digest), auto_unbox = TRUE)
+  testthat::expect_identical(jsonlite::fromJSON(encoded)[["key_id"]], digest)
+})
+
+configuration_fixture <- function() {
+  f <- evidence_fixture("config")
+  f[["report"]][["jwks_cache_policy"]] <- list(
+    no_store = TRUE,
+    source_revision = f[["context"]][["source_revision"]],
+    suite_id = "probe"
+  )
+  expected <- f[["manifest"]][["profiles"]][["config"]][["modules"]]
+  for (i in seq_along(expected)) {
+    expectation <- expected[[i]]
+    row <- f[["report"]][["results"]][[i]]
+    app <- row[["app"]]
+    app[["app_instance"]] <- paste0("app", i)
+    app[["cache_instance"]] <- paste0("cache", i)
+    app[["discovery_issuer_exact"]] <- TRUE
+    app[["cache_updates"]] <- 0L
+    app[["cache_hits"]] <- 0L
+    app[["prefetch_completed"]] <- isTRUE(expectation[["preload_jwks"]])
+    app[["prefetched_key_ids"]] <- list("original-key-id-digest")
+    app[["token_key_id_digest"]] <- "first-key-id-digest"
+    app[["session_number"]] <- 2L
+    if (identical(expectation[["action"]], "discovery")) {
+      rejected <- identical(expectation[["outcome"]], "discovery_rejected")
+      row[["action"]] <- "discovery"
+      row[["callback_cleaned"]] <- NULL
+      row[["no_callback"]] <- TRUE
+      app[["ready"]] <- !rejected
+      app[["discovery_issuer_exact"]] <- !rejected
+      app[["error_code"]] <- if (rejected) "discovery_setup_error" else NULL
+      app[["error_classes"]] <- if (rejected) {
+        list("shinyOAuth_config_error")
+      } else {
+        list()
+      }
+      app[["claims"]] <- if (rejected) list("iss") else list()
+      app[["reasons"]] <- if (rejected) {
+        list("discovery_issuer_mismatch")
+      } else {
+        list()
+      }
+      app[["operations"]][["audit_token_exchange"]] <- 0L
+    }
+    if (isTRUE(expectation[["rotation_required"]])) {
+      initial <- app
+      initial[c(
+        "authenticated",
+        "has_token",
+        "id_token_validated",
+        "userinfo_present"
+      )] <- rep(list(FALSE), 4L)
+      initial[["operations"]] <- list(
+        audit_token_exchange = 0L,
+        audit_userinfo = 0L,
+        audit_login_success = 0L
+      )
+      row[["initial"]] <- initial
+      row[["initial"]][["session_number"]] <- 1L
+      if (isTRUE(expectation[["preload_jwks"]])) {
+        app[["token_key_id_digest"]] <- "rotated-key-id-digest"
+        row[["steps"]] <- list(app)
+        row[["between_logins"]] <- list()
+      } else {
+        first <- app
+        app[["operations"]] <- list(
+          audit_token_exchange = 2L,
+          audit_userinfo = 2L,
+          audit_login_success = 2L
+        )
+        app[["token_key_id_digest"]] <- "rotated-key-id-digest"
+        app[["session_number"]] <- 3L
+        row[["steps"]] <- list(first, app)
+        between <- initial
+        between[["operations"]] <- first[["operations"]]
+        between[["error_code"]] <- "logged_out"
+        row[["between_logins"]] <- list(between)
+      }
+    }
+    row[["app"]] <- app
+    f[["report"]][["results"]][[i]] <- row
+  }
+  f
+}
+
+testthat::test_that("Configuration coverage explicitly includes both upstream-ignored rotation modules", {
+  f <- configuration_fixture()
+  spec <- openid_plan_spec(f[["manifest"]], "config")
+  testthat::expect_identical(
+    spec[["plan"]],
+    "oidcc-client-config-certification-test-plan"
+  )
+  testthat::expect_length(spec[["available_modules"]], 6L)
+  testthat::expect_length(spec[["explicit_modules"]], 2L)
+  check <- openid_check_report(f[["report"]], f[["context"]], f[["manifest"]])
+  testthat::expect_true(check[["gate_passed"]])
+  testthat::expect_true(check[["selection_complete"]])
+  testthat::expect_false(check[["coverage_complete"]])
+  testthat::expect_identical(
+    unlist(check[["coverage_limitations"]]),
+    "suite_jwks_no_store_prevents_cached_key_refresh_test"
+  )
+  for (i in seq_along(f[["report"]][["results"]])) {
+    report <- f[["report"]]
+    report[["results"]] <- report[["results"]][-i]
+    testthat::expect_false(openid_check_report(
+      report,
+      f[["context"]],
+      f[["manifest"]]
+    )[["gate_passed"]])
+  }
+  report <- f[["report"]]
+  report[["results"]][[1L]][["variant"]][["client_auth_type"]] <- "none"
+  testthat::expect_false(openid_check_report(
+    report,
+    f[["context"]],
+    f[["manifest"]]
+  )[["gate_passed"]])
+})
+
+testthat::test_that("discovery-only results require their own outcome and issuer evidence", {
+  f <- configuration_fixture()
+  for (change in list(
+    list(i = 1L, name = "authenticated", value = TRUE),
+    list(i = 1L, name = "discovery_issuer_exact", value = FALSE),
+    list(i = 2L, name = "prefetch_completed", value = FALSE),
+    list(i = 2L, name = "prefetch_completed", value = NULL),
+    list(i = 3L, name = "reasons", value = list("unrelated")),
+    list(i = 3L, name = "claims", value = list("aud")),
+    list(
+      i = 3L,
+      name = "error_classes",
+      value = list("shinyOAuth_parse_error")
+    ),
+    list(i = 3L, name = "ready", value = TRUE)
+  )) {
+    report <- f[["report"]]
+    report[["results"]][[change[["i"]]]][["app"]][[change[[
+      "name"
+    ]]]] <- change[["value"]]
+    testthat::expect_false(openid_check_report(
+      report,
+      f[["context"]],
+      f[["manifest"]]
+    )[["gate_passed"]])
+  }
+  for (name in c("action", "no_callback")) {
+    report <- f[["report"]]
+    report[["results"]][[1L]][[name]] <- NULL
+    testthat::expect_false(openid_check_report(
+      report,
+      f[["context"]],
+      f[["manifest"]]
+    )[["gate_passed"]])
+  }
+})
+
+testthat::test_that("rotation requires retained app/cache, fresh keys and every successful login", {
+  f <- configuration_fixture()
+  for (i in c(5L, 6L)) {
+    for (change in list(
+      list(name = "app_instance", value = "restarted-app"),
+      list(name = "cache_instance", value = "replacement-cache"),
+      list(name = "token_key_id_digest", value = "original-key-id-digest"),
+      list(name = "cache_updates", value = 1L),
+      list(name = "cache_hits", value = 1L)
+    )) {
+      report <- f[["report"]]
+      row <- report[["results"]][[i]]
+      last <- length(row[["steps"]])
+      value <- change[["value"]]
+      if (i == 6L && change[["name"]] == "token_key_id_digest") {
+        value <- row[["steps"]][[1L]][["token_key_id_digest"]]
+      }
+      row[["steps"]][[last]][[change[["name"]]]] <- value
+      row[["app"]] <- row[["steps"]][[last]]
+      report[["results"]][[i]] <- row
+      testthat::expect_false(openid_check_report(
+        report,
+        f[["context"]],
+        f[["manifest"]]
+      )[["gate_passed"]])
+    }
+    report <- f[["report"]]
+    report[["results"]][[i]][["steps"]] <- list()
+    testthat::expect_false(openid_check_report(
+      report,
+      f[["context"]],
+      f[["manifest"]]
+    )[["gate_passed"]])
+  }
+  for (name in c("prefetch_completed", "prefetched_key_ids")) {
+    report <- f[["report"]]
+    report[["results"]][[5L]][["initial"]][[name]] <- NULL
+    testthat::expect_false(openid_check_report(
+      report,
+      f[["context"]],
+      f[["manifest"]]
+    )[["gate_passed"]])
+  }
+  for (name in c("between_logins", "initial")) {
+    report <- f[["report"]]
+    report[["results"]][[6L]][[name]] <- NULL
+    testthat::expect_false(openid_check_report(
+      report,
+      f[["context"]],
+      f[["manifest"]]
+    )[["gate_passed"]])
+  }
+  report <- f[["report"]]
+  row <- report[["results"]][[6L]]
+  row[["steps"]][[2L]][["operations"]][["audit_token_exchange"]] <- 1L
+  row[["app"]] <- row[["steps"]][[2L]]
+  report[["results"]][[6L]] <- row
+  testthat::expect_false(openid_check_report(
+    report,
+    f[["context"]],
+    f[["manifest"]]
+  )[["gate_passed"]])
+})
+
+testthat::test_that("Configuration cannot hide the no-store limitation or omit its live policy probe", {
+  f <- configuration_fixture()
+  manifest <- f[["manifest"]]
+  manifest[["profiles"]][["config"]][["complete_profile"]] <- TRUE
+  manifest[["profiles"]][["config"]][["coverage_limitations"]] <- NULL
+  check <- openid_check_report(f[["report"]], f[["context"]], manifest)
+  testthat::expect_true(check[["gate_passed"]])
+  testthat::expect_false(check[["coverage_complete"]])
+  testthat::expect_false(check[["cached_key_refresh_tested"]])
+  testthat::expect_identical(
+    unlist(check[["coverage_limitations"]]),
+    "suite_jwks_no_store_prevents_cached_key_refresh_test"
+  )
+  for (name in c("jwks_cache_policy")) {
+    report <- f[["report"]]
+    report[[name]] <- NULL
+    testthat::expect_false(openid_check_report(
+      report,
+      f[["context"]],
+      f[["manifest"]]
+    )[["gate_passed"]])
+  }
+  for (name in c("no_store", "source_revision", "suite_id")) {
+    report <- f[["report"]]
+    report[["jwks_cache_policy"]][[name]] <- NULL
+    testthat::expect_false(openid_check_report(
+      report,
+      f[["context"]],
+      f[["manifest"]]
+    )[["gate_passed"]])
+  }
 })
 
 testthat::test_that("Basic coverage requires all pinned modules with their expected app outcomes", {
@@ -393,13 +658,14 @@ testthat::test_that("browser navigation evidence cannot be omitted", {
 
 testthat::test_that("module polling rejects stale records, interruptions and request failures", {
   manifest <- openid_profiles("../..")
+  spec <- openid_plan_spec(manifest, "smoke")
   module <- list(
     id = "instance",
     name = "oidcc-client-test",
     plan_id = "plan",
     variant = utils::modifyList(
-      manifest[["plan_variant"]],
-      manifest[["module_variant"]]
+      spec[["plan_variant"]],
+      spec[["module_variant"]]
     )
   )
   info <- list(

@@ -60,6 +60,40 @@ implements the pinned suite's documented optional support for `alg=none`;
 the report retains the original verdict. Every other module must finish
 `PASSED`. A waiting module or an unrelated app error cannot satisfy this policy.
 
+Run the Configuration module selection:
+
+```sh
+Rscript integration/openid/run-tests.R --profile config --transport sync
+```
+
+This resolves all six modules in that plan, explicitly including both rotation
+modules excluded by the upstream runner. Discovery and issuer-mismatch cases
+stop after setup, with no token exchange or authenticated identity credited.
+The randomized `jwks_uri` case uses the installed package's internal
+`fetch_client_jwks()` helper because no public prefetch API exists. That call
+retains the library's endpoint, TLS, parsing and cache policy. It is a component
+probe, not a public JWKS-prefetch feature.
+
+The before-signing rotation case prefetches keys before login, then requires a
+validated token whose signing-key ID differs from the prefetched key IDs.
+The repeated-login case logs out locally and logs in again with the same R app
+and cache object. Both identities must validate with different signing-key IDs.
+Reports contain only digests of those public key IDs, opaque app/cache instance
+IDs and operation counters. The browser driver waits for a new callback session
+on every login, so a logged-out state or the preceding login cannot satisfy it.
+
+The pinned suite sends `Cache-Control: no-cache, no-store, max-age=0,
+must-revalidate` on JWKS responses. A separate disposable module probes that
+header policy without adding traffic to any client test. The fixture keeps the
+same cache object and verifies that the keys remain unstored. These runs prove
+key changes and successful validation; they cannot prove refresh from a warm
+cache. A passing Configuration selection therefore reports
+`selection_complete = true`, `coverage_complete = false` and
+`cached_key_refresh_tested = false`, with an explicit coverage limitation.
+Closing that gap needs a cacheable independent provider or a reviewed suite
+configuration/version change. The existing cache regression tests remain a
+separate layer of evidence.
+
 Each run first stops a real app after clicking login and requires the driver to
 fail for that exact reason. This control uses a separate suite plan; its
 interrupted module is never counted as a conformance pass. A passing report also
@@ -68,12 +102,13 @@ owned Docker resources.
 
 The [workflow](../../.github/workflows/openid-conformance.yml) runs preflight,
 API checks and smoke on pull requests affecting the package or this harness.
-Manual dispatch offers `smoke` or `basic`; full Basic runs remain manual while
+Manual dispatch offers `smoke`, `basic` or `config`; larger selections remain manual while
 GitHub runner timings are unmeasured. It needs no external account or provider
 credentials and uploads only explicit sanitized report paths.
 
-The [profile manifest](profiles.json) freezes the upstream Basic plan and the
-both selections. The evidence validator binds each result to its
+The [profile manifest](profiles.json) freezes each plan's variants and module
+selections. Manifest and client-evidence schema versions are now 2; prior reports
+retain their original version. The evidence validator binds each result to its
 run, attempt, checkout, source revision, plan, instance and variants, then
 requires both a completed allowed suite verdict and the expected app outcome.
 Missing results, app failures, warnings, unexpected skips and timeouts fail.
@@ -82,6 +117,8 @@ selection reports `coverage_complete = true` for the pinned Basic plan with
 static registration, synchronous code flow, query callbacks and
 `client_secret_basic`. This is local test evidence. OpenID certification needs
 its separate submission and review, and other profiles remain pending.
+Configuration's cache limitation keeps its coverage flag false even if the
+manifest accidentally labels that profile complete.
 
 Check the Shiny app plumbing separately:
 
@@ -138,5 +175,8 @@ and Chromium 156. Complete Basic runs pass on both platforms, with thirteen
 `PASSED` verdicts and the documented unsigned-token `SKIPPED` verdict. The module
 loops took about 90 seconds on Windows and 78 seconds on Linux, excluding suite
 and package setup. The Ubuntu GitHub workflow has not run yet.
+Configuration selections also pass on both platforms: five `PASSED` verdicts
+and the documented unsigned-token `SKIPPED`. Their module loops took about
+38 seconds on Windows and 30 seconds on Linux, with the cache limitation above.
 The [implementation plan](../../.github/protocol-quality-implementation-plan.md)
 records execution evidence and the remaining profile and CI work.

@@ -9,6 +9,11 @@ For this exact plan/variant, `basic` reports `coverage_complete = true`; the
 three-module `smoke` selection keeps it false. This establishes local Basic RP
 test coverage; OpenID certification and other profiles remain separate.
 
+The Configuration selection now exercises all six pinned modules. It separates
+discovery-only setup from authentication and explicitly runs both signing-key
+rotation modules. Configuration coverage remains partial: the suite forbids
+storing JWKS, so these executions cannot establish refresh from a warm key cache.
+
 Preflight's `required_plans_present` proves suite capability. The separate
 synthetic-metadata fixture checks prove authorization-request plumbing. The API
 check and app-stop control create interrupted modules for harness validation;
@@ -17,7 +22,7 @@ neither interruption counts as a client test pass.
 | Target | Existing local evidence | Planned independent gate |
 | --- | --- | --- |
 | OIDC Core code flow, ID token and UserInfo validation | Unit tests, Keycloak browser/code flows, complete pinned Basic RP module selection (C05) | Basic implemented for the variant above; further profiles below |
-| Discovery, exact issuer and signing-key changes | Discovery/JWKS tests and Keycloak rotation | Configuration RP; C06 |
+| Discovery, exact issuer and signing-key changes | Discovery/JWKS tests, Keycloak rotation, and six Configuration module outcomes (C06) | Warm-cache refresh remains a C06 follow-up; pinned suite JWKS is `no-store` |
 | Form POST callback and browser binding | Real browser and retained-connection tests | Form Post Basic RP; C07 |
 | Refresh identity continuity | Refresh validation and retained-connection tests | OIDC client refresh plan; C08 |
 | Public clients, other auth methods and async transport | Keycloak and worker tests | Applicable extended-plan variants; C09 |
@@ -58,6 +63,39 @@ token. Its comments mention a warning, but the executable implementation yields
 This exception applies only to that module and never converts its verdict to
 `PASSED`. Every module must reach `FINISHED`, with verified browser callback
 cleanup, the expected app package/run identity, and owned-resource cleanup.
+
+The `config` selection uses the pinned
+[Configuration plan](https://gitlab.com/openid/conformance-suite/-/blob/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/openid/client/OIDCCClientConfigTestPlan.java).
+The upstream runner excludes both rotation modules and links
+[issue 837](https://gitlab.com/openid/conformance-suite/-/issues/837), which describes
+its sample client's CI failures. Our driver creates those modules explicitly.
+
+| Configuration module suffix (`oidcc-client-test` prefix) | Action and app evidence | Suite verdict |
+| --- | --- | --- |
+| `-discovery-openid-config` | Public discovery retains the exact issuer; app ready, no login | `PASSED` |
+| `-discovery-jwks-uri-keys` | Library JWKS fetch follows discovered randomized URI; prefetch completes, no login | `PASSED` |
+| `-discovery-issuer-mismatch` | Setup rejects with typed config error, `iss` and `discovery_issuer_mismatch`; no login | `PASSED` |
+| `-idtoken-sig-none` | Typed `disallowed_algorithm` rejection, with no UserInfo | `SKIPPED`, same optional policy as Basic |
+| `-signing-key-rotation-just-before-signing` | Prefetched key-ID digests differ from the validated token's key ID; same app/cache | `PASSED` |
+| `-signing-key-rotation` | Two validated ID-token/UserInfo logins with distinct signing-key IDs, local logout between them, same app/cache | `PASSED` |
+
+The suite's JWKS responses include `no-store`. The
+[security configuration](https://gitlab.com/openid/conformance-suite/-/blob/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/security/WebSecurityConfig.java)
+leaves dynamic `/test/**` endpoints in the security filter chain; its cache
+headers prevent key storage in this deployment. A live policy probe records
+that condition, and rotation evidence requires zero stored-key updates/hits.
+Provider headers, keys, responses and test assertions remain unchanged.
+The report lists `suite_jwks_no_store_prevents_cached_key_refresh_test`, keeps
+`cached_key_refresh_tested = false` and `coverage_complete = false`, and cannot
+turn an unstored key set into warm-cache rotation evidence.
+
+The fixture's prefetch uses the installed library's internal JWKS helper under
+its normal policies. Token validation still runs through public login APIs.
+Opaque app/cache IDs, callback session numbers, per-login outcomes and key-ID
+digests establish continuity without exposing keys, tokens or identity values.
+The remaining C06 acceptance case needs cacheable independent-provider evidence;
+the local HTTP-cache, invalidation, signature and refresh-throttle tests supply
+separate package-owned coverage meanwhile.
 
 Baseline references: [OIDC Core](https://openid.net/specs/openid-connect-core-1_0.html),
 [Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html),

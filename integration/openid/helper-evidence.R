@@ -10,9 +10,64 @@ openid_app_matches <- function(app, expectation, case_id, package_version) {
   if (
     !is.list(app) ||
       !identical(app[["run_id"]], case_id) ||
-      !identical(app[["package_version"]], package_version) ||
-      !isTRUE(app[["ready"]])
+      !identical(app[["package_version"]], package_version)
   ) {
+    return(FALSE)
+  }
+  if (expectation[["outcome"]] %in% c("discovered", "discovery_rejected")) {
+    rejected <- identical(expectation[["outcome"]], "discovery_rejected")
+    no_identity <- all(vapply(
+      app[c(
+        "authenticated",
+        "has_token",
+        "id_token_validated",
+        "userinfo_present"
+      )],
+      identical,
+      logical(1),
+      FALSE
+    )) &&
+      all(
+        c(
+          "authenticated",
+          "has_token",
+          "id_token_validated",
+          "userinfo_present"
+        ) %in%
+          names(app)
+      )
+    no_exchanges <- all(vapply(
+      c("audit_token_exchange", "audit_userinfo", "audit_login_success"),
+      function(name) {
+        count <- app[["operations"]][[name]]
+        openid_count(count) && count == 0L
+      },
+      logical(1)
+    ))
+    if (rejected) {
+      return(
+        no_identity &&
+          no_exchanges &&
+          identical(app[["ready"]], FALSE) &&
+          identical(app[["discovery_issuer_exact"]], FALSE) &&
+          identical(app[["error_code"]], "discovery_setup_error") &&
+          "shinyOAuth_config_error" %in% unlist(app[["error_classes"]]) &&
+          "iss" %in% unlist(app[["claims"]]) &&
+          "discovery_issuer_mismatch" %in% unlist(app[["reasons"]])
+      )
+    }
+    return(
+      no_identity &&
+        no_exchanges &&
+        isTRUE(app[["ready"]]) &&
+        isTRUE(app[["discovery_issuer_exact"]]) &&
+        is.null(app[["error_code"]]) &&
+        !length(app[["error_classes"]]) &&
+        (!isTRUE(expectation[["preload_jwks"]]) ||
+          isTRUE(app[["prefetch_completed"]]))
+    )
+  }
+  if (!isTRUE(app[["ready"]])) {
     return(FALSE)
   }
   if (identical(expectation[["outcome"]], "authenticated")) {
@@ -66,10 +121,113 @@ openid_app_matches <- function(app, expectation, case_id, package_version) {
     app[["operations"]][["audit_login_success"]] == 0L
 }
 
+openid_rotation_matches <- function(
+  result,
+  expectation,
+  case_id,
+  package_version
+) {
+  if (!isTRUE(expectation[["rotation_required"]])) {
+    return(TRUE)
+  }
+  initial <- result[["initial"]]
+  if (
+    !identical(initial[["run_id"]], case_id) ||
+      !identical(initial[["package_version"]], package_version) ||
+      !isTRUE(initial[["ready"]]) ||
+      !isTRUE(initial[["discovery_issuer_exact"]]) ||
+      !identical(initial[["authenticated"]], FALSE) ||
+      !identical(initial[["has_token"]], FALSE)
+  ) {
+    return(FALSE)
+  }
+  steps <- result[["steps"]]
+  logins <- expectation[["logins"]]
+  if (is.null(logins)) {
+    logins <- 1L
+  }
+  if (length(steps) != logins || !identical(result[["app"]], steps[[logins]])) {
+    return(FALSE)
+  }
+  for (name in c("app_instance", "cache_instance")) {
+    if (
+      !openid_string(initial[[name]]) ||
+        !all(vapply(
+          steps,
+          function(step) identical(step[[name]], initial[[name]]),
+          logical(1)
+        ))
+    ) {
+      return(FALSE)
+    }
+  }
+  for (i in seq_along(steps)) {
+    step <- steps[[i]]
+    if (
+      !openid_app_matches(step, expectation, case_id, package_version) ||
+        !isTRUE(step[["discovery_issuer_exact"]]) ||
+        !openid_count(step[["operations"]][["audit_token_exchange"]], i) ||
+        !openid_count(step[["operations"]][["audit_userinfo"]], i) ||
+        !openid_count(step[["session_number"]], initial[["session_number"]] + i)
+    ) {
+      return(FALSE)
+    }
+  }
+  after <- steps[[logins]]
+  if (!openid_string(after[["token_key_id_digest"]])) {
+    return(FALSE)
+  }
+  if (isTRUE(expectation[["preload_jwks"]])) {
+    ids <- unlist(initial[["prefetched_key_ids"]])
+    if (
+      !isTRUE(initial[["prefetch_completed"]]) ||
+        !length(ids) ||
+        !all(vapply(as.list(ids), openid_string, logical(1))) ||
+        after[["token_key_id_digest"]] %in% ids
+    ) {
+      return(FALSE)
+    }
+  } else {
+    before <- steps[[1L]]
+    if (
+      !openid_string(before[["token_key_id_digest"]]) ||
+        identical(
+          before[["token_key_id_digest"]],
+          after[["token_key_id_digest"]]
+        )
+    ) {
+      return(FALSE)
+    }
+  }
+  between <- result[["between_logins"]]
+  if (length(between) != logins - 1L) {
+    return(FALSE)
+  }
+  for (state in between) {
+    if (
+      !identical(state[["app_instance"]], initial[["app_instance"]]) ||
+        !identical(state[["cache_instance"]], initial[["cache_instance"]]) ||
+        !identical(state[["authenticated"]], FALSE) ||
+        !identical(state[["has_token"]], FALSE) ||
+        !identical(state[["error_code"]], "logged_out")
+    ) {
+      return(FALSE)
+    }
+  }
+  # The pinned suite forbids JWKS storage. Keep the actual cache object, honor
+  # that policy and explicitly leave cached-key refresh coverage incomplete.
+  for (state in c(list(initial), steps, between)) {
+    for (name in c("cache_updates", "cache_hits")) {
+      if (!openid_count(state[[name]]) || state[[name]] != 0L) return(FALSE)
+    }
+  }
+  TRUE
+}
+
 openid_check_report <- function(report, context, manifest) {
   tryCatch(
     {
-      if (!identical(report[["schema_version"]], 1L)) {
+      if (!identical(report[["schema_version"]], 2L)) {
         stop("Unsupported evidence schema")
       }
       for (name in c(
@@ -98,6 +256,7 @@ openid_check_report <- function(report, context, manifest) {
       if (is.null(profile)) {
         stop("Unknown evidence profile")
       }
+      spec <- openid_plan_spec(manifest, context[["profile"]])
       expected <- profile[["modules"]]
       names_expected <- vapply(
         expected,
@@ -105,10 +264,22 @@ openid_check_report <- function(report, context, manifest) {
         character(1)
       )
       if (
-        isTRUE(profile[["complete_profile"]]) &&
-          !setequal(names_expected, unlist(manifest[["available_modules"]]))
+        (isTRUE(profile[["complete_profile"]]) ||
+          isTRUE(profile[["all_modules_required"]])) &&
+          !setequal(names_expected, unlist(spec[["available_modules"]]))
       ) {
         stop("Complete profile does not select every pinned module")
+      }
+      if (
+        identical(context[["profile"]], "config") &&
+          (!isTRUE(report[["jwks_cache_policy"]][["no_store"]]) ||
+            !identical(
+              report[["jwks_cache_policy"]][["source_revision"]],
+              context[["source_revision"]]
+            ) ||
+            !openid_string(report[["jwks_cache_policy"]][["suite_id"]]))
+      ) {
+        stop("Missing pinned-suite JWKS cache-policy evidence")
       }
       results <- report[["results"]]
       if (!length(expected) || length(results) != length(expected)) {
@@ -128,8 +299,8 @@ openid_check_report <- function(report, context, manifest) {
         stop("Missing or reused suite instance")
       }
       variant <- utils::modifyList(
-        manifest[["plan_variant"]],
-        manifest[["module_variant"]]
+        spec[["plan_variant"]],
+        spec[["module_variant"]]
       )
       for (result in results) {
         expectation <- expected[[match(result[["module"]], names_expected)]]
@@ -175,8 +346,15 @@ openid_check_report <- function(report, context, manifest) {
         ) {
           stop("Module did not finish with the expected suite verdict")
         }
+        discovery <- identical(expectation[["action"]], "discovery")
         if (
-          !isTRUE(result[["callback_cleaned"]]) ||
+          !identical(
+            result[["action"]],
+            if (discovery) "discovery" else "login"
+          ) ||
+            !isTRUE(result[[
+              if (discovery) "no_callback" else "callback_cleaned"
+            ]]) ||
             !openid_string(result[["browser_version"]])
         ) {
           stop("Missing browser navigation evidence")
@@ -191,6 +369,16 @@ openid_check_report <- function(report, context, manifest) {
         ) {
           stop("Missing or incorrect application evidence")
         }
+        if (
+          !openid_rotation_matches(
+            result,
+            expectation,
+            paste0(context[["run_id"]], "-", result[["suite_id"]]),
+            context[["package_version"]]
+          )
+        ) {
+          stop("Missing retained app/cache or signing-key rotation evidence")
+        }
       }
       if (!isTRUE(report[["driver_failure_control_passed"]])) {
         stop("The real app failure control did not pass")
@@ -198,10 +386,20 @@ openid_check_report <- function(report, context, manifest) {
       if (!isTRUE(report[["cleanup_verified"]])) {
         stop("Owned resources were not cleaned up")
       }
+      cache_limited <- identical(context[["profile"]], "config") &&
+        isTRUE(report[["jwks_cache_policy"]][["no_store"]])
       list(
         gate_passed = TRUE,
         selection_complete = TRUE,
-        coverage_complete = isTRUE(profile[["complete_profile"]]),
+        coverage_complete = isTRUE(profile[["complete_profile"]]) &&
+          !cache_limited,
+        coverage_limitations = as.list(unique(c(
+          unlist(profile[["coverage_limitations"]]),
+          if (cache_limited) {
+            "suite_jwks_no_store_prevents_cached_key_refresh_test"
+          }
+        ))),
+        cached_key_refresh_tested = if (cache_limited) FALSE else NULL,
         reason = NULL
       )
     },
@@ -222,7 +420,7 @@ openid_report_context <- function(root, profile, transport, package_version) {
   }
   random <- function() paste(format(openssl::rand_bytes(12)), collapse = "")
   list(
-    schema_version = 1L,
+    schema_version = 2L,
     status = "failed",
     run_id = random(),
     attempt_id = random(),

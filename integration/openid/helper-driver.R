@@ -10,7 +10,14 @@ openid_stop_app <- function(app) {
   invisible(NULL)
 }
 
-openid_wait_app <- function(app, browser, tab, terminal = FALSE, timeout = 30) {
+openid_wait_app <- function(
+  app,
+  browser,
+  tab,
+  terminal = FALSE,
+  timeout = 30,
+  after_session = NULL
+) {
   openid_wait(
     function() {
       if (!app[["process"]][["is_alive"]]()) {
@@ -24,6 +31,12 @@ openid_wait_app <- function(app, browser, tab, terminal = FALSE, timeout = 30) {
         error = function(...) NULL
       )
       if (is.null(value)) {
+        return(NULL)
+      }
+      if (
+        !is.null(after_session) &&
+          !openid_count(value[["session_number"]], after_session + 1L)
+      ) {
         return(NULL)
       }
       if (
@@ -56,27 +69,74 @@ openid_run_case <- function(
     client_id = plan[["registration"]][["client_id"]],
     client_secret = plan[["registration"]][["client_secret"]],
     response_mode = "query",
-    run_id = paste0(context[["run_id"]], "-", module[["id"]])
+    run_id = paste0(context[["run_id"]], "-", module[["id"]]),
+    preload_jwks = isTRUE(expectation[["preload_jwks"]]),
+    report_setup_failure = identical(
+      expectation[["outcome"]],
+      "discovery_rejected"
+    )
   )
   app <- openid_app_start(root, stack, transport, config, library)
   browser <- openid_browser(stack[["spki"]])
   tab <- browser[["new_session"]]()
   tab[["Page"]][["navigate"]](paste0(app[["origin"]], "/"))
   initial <- openid_wait_app(app, browser, tab)
+  discovery <- identical(expectation[["action"]], "discovery")
   if (
-    !isTRUE(initial[["ready"]]) ||
+    (!discovery && !isTRUE(initial[["ready"]])) ||
       isTRUE(initial[["authenticated"]]) ||
       isTRUE(initial[["has_token"]]) ||
-      !is.null(initial[["error_code"]])
+      (!discovery && !is.null(initial[["error_code"]]))
   ) {
     stop("OpenID fixture did not start in a clean state")
   }
   chrome <- tab[["Browser"]][["getVersion"]]()[["product"]]
-  openid_browser_value(tab, "document.querySelector('#login').click()")
-  if (!is.null(.after_login)) {
-    .after_login(app)
+  steps <- list()
+  between <- list()
+  snapshot <- initial
+  if (!discovery) {
+    logins <- expectation[["logins"]]
+    if (is.null(logins)) {
+      logins <- 1L
+    }
+    for (i in seq_len(logins)) {
+      before_login <- initial
+      if (i > 1L) {
+        openid_browser_value(tab, "document.querySelector('#logout').click()")
+        between[[length(between) + 1L]] <- openid_wait(
+          function() {
+            value <- openid_wait_app(app, browser, tab)
+            if (
+              identical(value[["authenticated"]], FALSE) &&
+                identical(value[["has_token"]], FALSE)
+            ) {
+              value
+            } else {
+              NULL
+            }
+          },
+          "OpenID local logout",
+          15
+        )
+        before_login <- between[[length(between)]]
+      }
+      openid_browser_value(tab, "document.querySelector('#login').click()")
+      if (!is.null(.after_login)) {
+        .after_login(app)
+      }
+      snapshot <- openid_wait_app(
+        app,
+        browser,
+        tab,
+        terminal = TRUE,
+        after_session = before_login[["session_number"]]
+      )
+      steps[[i]] <- snapshot
+      if (!identical(openid_browser_value(tab, "location.search"), "")) {
+        stop("OpenID callback URL was not cleaned")
+      }
+    }
   }
-  snapshot <- openid_wait_app(app, browser, tab, terminal = TRUE)
   info <- openid_suite_wait(stack, module, "FINISHED", timeout = 45)
   runtime <- openid_api(stack, paste0("/api/runner/", module[["id"]]))
   if (!identical(runtime[["id"]], module[["id"]])) {
@@ -104,7 +164,15 @@ openid_run_case <- function(
   }
   row[["app"]] <- snapshot
   row[["browser_version"]] <- chrome
-  row[["callback_cleaned"]] <- TRUE
+  row[["action"]] <- if (discovery) "discovery" else "login"
+  if (discovery) {
+    row[["no_callback"]] <- TRUE
+  } else {
+    row[["callback_cleaned"]] <- TRUE
+  }
+  row[["initial"]] <- initial
+  row[["steps"]] <- steps
+  row[["between_logins"]] <- between
   row[["optional_policy"]] <- expectation[["optional_policy"]]
   openid_stop_app(app)
   openid_close_browser(browser)

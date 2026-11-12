@@ -10,6 +10,7 @@ on:
         options:
           - smoke
           - basic
+          - config
   pull_request:
     paths:
       - "R/**"
@@ -86,6 +87,7 @@ jobs:
             integration/openid/.artifacts/api-*/evidence.json
             integration/openid/.artifacts/smoke-*/evidence.json
             integration/openid/.artifacts/basic-*/evidence.json
+            integration/openid/.artifacts/config-*/evidence.json
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 7

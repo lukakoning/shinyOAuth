@@ -6,15 +6,17 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
       setequal(args[c(1L, 3L)], c("--profile", "--transport"))
     if (!valid) {
       stop(
-        "Usage: Rscript integration/openid/run-tests.R --check-api | --profile smoke|basic --transport sync"
+        "Usage: Rscript integration/openid/run-tests.R --check-api | --profile smoke|basic|config --transport sync"
       )
     }
     options <- setNames(args[c(2L, 4L)], args[c(1L, 3L)])
     if (
-      !options[["--profile"]] %in% c("smoke", "basic") ||
+      !options[["--profile"]] %in% c("smoke", "basic", "config") ||
         !identical(options[["--transport"]], "sync")
     ) {
-      stop("Only smoke and basic profiles with sync transport are implemented")
+      stop(
+        "Only smoke, basic and config profiles with sync transport are implemented"
+      )
     }
   }
   Sys.setenv(CURL_SSL_BACKEND = "openssl")
@@ -35,7 +37,7 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
   profile <- if (api_mode) "api" else options[["--profile"]]
   output <- openid_output(".", profile)
   report <- list(
-    schema_version = 1L,
+    schema_version = 2L,
     status = "failed",
     application_flow = "not_attempted",
     gate_passed = FALSE,
@@ -82,10 +84,18 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
       transport,
       library
     )
+    if (identical(profile, "config")) {
+      report[["jwks_cache_policy"]] <- openid_suite_cache_policy(
+        stack,
+        manifest,
+        paste0(transport[["origin"]], "/")
+      )
+    }
     plan <- openid_suite_plan(
       stack,
       manifest,
-      paste0(transport[["origin"]], "/")
+      paste0(transport[["origin"]], "/"),
+      profile
     )
     context[["plan_id"]] <- plan[["id"]]
     report[["plan_id"]] <- plan[["id"]]

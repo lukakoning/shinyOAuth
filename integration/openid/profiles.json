@@ -1,27 +1,63 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "source_revision": "410812ef6bc72a84723c1685725edce3558e31e3",
-  "plan": "oidcc-client-basic-certification-test-plan",
-  "plan_variant": {"client_registration": "static_client", "request_type": "plain_http_request"},
-  "module_variant": {"client_auth_type": "client_secret_basic", "response_type": "code", "response_mode": "default"},
-  "available_modules": [
-    "oidcc-client-test",
-    "oidcc-client-test-invalid-iss",
-    "oidcc-client-test-missing-sub",
-    "oidcc-client-test-invalid-aud",
-    "oidcc-client-test-missing-iat",
-    "oidcc-client-test-kid-absent-single-jwks",
-    "oidcc-client-test-kid-absent-multiple-jwks",
-    "oidcc-client-test-idtoken-sig-rs256",
-    "oidcc-client-test-idtoken-sig-none",
-    "oidcc-client-test-invalid-sig-rs256",
-    "oidcc-client-test-userinfo-invalid-sub",
-    "oidcc-client-test-nonce-invalid",
-    "oidcc-client-test-scope-userinfo-claims",
-    "oidcc-client-test-client-secret-basic"
-  ],
-  "profiles": {
+  "plans": {
     "basic": {
+      "plan": "oidcc-client-basic-certification-test-plan",
+      "plan_variant": {"client_registration": "static_client", "request_type": "plain_http_request"},
+      "module_variant": {"client_auth_type": "client_secret_basic", "response_type": "code", "response_mode": "default"},
+      "available_modules": [
+        "oidcc-client-test",
+        "oidcc-client-test-invalid-iss",
+        "oidcc-client-test-missing-sub",
+        "oidcc-client-test-invalid-aud",
+        "oidcc-client-test-missing-iat",
+        "oidcc-client-test-kid-absent-single-jwks",
+        "oidcc-client-test-kid-absent-multiple-jwks",
+        "oidcc-client-test-idtoken-sig-rs256",
+        "oidcc-client-test-idtoken-sig-none",
+        "oidcc-client-test-invalid-sig-rs256",
+        "oidcc-client-test-userinfo-invalid-sub",
+        "oidcc-client-test-nonce-invalid",
+        "oidcc-client-test-scope-userinfo-claims",
+        "oidcc-client-test-client-secret-basic"
+      ]
+    },
+    "config": {
+      "plan": "oidcc-client-config-certification-test-plan",
+      "plan_variant": {"client_registration": "static_client", "request_type": "plain_http_request", "client_auth_type": "client_secret_basic", "response_mode": "default"},
+      "module_variant": {"response_type": "code"},
+      "available_modules": [
+        "oidcc-client-test-discovery-openid-config",
+        "oidcc-client-test-discovery-jwks-uri-keys",
+        "oidcc-client-test-discovery-issuer-mismatch",
+        "oidcc-client-test-idtoken-sig-none",
+        "oidcc-client-test-signing-key-rotation-just-before-signing",
+        "oidcc-client-test-signing-key-rotation"
+      ],
+      "explicit_modules": [
+        "oidcc-client-test-signing-key-rotation-just-before-signing",
+        "oidcc-client-test-signing-key-rotation"
+      ]
+    }
+  },
+  "profiles": {
+    "config": {
+      "plan": "config",
+      "complete_profile": false,
+      "all_modules_required": true,
+      "coverage_limitations": ["suite_jwks_no_store_prevents_cached_key_refresh_test"],
+      "modules": [
+        {"module": "oidcc-client-test-discovery-openid-config", "action": "discovery", "outcome": "discovered"},
+        {"module": "oidcc-client-test-discovery-jwks-uri-keys", "action": "discovery", "outcome": "discovered", "preload_jwks": true},
+        {"module": "oidcc-client-test-discovery-issuer-mismatch", "action": "discovery", "outcome": "discovery_rejected"},
+        {"module": "oidcc-client-test-idtoken-sig-none", "outcome": "rejected", "reason": "disallowed_algorithm", "suite_result": "SKIPPED", "optional_policy": "reject_unsigned_id_token"},
+        {"module": "oidcc-client-test-signing-key-rotation-just-before-signing", "outcome": "authenticated", "preload_jwks": true, "rotation_required": true},
+        {"module": "oidcc-client-test-signing-key-rotation", "outcome": "authenticated", "logins": 2, "rotation_required": true}
+      ]
+    },
+    "basic": {
+      "plan": "basic",
       "complete_profile": true,
       "modules": [
         {"module": "oidcc-client-test", "outcome": "authenticated"},
@@ -41,6 +77,7 @@
       ]
     },
     "smoke": {
+      "plan": "basic",
       "complete_profile": false,
       "modules": [
         {"module": "oidcc-client-test", "outcome": "authenticated"},

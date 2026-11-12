@@ -23,7 +23,7 @@ openid_profiles <- function(root = ".") {
     "integration/openid/profiles.json"
   ))
   if (
-    !identical(manifest[["schema_version"]], 1L) ||
+    !identical(manifest[["schema_version"]], 2L) ||
       !identical(
         manifest[["source_revision"]],
         openid_lock(root)[["source_revision"]]
@@ -34,7 +34,25 @@ openid_profiles <- function(root = ".") {
   manifest
 }
 
-openid_suite_plan <- function(stack, manifest, redirect_uri) {
+openid_plan_spec <- function(manifest, profile) {
+  selection <- manifest[["profiles"]][[profile]]
+  if (is.null(selection) || !openid_string(selection[["plan"]])) {
+    stop("Unknown OpenID profile or missing plan selection")
+  }
+  spec <- manifest[["plans"]][[selection[["plan"]]]]
+  if (is.null(spec) || !openid_string(spec[["plan"]])) {
+    stop("Unknown OpenID plan specification")
+  }
+  spec
+}
+
+openid_suite_plan <- function(
+  stack,
+  manifest,
+  redirect_uri,
+  profile = "smoke"
+) {
+  spec <- openid_plan_spec(manifest, profile)
   random <- function() paste(format(openssl::rand_bytes(16)), collapse = "")
   registration <- list(
     client_id = paste0("shinyoauth-", random()),
@@ -54,15 +72,15 @@ openid_suite_plan <- function(stack, manifest, redirect_uri) {
     "/api/plan",
     data = config,
     query = list(
-      planName = manifest[["plan"]],
-      variant = openid_variant_key(manifest[["plan_variant"]])
+      planName = spec[["plan"]],
+      variant = openid_variant_key(spec[["plan_variant"]])
     ),
     status = 201L
   )
   if (
     !openid_string(plan[["id"]]) ||
       !grepl("^[A-Za-z0-9]+$", plan[["id"]]) ||
-      !identical(plan[["name"]], manifest[["plan"]])
+      !identical(plan[["name"]], spec[["plan"]])
   ) {
     stop("Unexpected OpenID plan identity")
   }
@@ -70,11 +88,11 @@ openid_suite_plan <- function(stack, manifest, redirect_uri) {
   ids <- vapply(modules, function(module) module[["testModule"]], character(1))
   if (
     anyDuplicated(ids) ||
-      !setequal(ids, unlist(manifest[["available_modules"]]))
+      !setequal(ids, unlist(spec[["available_modules"]]))
   ) {
     stop("OpenID plan module list changed from the pinned manifest")
   }
-  expected <- openid_variant_key(manifest[["module_variant"]])
+  expected <- openid_variant_key(spec[["module_variant"]])
   if (
     !all(vapply(
       modules,
@@ -91,7 +109,7 @@ openid_suite_plan <- function(stack, manifest, redirect_uri) {
     modules = modules,
     registration = registration,
     alias = config[["alias"]],
-    manifest = manifest
+    spec = spec
   )
 }
 
@@ -173,7 +191,7 @@ openid_suite_module <- function(stack, plan, name, .env = parent.frame()) {
     name = name,
     plan_id = plan[["id"]],
     variant = utils::modifyList(
-      plan[["manifest"]][["plan_variant"]],
+      plan[["spec"]][["plan_variant"]],
       entry[[1L]][["variant"]]
     )
   )
@@ -208,6 +226,39 @@ openid_suite_module <- function(stack, plan, name, .env = parent.frame()) {
   }
   module[["issuer"]] <- issuer
   module
+}
+
+openid_suite_cache_policy <- function(stack, manifest, redirect_uri) {
+  plan <- openid_suite_plan(stack, manifest, redirect_uri, "config")
+  module <- openid_suite_module(
+    stack,
+    plan,
+    "oidcc-client-test-signing-key-rotation"
+  )
+  response <- httr2::request(paste0(module[["issuer"]], "jwks")) |>
+    httr2::req_options(cainfo = stack[["ca"]], followlocation = FALSE) |>
+    httr2::req_timeout(10) |>
+    httr2::req_perform()
+  cache_control <- httr2::resp_header(response, "cache-control")
+  directives <- trimws(strsplit(
+    tolower(if (is.null(cache_control)) "" else cache_control),
+    ",",
+    fixed = TRUE
+  )[[1L]])
+  if (
+    !identical(httr2::resp_status(response), 200L) ||
+      !"no-store" %in% directives
+  ) {
+    stop(
+      "Pinned suite JWKS cache policy changed; review Configuration coverage"
+    )
+  }
+  openid_suite_cancel(stack, module)
+  list(
+    no_store = TRUE,
+    source_revision = manifest[["source_revision"]],
+    suite_id = module[["id"]]
+  )
 }
 
 openid_suite_cancel <- function(stack, module) {
