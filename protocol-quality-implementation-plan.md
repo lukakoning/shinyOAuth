@@ -4,9 +4,35 @@
 
 Prepared 2026-11-12 against shinyOAuth commit
 `25318cc6488a2a98bfc83d484cbbdb3190854967` (version `0.7.0.9000`).
-Status: researched and planned; implementation has not started. No
-conformance suite, provider, or scanner was run during this
-investigation.
+Status: implementation started. The original investigation ran no
+external tests. C01 supplies a working local suite preflight, and C02
+supplies a validated Shiny fixture. Client conformance flows remain
+pending.
+
+Execution record (2026-11-12): C00 is `d0b62ff`; C01 is `4dee03d`. C01
+validated the exact server image/source correspondence, required plans,
+R certificate/hostname validation, Chrome certificate pinning and
+wrong-pin rejection, and complete owned-resource cleanup in consecutive
+disposable deployments on Windows/Docker Linux containers. Its 11
+environment assertions pass with no failures or skips; formatting and
+lint checks pass. Startup reports the host’s existing C.UTF-8 locale
+warnings. This establishes environment readiness, not RP conformance.
+Chrome uses an isolated SPKI pin instead of installing a temporary root
+in the system trust store; the environment README records that scope
+adjustment.
+
+C02 is `88517ea`. It installed this checkout into an isolated R library
+and drove its public module/UI APIs in Chrome against a local HTTPS
+metadata fixture. The code/S256, nonce/state and openid-scope checks
+passed, a discovery issuer mismatch stopped startup, and the synthetic
+secret stayed out of the DOM and app logs. No token was issued and no
+independent client conformance verdict was collected. Follow-up
+validation also requires the failed setup’s private diagnostic to
+identify an issuer mismatch, so an unrelated app crash cannot satisfy
+that check. The follow-up preflight and fixture checks both passed,
+along with the 11 helper assertions, `jarl check integration/openid`,
+`air format integration/openid --check` and patch whitespace validation.
+C03 is the next pending commit.
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
