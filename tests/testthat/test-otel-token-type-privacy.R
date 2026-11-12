@@ -68,7 +68,7 @@ test_that("rejected exchanges and refreshes never export raw token types", {
         },
         error = identity
       )
-    })
+    }, what = "traces")
     expect_s3_class(record[["value"]], "shinyOAuth_token_error")
     types <- unlist(lapply(record[["traces"]], function(span) {
       as.list(span[["attributes"]])[["oauth.token_type"]]

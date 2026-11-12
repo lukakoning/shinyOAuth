@@ -26,7 +26,7 @@ test_that("UserInfo parse failures redact URLs across conditions, hooks and tele
     )
     record <- otelsdk::with_otel_record({
       tryCatch(get_userinfo(client, "synthetic-access"), error = identity)
-    })
+    }, what = "traces")
     error <- record[["value"]]
     expect_s3_class(error, "shinyOAuth_userinfo_error")
     expect_match(
@@ -97,7 +97,7 @@ test_that("UserInfo diagnostics export only validated media types", {
       )
       record <- otelsdk::with_otel_record({
         tryCatch(get_userinfo(client, "synthetic-access"), error = identity)
-      })
+      }, what = "traces")
       error <- record[["value"]]
       expect_s3_class(error, "shinyOAuth_userinfo_error")
       expect_match(conditionMessage(error), expected, fixed = TRUE)

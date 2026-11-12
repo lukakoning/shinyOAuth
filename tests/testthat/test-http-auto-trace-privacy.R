@@ -124,12 +124,18 @@ test_that("real HTTP requests keep private URLs out of every telemetry scope", {
     paste0(sub("/$", "", srv[["url"]]()), "/Patient/:id")
   )
   if (utils::packageVersion("httr2") >= "1.2.2") {
-    expect_identical(
-      result[["value"]][["wire"]][["TRUE"]][["traceparent"]],
+    traceparent <- result[["value"]][["wire"]][["TRUE"]][["traceparent"]]
+    expect_match(
+      traceparent,
       paste0(
-        "00-", traces[["private.request"]][["trace_id"]], "-",
-        traces[["private.request"]][["span_id"]], "-01"
+        "^00-", traces[["private.request"]][["trace_id"]], "-",
+        traces[["private.request"]][["span_id"]], "-[0-9a-f]{2}$"
       )
+    )
+    # Require sampling while allowing the SDK's other W3C trace flags.
+    expect_identical(
+      bitwAnd(strtoi(substr(traceparent, 54L, 55L), base = 16L), 1L),
+      1L
     )
     dependency_spans <- Filter(function(span) {
       identical(span[["instrumentation_scope"]][["name"]], "org.r-lib.httr2")

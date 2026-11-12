@@ -42,7 +42,7 @@ test_that("unknown endpoint error codes obey diagnostic exposure on every sink",
           )
         },
         error = identity
-      ))
+      ), what = "traces")
       error <- record[["value"]]
       http_error <- error[["parent"]] %||% error
       expect_s3_class(http_error, "shinyOAuth_http_error")

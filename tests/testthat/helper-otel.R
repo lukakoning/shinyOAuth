@@ -1,4 +1,5 @@
 local_test_otel_log_file <- function(.local_envir = parent.frame()) {
+  # Use with_otel_record(..., what = "traces") to keep logs on this exporter.
   log_file <- tempfile(fileext = ".jsonl")
   withr::local_envvar(
     c(

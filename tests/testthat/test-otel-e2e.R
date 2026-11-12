@@ -53,7 +53,7 @@ otel_e2e("issuer URLs share the privacy policy across hooks, logs, and spans", {
       },
       attributes = otel_client_attributes(cli)
     )
-  })
+  }, what = "traces")
   attrs <- record[["traces"]][["issuer-privacy"]][["attributes"]]
   expect_identical(attrs[["oauth.provider.issuer"]], "https://example.com/")
   expect_identical(attrs[["oauth.callback.issuer"]], "https://example.com/")
@@ -1032,7 +1032,7 @@ otel_e2e("get_userinfo sync exports filtered audit logs correlated with span", {
         shinyOAuth::get_userinfo(cli, token = "access-secret-token")
       }
     )
-  })
+  }, what = "traces")
 
   userinfo_span <- r[["traces"]][["shinyOAuth.userinfo"]]
   testthat::expect_false(is.null(userinfo_span))
