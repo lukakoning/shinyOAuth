@@ -116,10 +116,10 @@ validate_id_token <- function(
     err_id_token(protocol_diagnostic_message("Unsupported JWT alg", alg))
   }
   if (!isTRUE(skip_signature) && !(alg %in% allowed_algs)) {
-    err_id_token(paste0(
-      "JWT alg not allowed by provider: ",
-      header_fields[["alg"]]
-    ))
+    err_id_token(
+      paste0("JWT alg not allowed by provider: ", header_fields[["alg"]]),
+      context = list(reason = "disallowed_algorithm")
+    )
   }
 
   parsed_payload <- tryCatch(
@@ -272,7 +272,10 @@ validate_id_token <- function(
         ) {
           err_id_token("No Microsoft JWKS key matches token issuer scope")
         }
-        err_id_token("ID token signature invalid")
+        err_id_token(
+          "ID token signature invalid",
+          context = list(reason = "invalid_signature")
+        )
       }
       if (identical(alg, "EdDSA")) {
         verified_eddsa_curve <- resolve_verified_eddsa_curve(
@@ -364,16 +367,25 @@ validate_id_token <- function(
       !anyNA(aud) &&
       all(nzchar(aud)))
   ) {
-    err_id_token("Audience invalid")
+    err_id_token("Audience invalid", context = list(claim = "aud"))
   }
   if (!(client_id %in% aud)) {
-    err_id_token("Audience does not include client_id")
+    err_id_token(
+      "Audience does not include client_id",
+      context = list(claim = "aud")
+    )
   }
   if (!all(aud %in% c(client_id, client@trusted_id_token_audiences))) {
-    err_id_token("ID token contains untrusted additional audiences")
+    err_id_token(
+      "ID token contains untrusted additional audiences",
+      context = list(claim = "aud")
+    )
   }
   if (!is_valid_oidc_sub(payload[["sub"]])) {
-    err_id_token("ID token sub claim must be 1 to 255 ASCII characters")
+    err_id_token(
+      "ID token sub claim must be 1 to 255 ASCII characters",
+      context = list(claim = "sub")
+    )
   }
   payload <- normalize_authenticated_id_token_claims(
     payload,
@@ -408,10 +420,13 @@ validate_id_token <- function(
   }
   # OIDC Core requires iat to be present on ID Tokens
   if (is.null(payload[["iat"]])) {
-    err_id_token("ID token missing iat claim")
+    err_id_token("ID token missing iat claim", context = list(claim = "iat"))
   }
   if (!jwt_is_single_finite_number(payload[["iat"]])) {
-    err_id_token("iat claim must be a single finite number when present")
+    err_id_token(
+      "iat claim must be a single finite number when present",
+      context = list(claim = "iat")
+    )
   }
   iat_val <- as.numeric(payload[["iat"]])
   if (iat_val > exp_val) {
