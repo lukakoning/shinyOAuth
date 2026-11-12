@@ -307,7 +307,12 @@ validate_id_token <- function(
         err_input("HS* validation requires client_secret")
       }
 
-      check_client_hmac_algorithm(client, alg, "ID token verification", err_id_token)
+      check_client_hmac_algorithm(
+        client,
+        alg,
+        "ID token verification",
+        err_id_token
+      )
 
       min_secret_bytes <- min_hmac_key_bytes(alg)
       if (length(hmac_secret_bytes(client_secret)) < min_secret_bytes) {
@@ -341,7 +346,7 @@ validate_id_token <- function(
   # For Microsoft tenant-independent metadata, the effective issuer is derived
   # from the token's GUID tid claim.
   if (!is_valid_string(payload[["iss"]])) {
-    err_id_token("Issuer mismatch/invalid")
+    err_id_token("Issuer mismatch/invalid", context = list(claim = "iss"))
   }
   if (
     !identical(
@@ -349,7 +354,7 @@ validate_id_token <- function(
       issuer_expectation[["expected_issuer"]]
     )
   ) {
-    err_id_token("Issuer mismatch/invalid")
+    err_id_token("Issuer mismatch/invalid", context = list(claim = "iss"))
   }
   aud <- normalize_jwt_audience(payload[["aud"]])
   # OIDC: aud MAY be a string or an array of strings. Accept length >= 1.
@@ -467,19 +472,26 @@ validate_id_token <- function(
   # OIDC Core section 2 defines nonce as a string even when the request omitted
   # it. Test membership so an explicit JSON null cannot masquerade as absence.
   if (
-    "nonce" %in% names(payload) &&
+    "nonce" %in%
+      names(payload) &&
       !(is.character(payload[["nonce"]]) &&
         length(payload[["nonce"]]) == 1L &&
         !is.na(payload[["nonce"]]))
   ) {
-    err_id_token("ID token nonce claim must be a JSON string when present")
+    err_id_token(
+      "ID token nonce claim must be a JSON string when present",
+      context = list(claim = "nonce")
+    )
   }
   if (is_valid_string(expected_nonce)) {
     if (is.null(payload[["nonce"]])) {
-      err_id_token("ID token missing nonce claim")
+      err_id_token(
+        "ID token missing nonce claim",
+        context = list(claim = "nonce")
+      )
     }
     if (!identical(payload[["nonce"]], expected_nonce)) {
-      err_id_token("ID token nonce mismatch")
+      err_id_token("ID token nonce mismatch", context = list(claim = "nonce"))
     }
   }
   # OIDC Core §3.1.3.7 permits extension-specific azp validation. Our policy
