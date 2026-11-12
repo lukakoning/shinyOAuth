@@ -4,8 +4,8 @@ Prepared 2026-11-12 against shinyOAuth commit
 `25318cc6488a2a98bfc83d484cbbdb3190854967` (version `0.7.0.9000`).
 Status: implementation started. The original investigation ran no external
 tests. C01 supplies a working local suite preflight, and C02 supplies a validated
-Shiny fixture. C03 adds the suite API driver and evidence validator; browser
-conformance flows remain pending.
+Shiny fixture. C03 adds the suite API driver and evidence validator. C04 executes
+three real-browser smoke modules; full Basic profile coverage remains pending.
 
 Execution record (2026-11-12): C00 is `d0b62ff`; C01 is `4dee03d`. C01 validated the exact server
 image/source correspondence, required plans, R certificate/hostname validation,
@@ -28,11 +28,33 @@ The follow-up preflight and fixture checks both passed, along with the 11 helper
 assertions, `jarl check integration/openid`, `air format integration/openid
 --check` and patch whitespace validation.
 
-C03 passed 51 evidence assertions with no failures or skips. Its live API check
+C03 is `2b06b7a`. It passed 51 evidence assertions with no failures or skips. Its live API check
 created the pinned Basic plan, checked all module variants, retrieved a waiting
 module's issuer, rejected an unknown instance and verified interruption on
 cancellation. Owned Docker resources were removed. Its sanitized report marks
-client conformance unattempted and keeps the conformance gate false. C04 is next.
+client conformance unattempted and keeps the conformance gate false.
+
+The first C04 browser run produced three passing suite verdicts, but the local
+gate correctly failed because issuer/nonce errors lacked safe claim labels.
+`83ec40e` adds those labels to the existing typed audit events without exposing
+claim values or changing validation. Its focused signed-token regression checks
+and neighboring ID-token checks passed: 162 assertions, zero failures, warnings
+or skips.
+
+C04 adds the real Chrome driver, app-stop failure control, callback cleanup
+checks and a manual Ubuntu workflow. Two complete Windows smoke runs passed
+all three modules with matching app evidence and owned-resource cleanup. The
+evidence validator now has 54 passing assertions. Coverage remains partial;
+C05 is next. Preflight, API checks and all three smoke modules also passed as
+a non-root Linux user (R 4.5.0, Chromium 156), including caller-owned TLS key
+generation. The manual GitHub workflow has not run yet; its actionlint check
+passes, along with R lint, formatting and patch whitespace checks.
+
+Sanitized reports retained locally under `integration/openid/.artifacts/`:
+`smoke-20261112-225149-dbdbc91a7b81/evidence.json` and
+`smoke-20261112-225410-77d6e303d949/evidence.json` (Windows), plus
+`smoke-20261112-220117-83dd3e2312e6/evidence.json` (Linux). Each reports a
+passing smoke gate, verified cleanup and incomplete full-profile coverage.
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second

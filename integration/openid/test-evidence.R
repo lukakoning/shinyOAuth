@@ -31,6 +31,8 @@ evidence_fixture <- function() {
       )
       row[["suite_status"]] <- "FINISHED"
       row[["suite_result"]] <- "PASSED"
+      row[["callback_cleaned"]] <- TRUE
+      row[["browser_version"]] <- "Chrome/test"
       row[["app"]] <- list(
         run_id = paste0("run-instance", i),
         ready = TRUE,
@@ -55,7 +57,14 @@ evidence_fixture <- function() {
       row
     }
   )
-  report <- c(context, list(results = results, cleanup_verified = TRUE))
+  report <- c(
+    context,
+    list(
+      results = results,
+      cleanup_verified = TRUE,
+      driver_failure_control_passed = TRUE
+    )
+  )
   list(manifest = manifest, context = context, report = report)
 }
 
@@ -225,6 +234,29 @@ testthat::test_that("a timeout or unrelated app failure cannot satisfy a negativ
     f[["context"]],
     f[["manifest"]]
   )[["gate_passed"]])
+})
+
+testthat::test_that("the real app failure control cannot be omitted", {
+  f <- evidence_fixture()
+  f[["report"]][["driver_failure_control_passed"]] <- FALSE
+  testthat::expect_false(openid_check_report(
+    f[["report"]],
+    f[["context"]],
+    f[["manifest"]]
+  )[["gate_passed"]])
+})
+
+testthat::test_that("browser navigation evidence cannot be omitted", {
+  f <- evidence_fixture()
+  for (name in c("callback_cleaned", "browser_version")) {
+    report <- f[["report"]]
+    report[["results"]][[1L]][[name]] <- NULL
+    testthat::expect_false(openid_check_report(
+      report,
+      f[["context"]],
+      f[["manifest"]]
+    )[["gate_passed"]])
+  }
 })
 
 testthat::test_that("module polling rejects stale records, interruptions and request failures", {

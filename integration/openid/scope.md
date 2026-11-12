@@ -1,15 +1,20 @@
 **Coverage scope**
 
-Current stage: environment preflight, suite API/evidence validation and Shiny fixture plumbing. No client
-conformance profile has run yet. `required_plans_present` proves suite capability.
-The separate fixture checks prove a browser authorization request using local
-synthetic metadata, with no token issuance or external conformance verdict.
-The API check creates and cancels a waiting suite module; it does not count
-that interrupted run as a client test pass.
+Current stage: a real-browser smoke selection against the pinned suite. The
+valid code flow, invalid ID-token issuer and invalid nonce modules pass with
+matching app evidence. This covers three of the Basic plan's fourteen modules
+for static registration, code flow and `client_secret_basic`, using synchronous
+transport and query callbacks. Full Basic coverage and certification remain
+unestablished; the report keeps `coverage_complete = false`.
+
+Preflight's `required_plans_present` proves suite capability. The separate
+synthetic-metadata fixture checks prove authorization-request plumbing. The API
+check and app-stop control create interrupted modules for harness validation;
+neither interruption counts as a client test pass.
 
 | Target | Existing local evidence | Planned independent gate |
 | --- | --- | --- |
-| OIDC Core code flow, ID token and UserInfo validation | Unit tests and Keycloak browser/code flows | Basic RP; C04-C05 |
+| OIDC Core code flow, ID token and UserInfo validation | Unit tests, Keycloak browser/code flows, and three passing OIDF smoke modules (C04) | Complete Basic RP; C05 |
 | Discovery, exact issuer and signing-key changes | Discovery/JWKS tests and Keycloak rotation | Configuration RP; C06 |
 | Form POST callback and browser binding | Real browser and retained-connection tests | Form Post Basic RP; C07 |
 | Refresh identity continuity | Refresh validation and retained-connection tests | OIDC client refresh plan; C08 |

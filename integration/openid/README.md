@@ -1,7 +1,7 @@
 **OpenID Foundation client conformance environment**
 
 Run from the repository root with Docker Engine using Linux containers,
-Compose v2, Chrome/Chromium, and R packages `httr2`, `jsonlite`, `processx`,
+Compose v2, Git, Chrome/Chromium, and R packages `httr2`, `jsonlite`, `processx`,
 `openssl`, `withr`, `chromote`, `httpuv` and `testthat` installed:
 
 ```sh
@@ -24,17 +24,45 @@ Rscript integration/openid/run-tests.R --check-api
 This checks the pinned Basic plan's complete module/variant list, creates a
 private static registration, waits for a live module, checks its exported
 issuer, rejects an unknown instance and confirms cancellation. The command
-also runs 51 evidence assertions with zero skips. Its report keeps
+also runs the evidence validator's regression checks with zero skips. Its report keeps
 `gate_passed = false` and `coverage_complete = false`: API readiness does not
 establish client conformance. Unknown command flags fail.
 
+Run the three-case browser smoke selection:
+
+```sh
+Rscript integration/openid/run-tests.R --profile smoke --transport sync
+```
+
+This also needs `shiny`, `callr`, the package's development dependencies, and
+Python 3 (`py` on Windows or `python3` elsewhere). It installs this checkout
+into a private R library and uses a fresh Shiny app and Chrome process per case.
+The suite acts as the provider. The normal login button drives a successful code
+flow with validated ID token/UserInfo, then separate invalid-issuer and
+invalid-nonce cases. Rejections require the expected typed error and claim name
+from the privacy-preserving audit hook. Tokens, identities and claim values
+stay out of the report. Every case must finish with the suite's `PASSED` verdict
+and matching app evidence, with the callback query removed from the browser URL.
+
+Each run first stops a real app after clicking login and requires the driver to
+fail for that exact reason. This control uses a separate suite plan; its
+interrupted module is never counted as a conformance pass. A passing report also
+requires this control and verified cleanup of the apps, browsers, TLS proxy and
+owned Docker resources.
+
+The [manual workflow](../../.github/workflows/openid-conformance.yml) runs
+preflight, API checks and this smoke selection on Ubuntu. It needs no external
+account or provider credentials and uploads only explicit sanitized report
+paths. Pull-request triggers wait for C05.
+
 The [profile manifest](profiles.json) freezes the upstream Basic plan and the
-three intended smoke cases. The evidence validator binds each result to its
+three smoke cases. The evidence validator binds each result to its
 run, attempt, checkout, source revision, plan, instance and variants, then
 requires both a completed passing suite verdict and the expected app outcome.
 Missing results, app failures, warnings, skipped modules and timeouts cannot
-pass the initial policy. A completed smoke selection still reports partial
-profile coverage. Later profiles will extend this explicit policy.
+pass the initial policy. A completed smoke selection has `gate_passed = true`
+but keeps `coverage_complete = false`. It does not establish full Basic RP
+coverage or OpenID certification. Later profiles will extend this explicit policy.
 
 Check the Shiny app plumbing separately:
 
@@ -84,7 +112,9 @@ in sanitized `.artifacts/<run>/evidence.json`. Raw logs, certificate keys and fu
 suite exports stay under ignored `.artifacts/` and must not be uploaded by a
 broad artifact glob. Preflight writes `evidence.json` there even on failure.
 
-Initial validation on Windows 11 used Docker Desktop 4.48.0 with Linux
-containers, R 4.5.1 and Chrome through chromote 0.5.1. Linux CI remains a
-separate validation target. The [implementation plan](../../.github/protocol-quality-implementation-plan.md)
-tracks the later application, profile and CI commits.
+Validation includes repeated smoke passes on Windows 11 using Docker Desktop
+4.48.0 with Linux containers, R 4.5.1 and Chrome through chromote 0.5.1.
+Preflight, API checks and smoke also pass as a non-root Linux user with R 4.5.0
+and Chromium 156. The Ubuntu GitHub workflow has not run yet.
+The [implementation plan](../../.github/protocol-quality-implementation-plan.md)
+records execution evidence and the remaining profile and CI work.

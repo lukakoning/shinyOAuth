@@ -127,6 +127,12 @@ openid_check_report <- function(report, context, manifest) {
           stop("Module did not finish with a passing suite verdict")
         }
         if (
+          !isTRUE(result[["callback_cleaned"]]) ||
+            !openid_string(result[["browser_version"]])
+        ) {
+          stop("Missing browser navigation evidence")
+        }
+        if (
           !openid_app_matches(
             result[["app"]],
             expectation,
@@ -136,6 +142,9 @@ openid_check_report <- function(report, context, manifest) {
         ) {
           stop("Missing or incorrect application evidence")
         }
+      }
+      if (!isTRUE(report[["driver_failure_control_passed"]])) {
+        stop("The real app failure control did not pass")
       }
       if (!isTRUE(report[["cleanup_verified"]])) {
         stop("Owned resources were not cleaned up")
@@ -165,6 +174,7 @@ openid_report_context <- function(root, profile, transport, package_version) {
   random <- function() paste(format(openssl::rand_bytes(12)), collapse = "")
   list(
     schema_version = 1L,
+    status = "failed",
     run_id = random(),
     attempt_id = random(),
     checkout_revision = git(c("rev-parse", "HEAD")),
@@ -174,6 +184,13 @@ openid_report_context <- function(root, profile, transport, package_version) {
     transport = transport,
     package_version = package_version,
     r_version = as.character(getRversion()),
+    dependency_versions = setNames(
+      lapply(
+        c("httr2", "jsonlite", "openssl", "processx", "callr", "chromote"),
+        function(package) as.character(utils::packageVersion(package))
+      ),
+      c("httr2", "jsonlite", "openssl", "processx", "callr", "chromote")
+    ),
     results = list(),
     cleanup_verified = FALSE,
     gate_passed = FALSE,

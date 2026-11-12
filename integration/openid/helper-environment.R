@@ -152,10 +152,25 @@ openid_start <- function(root, output, .env = parent.frame()) {
   tls <- file.path(output, "tls")
   dir.create(tls)
   tls <- normalizePath(tls, winslash = "/")
+  docker_user <- character()
+  if (.Platform[["OS.type"]] != "windows") {
+    identity <- vapply(
+      c("-u", "-g"),
+      function(argument) {
+        trimws(processx::run("id", argument)[["stdout"]])
+      },
+      character(1)
+    )
+    if (!all(grepl("^[0-9]+$", identity))) {
+      stop("Cannot determine the local TLS file owner")
+    }
+    docker_user <- c("--user", paste(identity, collapse = ":"))
+  }
   openid_docker(
     c(
       "run",
       "--rm",
+      docker_user,
       "--network",
       "none",
       "--entrypoint",
@@ -393,8 +408,24 @@ openid_browser <- function(spki, .env = parent.frame()) {
       )
     )
   )
-  withr::defer(browser[["close"]](wait = TRUE), envir = .env)
+  withr::defer(openid_close_browser(browser), envir = .env)
   browser
+}
+
+openid_close_browser <- function(browser) {
+  process <- browser[["get_browser"]]()[["get_process"]]()
+  if (process[["is_alive"]]()) {
+    browser[["close"]](wait = TRUE)
+    process[["wait"]](timeout = 5000)
+    if (process[["is_alive"]]()) {
+      process[["kill"]]()
+      process[["wait"]](timeout = 5000)
+    }
+  }
+  if (process[["is_alive"]]()) {
+    stop("OpenID fixture browser did not stop")
+  }
+  invisible(NULL)
 }
 
 openid_browser_tls <- function(stack) {

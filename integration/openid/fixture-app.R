@@ -158,8 +158,8 @@ openid_fixture_app <- function(config) {
           } else {
             "other_error"
           },
-          error_classes = audit[["errors"]],
-          claims = audit[["claims"]],
+          error_classes = as.list(audit[["errors"]]),
+          claims = as.list(audit[["claims"]]),
           operations = as.list(audit[["counts"]]),
           package_version = as.character(utils::packageVersion("shinyOAuth"))
         ),
