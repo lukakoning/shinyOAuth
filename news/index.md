@@ -2,6 +2,14 @@
 
 ## shinyOAuth (development version)
 
+- ID-token issuer and nonce validation errors now identify the failed
+  claim in audit events. Event context contains the claim name without
+  its value.
+
+- ID-token audience, subject and issued-at errors also identify the
+  failed claim. Algorithm and signature rejections include stable reason
+  codes in audit events.
+
 ## shinyOAuth 0.7.0
 
 CRAN release: 2026-10-31
