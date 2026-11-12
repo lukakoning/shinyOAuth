@@ -1,7 +1,6 @@
 testthat::test_that("the suite lock rejects floating images and changed schemas", {
-  root <- tempfile("openid-lock-")
+  root <- withr::local_tempdir("openid-lock-")
   dir.create(file.path(root, "integration/openid"), recursive = TRUE)
-  withr::defer(unlink(root, recursive = TRUE))
   lock <- openid_lock("../..")
   path <- file.path(root, "integration/openid/suite-lock.json")
   jsonlite::write_json(lock, path, auto_unbox = TRUE)

@@ -16,11 +16,16 @@ locale warnings. This establishes environment readiness, not RP conformance.
 Chrome uses an isolated SPKI pin instead of installing a temporary root in the
 system trust store; the environment README records that scope adjustment.
 
-C02 installed this checkout into an isolated R library and drove its public
+C02 is `88517ea`. It installed this checkout into an isolated R library and drove its public
 module/UI APIs in Chrome against a local HTTPS metadata fixture. The code/S256,
 nonce/state and openid-scope checks passed, a discovery issuer mismatch stopped
 startup, and the synthetic secret stayed out of the DOM and app logs. No token
 was issued and no independent client conformance verdict was collected.
+Follow-up validation also requires the failed setup's private diagnostic to
+identify an issuer mismatch, so an unrelated app crash cannot satisfy that check.
+The follow-up preflight and fixture checks both passed, along with the 11 helper
+assertions, `jarl check integration/openid`, `air format integration/openid
+--check` and patch whitespace validation. C03 is the next pending commit.
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second

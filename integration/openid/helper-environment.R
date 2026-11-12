@@ -200,7 +200,10 @@ openid_start <- function(root, output, .env = parent.frame()) {
   spki <- as.character(openssl::base64_encode(openssl::sha256(
     openssl::write_der(openssl::read_pubkey(pubkey))
   )))
-  ports <- unique(c(httpuv::randomPort(), httpuv::randomPort()))
+  ports <- unique(c(
+    httpuv::randomPort(min = 49152L, max = 65535L),
+    httpuv::randomPort(min = 49152L, max = 65535L)
+  ))
   if (length(ports) != 2L) {
     stop("Could not allocate distinct OpenID ports")
   }

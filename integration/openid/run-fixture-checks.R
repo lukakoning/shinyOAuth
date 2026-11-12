@@ -111,6 +111,10 @@ run_openid_fixture_checks <- function(args = commandArgs(trailingOnly = TRUE)) {
   bad_transport <- openid_app_transport(".", stack, httpuv::randomPort())
   bad_config <- config
   bad_config[["issuer"]] <- paste0(provider_tls[["origin"]], "/bad")
+  bad_config[["run_id"]] <- paste(
+    format(openssl::rand_bytes(12)),
+    collapse = ""
+  )
   failure <- tryCatch(
     openid_app_start(".", stack, bad_transport, bad_config, library),
     error = identity
@@ -119,6 +123,15 @@ run_openid_fixture_checks <- function(args = commandArgs(trailingOnly = TRUE)) {
     inherits(failure, "error"),
     grepl("fixture app exited", conditionMessage(failure), fixed = TRUE)
   )
+  diagnostic <- readLines(
+    file.path(output, paste0("app-", bad_config[["run_id"]], ".stderr")),
+    warn = FALSE
+  )
+  stopifnot(any(grepl(
+    "OIDC discovery issuer mismatch",
+    diagnostic,
+    fixed = TRUE
+  )))
   logs <- list.files(
     output,
     pattern = "^app-.*[.](log|stderr)$",
