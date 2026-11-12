@@ -1,7 +1,9 @@
 **Coverage scope**
 
-Current stage: environment preflight only. No client conformance profile has
-run yet. `required_plans_present` proves suite capability, not client behavior.
+Current stage: environment preflight and Shiny fixture plumbing. No client
+conformance profile has run yet. `required_plans_present` proves suite capability.
+The separate fixture checks prove a browser authorization request using local
+synthetic metadata, with no token issuance or external conformance verdict.
 
 | Target | Existing local evidence | Planned independent gate |
 | --- | --- | --- |

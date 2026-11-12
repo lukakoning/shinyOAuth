@@ -15,6 +15,28 @@ own containers, network and database volume before recording a pass. Missing
 prerequisites, changed versions and unavailable services fail the command.
 It does not perform client login or establish conformance.
 
+Check the Shiny app plumbing separately:
+
+```sh
+Rscript integration/openid/run-fixture-checks.R
+```
+
+This command also needs `shiny`, `callr`, `webfakes`, the package's development
+dependencies, and Python 3 (`py` on Windows or `python3` elsewhere). It reuses
+the existing standard-library loopback TLS proxy. The command installs the
+checkout into a fresh private R library, checks which installation the child
+app loads, and drives the normal login button in Chrome against synthetic HTTPS
+metadata. It checks code/S256/nonce/state/scope fields, rejects a mismatched
+discovery issuer, and checks that the synthetic client secret stays out of the
+DOM and private app logs. It does not issue tokens or establish RP conformance.
+
+The fixture's provider configuration stays in the child R process. Its page
+exposes only an opaque run ID, status flags, allowlisted error classes/claim
+names and operation counters. It uses public shinyOAuth discovery, UI and module
+APIs with their validation enabled. A loopback TLS proxy preserves the original
+Host header; the callback resolver checks that host and the loopback peer before
+reconstructing the fixed public origin, without trusting forwarded headers.
+
 The [lock](suite-lock.json) pins OIDF source
 `410812ef6bc72a84723c1685725edce3558e31e3`, its unmodified server image, the
 upstream proxy image and MongoDB 6.0.13. The server image's `git.properties`
