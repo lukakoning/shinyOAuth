@@ -13,6 +13,14 @@ on:
           - config
           - form-post
           - refresh
+      transport:
+        description: Transport (future supports smoke and refresh)
+        type: choice
+        default: sync
+        options:
+          - sync
+          - mirai
+          - future
   pull_request:
     paths:
       - "R/**"
@@ -35,6 +43,7 @@ jobs:
       CURL_SSL_BACKEND: openssl
       NOT_CRAN: "true"
       OPENID_PROFILE: ${{ inputs.profile || 'smoke' }}
+      OPENID_TRANSPORT: ${{ inputs.transport || 'sync' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -60,6 +69,11 @@ jobs:
             any::withr
             any::processx
             any::httpuv
+            any::mirai
+            any::future
+            any::promises
+            any::later
+            any::ps
           cache-version: 1
 
       - name: Select Chrome
@@ -77,13 +91,13 @@ jobs:
         run: Rscript integration/openid/run-tests.R --check-api
 
       - name: Run real browser client selection
-        run: Rscript integration/openid/run-tests.R --profile "$OPENID_PROFILE" --transport sync
+        run: Rscript integration/openid/run-tests.R --profile "$OPENID_PROFILE" --transport "$OPENID_TRANSPORT"
 
       - name: Upload sanitized reports
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: openid-client-${{ env.OPENID_PROFILE }}-evidence
+          name: openid-client-${{ env.OPENID_PROFILE }}-${{ env.OPENID_TRANSPORT }}-evidence
           path: |
             integration/openid/.artifacts/preflight-*/evidence.json
             integration/openid/.artifacts/api-*/evidence.json

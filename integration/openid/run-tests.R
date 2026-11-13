@@ -6,17 +6,19 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
       setequal(args[c(1L, 3L)], c("--profile", "--transport"))
     if (!valid) {
       stop(
-        "Usage: Rscript integration/openid/run-tests.R --check-api | --profile smoke|basic|config|form-post|refresh --transport sync"
+        "Usage: Rscript integration/openid/run-tests.R --check-api | --profile smoke|basic|config|form-post|refresh --transport sync|mirai|future"
       )
     }
     options <- setNames(args[c(2L, 4L)], args[c(1L, 3L)])
     if (
       !options[["--profile"]] %in%
         c("smoke", "basic", "config", "form-post", "refresh") ||
-        !identical(options[["--transport"]], "sync")
+        !options[["--transport"]] %in% c("sync", "mirai", "future") ||
+        (identical(options[["--transport"]], "future") &&
+          !options[["--profile"]] %in% c("smoke", "refresh"))
     ) {
       stop(
-        "Only smoke, basic, config, form-post and refresh profiles with sync transport are implemented"
+        "Use sync/mirai for core profiles, or future for smoke/refresh parity selections"
       )
     }
   }
@@ -33,12 +35,13 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
     "openssl",
     "withr",
     "httpuv",
-    "testthat"
+    "testthat",
+    "ps"
   ))
   profile <- if (api_mode) "api" else options[["--profile"]]
   output <- openid_output(".", profile)
   report <- list(
-    schema_version = 2L,
+    schema_version = 3L,
     status = "failed",
     application_flow = "not_attempted",
     gate_passed = FALSE,
@@ -67,10 +70,13 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
   manifest <- openid_profiles()
   if (!api_mode) {
     openid_require(c("shiny", "callr", "chromote"))
+    if (!identical(options[["--transport"]], "sync")) {
+      openid_require(c(options[["--transport"]], "promises", "later"))
+    }
     report <- openid_report_context(
       ".",
       profile,
-      "sync",
+      options[["--transport"]],
       read.dcf("DESCRIPTION")[[1L, "Version"]]
     )
     context <- report

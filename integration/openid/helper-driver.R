@@ -1,12 +1,27 @@
 openid_stop_app <- function(app) {
   process <- app[["process"]]
+  children <- if (process[["is_alive"]]()) {
+    ps::ps_children(ps::ps_handle(process[["get_pid"]]()), recursive = TRUE)
+  } else {
+    list()
+  }
+  children <- c(children, app[["worker_handles"]])
+  if (process[["is_alive"]]() && .Platform[["OS.type"]] != "windows") {
+    process[["interrupt"]]()
+    process[["wait"]](timeout = 5000)
+  }
   if (process[["is_alive"]]()) {
-    process[["kill"]]()
+    process[["kill_tree"]]()
   }
   process[["wait"]](timeout = 5000)
   if (process[["is_alive"]]()) {
     stop("OpenID fixture app did not stop")
   }
+  openid_wait(
+    function() !any(vapply(children, ps::ps_is_running, logical(1))),
+    "OpenID fixture worker cleanup",
+    15
+  )
   invisible(NULL)
 }
 
@@ -158,6 +173,7 @@ openid_run_case <- function(
     client_secret = plan[["registration"]][["client_secret"]],
     response_mode = if (form_post) "form_post" else "query",
     provider_origin = stack[["origin"]],
+    transport = context[["transport"]],
     run_id = paste0(context[["run_id"]], "-", module[["id"]]),
     preload_jwks = isTRUE(expectation[["preload_jwks"]]),
     report_setup_failure = identical(
@@ -180,6 +196,10 @@ openid_run_case <- function(
   }
   tab[["Page"]][["navigate"]](paste0(app[["origin"]], "/"))
   initial <- openid_wait_app(app, browser, tab)
+  app[["worker_handles"]] <- lapply(
+    initial[["transport"]][["probes"]],
+    function(probe) ps::ps_handle(probe[["pid"]])
+  )
   discovery <- identical(expectation[["action"]], "discovery")
   if (
     (!discovery && !isTRUE(initial[["ready"]])) ||
@@ -331,6 +351,7 @@ openid_run_case <- function(
     )
   }
   openid_stop_app(app)
+  row[["worker_cleanup_verified"]] <- TRUE
   openid_close_browser(browser)
   cat(
     "OpenID module ",
@@ -376,7 +397,17 @@ openid_driver_failure_control <- function(
         "OpenID fixture app stopped before an outcome"
       )
   ) {
-    stop("Stopping the real app did not fail the browser driver as expected")
+    writeLines(
+      if (inherits(failure, "error")) {
+        conditionMessage(failure)
+      } else {
+        "Unexpected driver success"
+      },
+      file.path(stack[["output"]], "driver-control.stderr")
+    )
+    stop(
+      "Stopping the real app did not fail the browser driver as expected; inspect private driver-control.stderr"
+    )
   }
   TRUE
 }

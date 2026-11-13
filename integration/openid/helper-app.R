@@ -95,15 +95,63 @@ openid_app_start <- function(
   if (is.null(config[["run_id"]])) {
     config[["run_id"]] <- paste(format(openssl::rand_bytes(12)), collapse = "")
   }
+  if (is.null(config[["transport"]])) {
+    config[["transport"]] <- "sync"
+  }
+  config[["audit_directory"]] <- file.path(
+    stack[["output"]],
+    paste0("audit-", config[["run_id"]])
+  )
+  if (!dir.create(config[["audit_directory"]])) {
+    stop("Cannot create private fixture audit directory")
+  }
   app <- callr::r_bg(
     function(root, config, ca, port, expected_package) {
       Sys.setenv(CURL_SSL_BACKEND = "openssl", CURL_CA_BUNDLE = ca)
+      Sys.setenv(
+        R_LIBS = paste(.libPaths(), collapse = .Platform[["path.sep"]])
+      )
       actual_package <- normalizePath(
         find.package("shinyOAuth"),
         winslash = "/"
       )
       if (!identical(actual_package, expected_package)) {
         stop("App loaded a different shinyOAuth installation")
+      }
+      source(
+        file.path(root, "integration/openid/fixture-transport.R"),
+        local = TRUE
+      )
+      on.exit(
+        {
+          if (identical(config[["transport"]], "mirai")) {
+            mirai::daemons(0L)
+          }
+          if (identical(config[["transport"]], "future")) {
+            future::plan(future::sequential)
+          }
+        },
+        add = TRUE
+      )
+      config[["worker_probes"]] <- openid_fixture_workers(
+        config[["transport"]],
+        config[["provider_origin"]],
+        ca,
+        expected_package,
+        config[["audit_directory"]]
+      )
+      config[["package_path"]] <- expected_package
+      config[["ca"]] <- ca
+      config[["backend_verified"]] <- identical(
+        config[["transport"]],
+        "sync"
+      ) ||
+        identical(
+          getFromNamespace("async_backend_available", "shinyOAuth")(),
+          config[["transport"]]
+        )
+      if (!isTRUE(config[["backend_verified"]])) {
+        stop("Fixture selected the wrong async backend")
       }
       source(file.path(root, "integration/openid/fixture-app.R"), local = TRUE)
       shiny::runApp(
@@ -134,7 +182,7 @@ openid_app_start <- function(
   )
   withr::defer(
     {
-      if (app[["is_alive"]]()) app[["kill"]]()
+      if (app[["is_alive"]]()) app[["kill_tree"]]()
     },
     envir = .env
   )
@@ -158,7 +206,7 @@ openid_app_start <- function(
       )
     },
     "OpenID fixture app",
-    30
+    60
   )
   list(process = app, config = config, origin = transport[["origin"]])
 }

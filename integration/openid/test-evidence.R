@@ -2,7 +2,7 @@ evidence_fixture <- function(profile = "smoke") {
   manifest <- openid_profiles("../..")
   spec <- openid_plan_spec(manifest, profile)
   context <- list(
-    schema_version = 2L,
+    schema_version = 3L,
     run_id = "run",
     attempt_id = "attempt",
     checkout_revision = paste(rep("a", 40), collapse = ""),
@@ -77,7 +77,95 @@ evidence_fixture <- function(profile = "smoke") {
       driver_failure_control_passed = TRUE
     )
   )
-  list(manifest = manifest, context = context, report = report)
+  evidence_with_transport(list(
+    manifest = manifest,
+    context = context,
+    report = report
+  ))
+}
+
+evidence_with_transport <- function(
+  f,
+  backend = f[["context"]][["transport"]]
+) {
+  f[["context"]][["transport"]] <- f[["report"]][["transport"]] <- backend
+  async <- !identical(backend, "sync")
+  types <- c(
+    "audit_token_exchange",
+    "audit_userinfo",
+    "audit_login_success",
+    "audit_login_failed",
+    "audit_callback_validation_success",
+    "audit_token_refresh",
+    "audit_session_cleared"
+  )
+  decorate <- function(app, discovery) {
+    for (name in setdiff(types, names(app[["operations"]]))) {
+      app[["operations"]][[name]] <- 0L
+    }
+    main <- app[["operations"]]
+    worker <- setNames(as.list(integer(length(types))), types)
+    if (async) {
+      for (name in c(
+        "audit_token_exchange",
+        "audit_userinfo",
+        "audit_token_refresh"
+      )) {
+        worker[[name]] <- main[[name]]
+        main[[name]] <- 0L
+      }
+    }
+    active <- async &&
+      !discovery &&
+      (any(unlist(worker) > 0L) || length(app[["error_classes"]]) > 0L)
+    app[["transport"]] <- list(
+      backend = backend,
+      backend_verified = TRUE,
+      app_pid = 100L,
+      cache_scope = if (async) "serialized_per_dispatch" else "main_process",
+      probes = if (!async) {
+        list()
+      } else {
+        lapply(200:201, function(pid) {
+          list(
+            pid = pid,
+            package_version = f[["context"]][["package_version"]],
+            package_matches = TRUE,
+            ca_matches = TRUE,
+            tls_verified = TRUE,
+            hostname_rejected = TRUE
+          )
+        })
+      },
+      events_verified = TRUE,
+      worker_pids = if (active) list(200L) else list(),
+      main_operations = main,
+      worker_operations = worker,
+      worker_validation_errors = as.integer(
+        active && length(app[["error_classes"]]) > 0L
+      )
+    )
+    app
+  }
+  for (i in seq_along(f[["report"]][["results"]])) {
+    row <- f[["report"]][["results"]][[i]]
+    discovery <- identical(row[["action"]], "discovery")
+    if (is.null(row[["initial"]])) {
+      initial <- row[["app"]]
+      initial[["operations"]][] <- 0L
+      initial[["error_classes"]] <- list()
+      row[["initial"]] <- initial
+    }
+    for (name in c("app", "initial", "before_refresh")) {
+      if (!is.null(row[[name]])) row[[name]] <- decorate(row[[name]], discovery)
+    }
+    for (name in c("steps", "between_logins")) {
+      row[[name]] <- lapply(row[[name]], decorate, discovery = discovery)
+    }
+    row[["worker_cleanup_verified"]] <- TRUE
+    f[["report"]][["results"]][[i]] <- row
+  }
+  f
 }
 
 refresh_fixture <- function() {
@@ -158,8 +246,184 @@ refresh_fixture <- function() {
     row[["app"]] <- after
     f[["report"]][["results"]][[i]] <- row
   }
-  f
+  evidence_with_transport(f)
 }
+
+testthat::test_that("transport evidence distinguishes sync, mirai and future workers", {
+  for (backend in c("sync", "mirai", "future")) {
+    for (f in list(evidence_fixture(), refresh_fixture())) {
+      f <- evidence_with_transport(f, backend)
+      testthat::expect_true(openid_check_report(
+        f[["report"]],
+        f[["context"]],
+        f[["manifest"]]
+      )[["gate_passed"]])
+    }
+  }
+  for (profile in c("basic", "form-post")) {
+    f <- evidence_with_transport(evidence_fixture(profile), "future")
+    testthat::expect_false(openid_check_report(
+      f[["report"]],
+      f[["context"]],
+      f[["manifest"]]
+    )[["gate_passed"]])
+  }
+})
+
+testthat::test_that("async transport needs two verified workers and real protocol work", {
+  for (backend in c("mirai", "future")) {
+    f <- evidence_with_transport(evidence_fixture(), backend)
+    for (change in list(
+      list(name = "backend", value = "sync"),
+      list(name = "backend_verified", value = FALSE),
+      list(name = "events_verified", value = FALSE),
+      list(name = "app_pid", value = 200L),
+      list(name = "worker_pids", value = list()),
+      list(name = "worker_pids", value = list(999L)),
+      list(name = "worker_pids", value = list(100L)),
+      list(name = "probes", value = list()),
+      list(name = "cache_scope", value = "main_process")
+    )) {
+      report <- f[["report"]]
+      report[["results"]][[1L]][["app"]][["transport"]][[change[[
+        "name"
+      ]]]] <- change[["value"]]
+      testthat::expect_false(openid_check_report(
+        report,
+        f[["context"]],
+        f[["manifest"]]
+      )[["gate_passed"]])
+    }
+    for (name in c(
+      "package_version",
+      "package_matches",
+      "ca_matches",
+      "tls_verified",
+      "hostname_rejected",
+      "pid"
+    )) {
+      report <- f[["report"]]
+      value <- report[["results"]][[1L]][["app"]][["transport"]][["probes"]][[
+        1L
+      ]][[name]]
+      report[["results"]][[1L]][["app"]][["transport"]][["probes"]][[1L]][[
+        name
+      ]] <- if (is.logical(value)) {
+        FALSE
+      } else if (is.numeric(value)) {
+        100L
+      } else {
+        "old-version"
+      }
+      # Keep the same bootstrap checkpoint so the individual proof must fail.
+      report[["results"]][[1L]][["initial"]][["transport"]][[
+        "probes"
+      ]] <- report[["results"]][[1L]][["app"]][["transport"]][["probes"]]
+      testthat::expect_false(openid_check_report(
+        report,
+        f[["context"]],
+        f[["manifest"]]
+      )[["gate_passed"]])
+    }
+    report <- f[["report"]]
+    app <- report[["results"]][[1L]][["app"]]
+    app[["transport"]][["main_operations"]] <- app[["operations"]]
+    app[["transport"]][["worker_operations"]][] <- 0L
+    report[["results"]][[1L]][["app"]] <- app
+    testthat::expect_false(openid_check_report(
+      report,
+      f[["context"]],
+      f[["manifest"]]
+    )[["gate_passed"]])
+    report <- f[["report"]]
+    report[["results"]][[2L]][["app"]][["transport"]][[
+      "worker_validation_errors"
+    ]] <- 0L
+    testthat::expect_false(openid_check_report(
+      report,
+      f[["context"]],
+      f[["manifest"]]
+    )[["gate_passed"]])
+    report <- f[["report"]]
+    report[["results"]][[1L]][["worker_cleanup_verified"]] <- FALSE
+    testthat::expect_false(openid_check_report(
+      report,
+      f[["context"]],
+      f[["manifest"]]
+    )[["gate_passed"]])
+  }
+})
+
+testthat::test_that("sync results cannot hide worker execution or bootstrap probes", {
+  f <- evidence_fixture()
+  for (name in c("worker_pids", "probes")) {
+    report <- f[["report"]]
+    report[["results"]][[1L]][["app"]][["transport"]][[name]] <- list(200L)
+    testthat::expect_false(openid_check_report(
+      report,
+      f[["context"]],
+      f[["manifest"]]
+    )[["gate_passed"]])
+  }
+})
+
+testthat::test_that("cross-process audit records contain only allowlisted metadata", {
+  fixture <- new.env(parent = baseenv())
+  sys.source("fixture-transport.R", fixture)
+  directory <- withr::local_tempdir()
+  withr::local_envvar(CURL_CA_BUNDLE = "private-ca-path")
+  package <- normalizePath(
+    getNamespaceInfo(asNamespace("jsonlite"), "path"),
+    winslash = "/"
+  )
+  hook <- fixture[["openid_fixture_hook"]](
+    directory,
+    "run",
+    package,
+    "private-ca-path",
+    package_name = "jsonlite"
+  )
+  hook(list(
+    type = "audit_token_exchange",
+    issuer = "private-issuer",
+    message = "private-error",
+    token = "private-token",
+    client_secret = "private-secret"
+  ))
+  hook(list(
+    type = "audit_error",
+    error_class = "shinyOAuth_id_token_error",
+    claim = "sub",
+    subject = "private-subject",
+    reason = "private-reason",
+    message = "private-error"
+  ))
+  files <- list.files(directory, full.names = TRUE)
+  testthat::expect_length(files, 2L)
+  encoded <- paste(
+    vapply(
+      files,
+      function(path) paste(readLines(path, warn = FALSE), collapse = ""),
+      character(1)
+    ),
+    collapse = ""
+  )
+  testthat::expect_false(grepl("private-", encoded, fixed = TRUE))
+  observed <- fixture[["openid_fixture_audit"]](
+    directory,
+    "run",
+    as.character(utils::packageVersion("jsonlite")),
+    list()
+  )
+  testthat::expect_identical(observed[["counts"]][["audit_token_exchange"]], 1L)
+  testthat::expect_identical(observed[["claims"]], list("sub"))
+  testthat::expect_identical(
+    observed[["errors"]],
+    list("shinyOAuth_id_token_error")
+  )
+  testthat::expect_true(observed[["transport"]][["events_verified"]])
+  testthat::expect_length(observed[["transport"]][["worker_pids"]], 0L)
+})
 
 testthat::test_that("refresh coverage requires all three pinned modules and full runtime variants", {
   f <- refresh_fixture()
@@ -344,7 +608,7 @@ form_post_fixture <- function() {
     row[["app"]][["operations"]][["audit_callback_validation_success"]] <- 1L
     f[["report"]][["results"]][[i]] <- row
   }
-  f
+  evidence_with_transport(f)
 }
 
 testthat::test_that("Form Post coverage requires all pinned modules and the response-mode variant", {
@@ -554,7 +818,7 @@ configuration_fixture <- function() {
     row[["app"]] <- app
     f[["report"]][["results"]][[i]] <- row
   }
-  f
+  evidence_with_transport(f)
 }
 
 testthat::test_that("Configuration coverage explicitly includes both upstream-ignored rotation modules", {

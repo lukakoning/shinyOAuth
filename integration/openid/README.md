@@ -148,22 +148,74 @@ interrupted module is never counted as a conformance pass. A passing report also
 requires this control and verified cleanup of the apps, browsers, TLS proxy and
 owned Docker resources.
 
+Run the core selections through actual mirai workers with `--transport mirai`:
+
+```sh
+Rscript integration/openid/run-tests.R --profile basic --transport mirai
+Rscript integration/openid/run-tests.R --profile config --transport mirai
+Rscript integration/openid/run-tests.R --profile form-post --transport mirai
+Rscript integration/openid/run-tests.R --profile refresh --transport mirai
+```
+
+These runs also need `mirai`, `promises`, `later` and `ps`. Each app starts two
+private daemons. Both must load this checkout's private namespace, accept a
+verified HTTPS request using the temporary CA, and reject a deliberately wrong
+hostname. Every protocol audit event records its process ID and confirms the
+package installation and CA setting. The gate requires token/UserInfo work and
+typed validation failures in those verified workers. Setting `async = TRUE`
+without worker execution cannot pass. Refresh awaits its promise before
+checking identity, credential export and the module's failure policy.
+
+Future multisession has smaller smoke and refresh parity selections:
+
+```sh
+Rscript integration/openid/run-tests.R --profile smoke --transport future
+Rscript integration/openid/run-tests.R --profile refresh --transport future
+```
+
+The future fixture disables mirai daemons, starts two multisession workers and
+checks the selected backend. A barrier makes both workers participate in the
+package/TLS probes. Other future profile selections fail explicitly.
+
+Workers send only allowlisted audit metadata through atomic JSON files in a
+private per-app directory. Snapshots aggregate main-process and worker counters
+without serializing a Shiny session into the audit hook. No raw audit event,
+token, identity, error message, file path or CA value enters those files.
+Only the sanitized `evidence.json` report is uploaded. App termination verifies
+that its child processes and the specifically observed worker PIDs stop.
+Linux apps first receive an interrupt so their exit handlers can stop the
+worker pools; forced termination remains a fallback. A driver running inside a
+container needs an init process (for example, Docker's `--init`) to reap exited
+workers. Zombie entries fail the cleanup check. Chrome's close-command promise
+is observed, and its process must stop even if it never acknowledges the command.
+Every browser gets a separate temporary profile and a 30-second startup budget.
+
+Pools stay private to each module case and are reused within that case. A
+single shared pool across different issuers and the additional client-auth
+variants remain C09 follow-ups. Async Configuration runs preserve the main
+app's cache template; workers receive serialized copies per dispatch. Reports
+record that scope. The suite's no-store policy still prevents a warm-cache
+claim, and Configuration coverage remains incomplete in both transports.
+
 The [workflow](../../.github/workflows/openid-conformance.yml) runs preflight,
 API checks and smoke on pull requests affecting the package or this harness.
 Manual dispatch offers `smoke`, `basic`, `config`, `form-post` or `refresh`;
 larger selections remain manual while GitHub runner timings are unmeasured.
-It needs no external account or provider
-credentials and uploads only explicit sanitized report paths.
+Manual transport choices are `sync`, `mirai` and the limited `future` parity
+selection. Pull requests keep synchronous smoke. The workflow needs no external
+account or provider credentials and uploads only explicit sanitized report paths.
 
 The [profile manifest](profiles.json) freezes each plan's variants and module
-selections. Manifest and client-evidence schema versions are now 2; prior reports
+selections. The manifest remains schema 2; client evidence is now schema 3,
+which requires worker/transport and process-cleanup evidence. Prior reports
 retain their original version. The evidence validator binds each result to its
 run, attempt, checkout, source revision, plan, instance and variants, then
 requires both a completed allowed suite verdict and the expected app outcome.
-Missing results, app failures, warnings, unexpected skips and timeouts fail.
+Missing results, app failures, suite warnings, unexpected skips and timeouts fail.
+The evidence regression checks also require zero warnings and skips.
 A passing smoke selection keeps `coverage_complete = false`; a passing Basic
 selection reports `coverage_complete = true` for the pinned Basic plan with
-static registration, synchronous code flow, query callbacks and
+static registration, the selected sync/mirai transport, code flow, query callbacks and
 `client_secret_basic`. This is local test evidence. OpenID certification needs
 its separate submission and review, and other profiles remain pending.
 Configuration's cache limitation keeps its coverage flag false even if the
@@ -233,5 +285,9 @@ platforms, including its POST/303/binding evidence. Its module loops took about
 All three refresh modules pass on both platforms, with the original login,
 identity continuity and credential-retirement checks above. Their module loops
 took about 26 seconds on Windows and 23 seconds on Linux.
+Mirai runs also pass Basic, Configuration, Form Post Basic and refresh on both
+platforms, with worker/package/TLS and process-cleanup evidence. Future smoke
+and refresh parity selections pass on both as well. The implementation plan
+records their runtimes and report paths. Configuration retains its cache gap.
 The [implementation plan](../../.github/protocol-quality-implementation-plan.md)
 records execution evidence and the remaining profile and CI work.

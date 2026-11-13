@@ -2,7 +2,7 @@
 
 Current stage: all fourteen modules in the pinned Basic RP plan execute in a
 real browser with matching app evidence. The variant uses static registration,
-code flow and `client_secret_basic`, synchronous transport and query callbacks.
+code flow and `client_secret_basic`, the selected sync/mirai transport and query callbacks.
 Thirteen modules finish `PASSED`. The unsigned-token module finishes `SKIPPED`
 after the app rejects `alg=none`, as its documented optional behavior permits.
 For this exact plan/variant, `basic` reports `coverage_complete = true`; the
@@ -35,8 +35,9 @@ neither interruption counts as a client test pass.
 | OIDC Core code flow, ID token and UserInfo validation | Unit tests, Keycloak browser/code flows, complete pinned Basic RP module selection (C05) | Basic implemented for the variant above; further profiles below |
 | Discovery, exact issuer and signing-key changes | Discovery/JWKS tests, Keycloak rotation, and six Configuration module outcomes (C06) | Warm-cache refresh remains a C06 follow-up; pinned suite JWKS is `no-store` |
 | Form POST callback and browser binding | Real browser and retained-connection tests; complete pinned Form Post Basic plan on the same-site local rig (C07) | Form Post Basic implemented; cross-site attack cases stay in their separate layer |
-| Refresh identity continuity | Refresh validation, retained-connection tests and all three pinned client refresh modules (C08) | Refresh implemented for synchronous code flow with HTTP Basic authentication |
-| Public clients, other auth methods and async transport | Keycloak and worker tests | Applicable extended-plan variants; C09 |
+| Refresh identity continuity | Refresh validation, retained-connection tests and all three pinned client refresh modules (C08, extended in C09) | Code flow with HTTP Basic authentication in sync/mirai, plus future parity |
+| Worker transport | Package worker tests; verified mirai transport for the core selections and smaller future smoke/refresh parity selections (C09 first slice) | Shared-worker issuer isolation remains a C09 follow-up |
+| Public clients and other auth methods | Keycloak and worker tests | Applicable extended-plan variants; C09 follow-up |
 | PAR, DPoP and mTLS | Keycloak and independent Python exchanges | FAPI 2.0 Security Profile; C10-C11 |
 | JAR/JARM combinations | Independent Python fixture and Keycloak capability tests | FAPI Message Signing; C12; second full provider C13-C14 |
 | SMART App Launch | SMART browser fixtures and corrected Inferno simulator | Existing Inferno gate remains separate |
@@ -129,6 +130,23 @@ digests establish continuity without exposing keys, tokens or identity values.
 The remaining C06 acceptance case needs cacheable independent-provider evidence;
 the local HTTP-cache, invalidation, signature and refresh-throttle tests supply
 separate package-owned coverage meanwhile.
+
+Core selections also support actual mirai transport, while future multisession
+is limited to smoke and refresh parity selections. Each module case owns a
+fresh two-worker pool. Both workers must prove the private package namespace
+and verified TLS, including wrong-hostname rejection, before the app starts.
+Protocol audit records then identify the worker that performed token/UserInfo
+work or rejected the invalid response. Parent-only work cannot satisfy an
+async selection. The gate also checks main/worker counter totals and verifies
+that observed workers stop during teardown.
+
+The package/TLS probes call only `/api/server` and do not earn client protocol
+coverage. Discovery-only Configuration cases still run setup in the main
+process and must have no worker protocol events. Other Configuration cases
+use the worker path, with serialized cache copies and the existing no-store
+coverage limitation. The per-case pool prevents sharing credentials or hooks
+between unrelated fixtures. A shared-pool, cross-issuer scenario and the
+additional client-authentication variants remain outstanding C09 work.
 
 The `refresh` selection uses the pinned
 [client refresh plan](https://gitlab.com/openid/conformance-suite/-/blob/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/openid/client/OIDCCClientRefreshTokenProfileTestPlan.java).

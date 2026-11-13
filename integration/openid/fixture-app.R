@@ -27,21 +27,6 @@ openid_fixture_app <- function(config) {
     stop("Invalid private OpenID fixture configuration")
   }
   audit <- new.env(parent = emptyenv())
-  audit[["counts"]] <- setNames(
-    integer(7),
-    c(
-      "audit_token_exchange",
-      "audit_userinfo",
-      "audit_login_success",
-      "audit_login_failed",
-      "audit_callback_validation_success",
-      "audit_token_refresh",
-      "audit_session_cleared"
-    )
-  )
-  audit[["errors"]] <- character()
-  audit[["claims"]] <- character()
-  audit[["reasons"]] <- character()
   audit[["sessions"]] <- 0L
   audit[["form_post"]] <- NULL
   audit[["cache_updates"]] <- 0L
@@ -73,57 +58,12 @@ openid_fixture_app <- function(config) {
   }
   options(
     shinyOAuth.expose_error_body = FALSE,
-    shinyOAuth.audit_hook = function(event) {
-      type <- event[["type"]]
-      if (
-        is.character(type) &&
-          length(type) == 1L &&
-          type %in% names(audit[["counts"]])
-      ) {
-        audit[["counts"]][[type]] <- audit[["counts"]][[type]] + 1L
-      }
-      classes <- intersect(
-        event[["error_class"]],
-        c(
-          "shinyOAuth_id_token_error",
-          "shinyOAuth_userinfo_error",
-          "shinyOAuth_userinfo_mismatch",
-          "shinyOAuth_state_error",
-          "shinyOAuth_token_error",
-          "shinyOAuth_callback_error",
-          "shinyOAuth_config_error"
-        )
-      )
-      audit[["errors"]] <- unique(c(audit[["errors"]], classes))
-      audit[["claims"]] <- unique(c(
-        audit[["claims"]],
-        intersect(
-          event[["claim"]],
-          c(
-            "iss",
-            "aud",
-            "sub",
-            "nonce",
-            "exp",
-            "iat",
-            "azp",
-            "auth_time",
-            "at_hash"
-          )
-        )
-      ))
-      audit[["reasons"]] <- unique(c(
-        audit[["reasons"]],
-        intersect(
-          event[["reason"]],
-          c(
-            "disallowed_algorithm",
-            "invalid_signature",
-            "discovery_issuer_mismatch"
-          )
-        )
-      ))
-    }
+    shinyOAuth.audit_hook = openid_fixture_hook(
+      config[["audit_directory"]],
+      config[["run_id"]],
+      config[["package_path"]],
+      config[["ca"]]
+    )
   )
   provider <- tryCatch(
     shinyOAuth::oauth_provider_oidc_discover(
@@ -145,6 +85,26 @@ openid_fixture_app <- function(config) {
     session_number = 0L,
     refresh = NULL
   ) {
+    observed <- openid_fixture_audit(
+      config[["audit_directory"]],
+      config[["run_id"]],
+      as.character(utils::packageVersion("shinyOAuth")),
+      config[["worker_probes"]]
+    )
+    observed[["transport"]][["backend"]] <- config[["transport"]]
+    observed[["transport"]][["backend_verified"]] <- config[[
+      "backend_verified"
+    ]]
+    observed[["transport"]][["cache_scope"]] <- if (
+      identical(config[["transport"]], "sync")
+    ) {
+      "main_process"
+    } else {
+      "serialized_per_dispatch"
+    }
+    for (name in c("counts", "errors", "claims", "reasons")) {
+      audit[[name]] <- observed[[name]]
+    }
     allowed_errors <- c(
       "token_exchange_error",
       "token_refresh_error",
@@ -160,6 +120,7 @@ openid_fixture_app <- function(config) {
     jsonlite::toJSON(
       list(
         run_id = config[["run_id"]],
+        transport = observed[["transport"]],
         ready = !is.null(provider),
         app_instance = app_instance,
         cache_instance = cache_instance,
@@ -329,7 +290,8 @@ openid_fixture_app <- function(config) {
     auth <- shinyOAuth::oauth_module_server(
       "auth",
       client,
-      auto_redirect = FALSE
+      auto_redirect = FALSE,
+      async = !identical(config[["transport"]], "sync")
     )
     refresh <- NULL
     shiny::observeEvent(
@@ -356,42 +318,50 @@ openid_fixture_app <- function(config) {
         original_id <- token@id_token
         issuer <- token@id_token_claims[["iss"]]
         subject <- token@id_token_claims[["sub"]]
-        failure <- tryCatch(
-          {
-            connection[["refresh"]]()
-            NULL
-          },
-          error = identity
-        )
-        current <- auth[["token"]]
-        current_connection <- auth[["connection"]]()
-        exported <- tryCatch(
-          connection[["access_token"]](min_valid_for_seconds = 0),
-          error = identity
-        )
-        accepted <- is.null(failure) && !is.null(current)
-        refresh <<- list(
-          attempts = attempts,
-          done = TRUE,
-          result = if (is.null(failure)) "succeeded" else "rejected",
-          connection_same = identical(connection, current_connection),
-          connection_present = !is.null(current_connection),
-          old_connection_usable = isTRUE(connection[["is_usable"]]()),
-          access_changed = accepted && !identical(access, current@access_token),
-          original_id_token_retained = accepted &&
-            identical(original_id, current@original_id_token),
-          issuer_unchanged = accepted &&
-            identical(issuer, current@id_token_claims[["iss"]]),
-          subject_unchanged = accepted &&
-            identical(subject, current@id_token_claims[["sub"]]),
-          exported_current = accepted &&
-            identical(exported, current@access_token),
-          export_blocked = inherits(exported, "shinyOAuth_access_error"),
-          refresh_error_is_access_error = inherits(
-            failure,
-            "shinyOAuth_access_error"
+        settle <- function(failure = NULL) {
+          current <- auth[["token"]]
+          current_connection <- auth[["connection"]]()
+          exported <- tryCatch(
+            connection[["access_token"]](min_valid_for_seconds = 0),
+            error = identity
           )
-        )
+          accepted <- is.null(failure) && !is.null(current)
+          refresh <<- list(
+            attempts = attempts,
+            done = TRUE,
+            result = if (is.null(failure)) "succeeded" else "rejected",
+            connection_same = identical(connection, current_connection),
+            connection_present = !is.null(current_connection),
+            old_connection_usable = isTRUE(connection[["is_usable"]]()),
+            access_changed = accepted &&
+              !identical(access, current@access_token),
+            original_id_token_retained = accepted &&
+              identical(original_id, current@original_id_token),
+            issuer_unchanged = accepted &&
+              identical(issuer, current@id_token_claims[["iss"]]),
+            subject_unchanged = accepted &&
+              identical(subject, current@id_token_claims[["sub"]]),
+            exported_current = accepted &&
+              identical(exported, current@access_token),
+            export_blocked = inherits(exported, "shinyOAuth_access_error"),
+            refresh_error_is_access_error = inherits(
+              failure,
+              "shinyOAuth_access_error"
+            )
+          )
+          invisible(NULL)
+        }
+        result <- tryCatch(connection[["refresh"]](), error = identity)
+        if (inherits(result, "promise")) {
+          promises::then(
+            result,
+            onFulfilled = function(...) settle(),
+            onRejected = function(error) settle(error)
+          )
+        } else {
+          settle(if (inherits(result, "error")) result else NULL)
+        }
+        invisible(NULL)
       },
       ignoreInit = TRUE
     )

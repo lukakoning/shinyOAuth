@@ -401,10 +401,124 @@ openid_form_post_matches <- function(result, context) {
     )
 }
 
+openid_transport_matches <- function(result, expectation, context) {
+  transport <- context[["transport"]]
+  if (
+    !transport %in% c("sync", "mirai", "future") ||
+      (identical(transport, "future") &&
+        !context[["profile"]] %in% c("smoke", "refresh"))
+  ) {
+    return(FALSE)
+  }
+  evidence <- result[["app"]][["transport"]]
+  initial <- result[["initial"]][["transport"]]
+  async <- !identical(transport, "sync")
+  if (
+    !identical(evidence[["backend"]], transport) ||
+      !isTRUE(evidence[["backend_verified"]]) ||
+      !isTRUE(evidence[["events_verified"]]) ||
+      !isTRUE(result[["worker_cleanup_verified"]]) ||
+      !openid_count(evidence[["app_pid"]], 1L) ||
+      !identical(evidence[["app_pid"]], initial[["app_pid"]]) ||
+      !identical(evidence[["probes"]], initial[["probes"]]) ||
+      !identical(
+        evidence[["cache_scope"]],
+        if (async) "serialized_per_dispatch" else "main_process"
+      )
+  ) {
+    return(FALSE)
+  }
+  for (name in c(
+    "audit_token_exchange",
+    "audit_userinfo",
+    "audit_login_success",
+    "audit_login_failed",
+    "audit_callback_validation_success",
+    "audit_token_refresh",
+    "audit_session_cleared"
+  )) {
+    main <- evidence[["main_operations"]][[name]]
+    worker <- evidence[["worker_operations"]][[name]]
+    total <- result[["app"]][["operations"]][[name]]
+    if (
+      !openid_count(main) ||
+        !openid_count(worker) ||
+        !openid_count(total) ||
+        main + worker != total
+    ) {
+      return(FALSE)
+    }
+    if (
+      (!async && worker != 0L) ||
+        (async &&
+          name %in%
+            c(
+              "audit_token_exchange",
+              "audit_userinfo",
+              "audit_token_refresh"
+            ) &&
+          main != 0L)
+    ) {
+      return(FALSE)
+    }
+  }
+  pids <- unlist(evidence[["worker_pids"]])
+  probes <- evidence[["probes"]]
+  if (!async) {
+    return(length(pids) == 0L && length(probes) == 0L)
+  }
+  if (
+    length(probes) != 2L ||
+      !all(vapply(
+        probes,
+        function(probe) {
+          openid_count(probe[["pid"]], 1L) &&
+            probe[["pid"]] != evidence[["app_pid"]] &&
+            identical(
+              probe[["package_version"]],
+              context[["package_version"]]
+            ) &&
+            all(vapply(
+              c(
+                "package_matches",
+                "ca_matches",
+                "tls_verified",
+                "hostname_rejected"
+              ),
+              function(name) isTRUE(probe[[name]]),
+              logical(1)
+            ))
+        },
+        logical(1)
+      ))
+  ) {
+    return(FALSE)
+  }
+  probe_pids <- vapply(probes, function(probe) probe[["pid"]], numeric(1))
+  if (
+    anyDuplicated(probe_pids) ||
+      anyDuplicated(pids) ||
+      !all(pids %in% probe_pids)
+  ) {
+    return(FALSE)
+  }
+  if (identical(expectation[["action"]], "discovery")) {
+    return(length(pids) == 0L)
+  }
+  if (!length(pids)) {
+    return(FALSE)
+  }
+  if (expectation[["outcome"]] %in% c("rejected", "refresh_rejected")) {
+    return(openid_count(evidence[["worker_validation_errors"]], 1L))
+  }
+  openid_count(evidence[["worker_operations"]][["audit_token_exchange"]], 1L) &&
+    openid_count(evidence[["worker_operations"]][["audit_userinfo"]], 1L)
+}
+
 openid_check_report <- function(report, context, manifest) {
   tryCatch(
     {
-      if (!identical(report[["schema_version"]], 2L)) {
+      if (!identical(report[["schema_version"]], 3L)) {
         stop("Unsupported evidence schema")
       }
       for (name in c(
@@ -559,6 +673,11 @@ openid_check_report <- function(report, context, manifest) {
         ) {
           stop("Missing real-browser Form Post, bridge or binding evidence")
         }
+        if (!openid_transport_matches(result, expectation, context)) {
+          stop(
+            "Missing verified transport, worker execution or cleanup evidence"
+          )
+        }
         if (
           if (refreshing) {
             !openid_refresh_matches(
@@ -628,8 +747,18 @@ openid_report_context <- function(root, profile, transport, package_version) {
     trimws(processx::run("git", args, wd = root)[["stdout"]])
   }
   random <- function() paste(format(openssl::rand_bytes(12)), collapse = "")
+  dependencies <- c(
+    "httr2",
+    "jsonlite",
+    "openssl",
+    "processx",
+    "callr",
+    "chromote",
+    "ps",
+    if (!identical(transport, "sync")) c(transport, "promises", "later")
+  )
   list(
-    schema_version = 2L,
+    schema_version = 3L,
     status = "failed",
     run_id = random(),
     attempt_id = random(),
@@ -642,10 +771,10 @@ openid_report_context <- function(root, profile, transport, package_version) {
     r_version = as.character(getRversion()),
     dependency_versions = setNames(
       lapply(
-        c("httr2", "jsonlite", "openssl", "processx", "callr", "chromote"),
+        dependencies,
         function(package) as.character(utils::packageVersion(package))
       ),
-      c("httr2", "jsonlite", "openssl", "processx", "callr", "chromote")
+      dependencies
     ),
     results = list(),
     cleanup_verified = FALSE,
