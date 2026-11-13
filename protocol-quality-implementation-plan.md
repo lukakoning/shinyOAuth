@@ -12,6 +12,8 @@ extends the runner to all fourteen Basic RP modules for the pinned
 static-registration, synchronous code-flow variant. C06 now executes all
 six Configuration modules, with cached-key refresh coverage still
 incomplete because the pinned suite’s JWKS responses prohibit storage.
+C07 covers the fourteen-module Form Post Basic plan in Chrome on the
+local cross-origin, same-site deployment.
 
 Execution record (2026-11-12): C00 is `d0b62ff`; C01 is `4dee03d`. C01
 validated the exact server image/source correspondence, required plans,
@@ -112,14 +114,15 @@ evidence, the app-stop control passed, and owned-resource cleanup
 completed. R lint, formatting, actionlint and patch whitespace checks
 pass.
 
-C06 execution: `65fb2cb` adds a safe `discovery_issuer_mismatch` audit
-reason and the `iss` claim label without changing validation. Discovery
-and neighboring JWKS tests passed 234 assertions with no failures,
-warnings or skips. The runner now resolves separate Basic/Configuration
-plans, verifies the exact six-module Configuration list and schedules
-both upstream-ignored rotation modules. Discovery-only results earn no
-login credit. A failed discovery setup must identify the expected issuer
-check through typed audit evidence.
+C06 execution: `efb54a5` adds its runner coverage; `65fb2cb` adds a safe
+`discovery_issuer_mismatch` audit reason and the `iss` claim label
+without changing validation. Discovery and neighboring JWKS tests passed
+234 assertions with no failures, warnings or skips. The runner now
+resolves separate Basic/Configuration plans, verifies the exact
+six-module Configuration list and schedules both upstream-ignored
+rotation modules. Discovery-only results earn no login credit. A failed
+discovery setup must identify the expected issuer check through typed
+audit evidence.
 
 The first live Configuration run completed all six suite modules, but
 its local gate rejected the cache evidence. A separate module confirmed
@@ -169,6 +172,46 @@ configuration/version that permits caching. Preserve the current
 no-store runs as their own evidence. C07’s form-post work can proceed
 independently; the first OIDC milestone retains this C06 coverage gap
 until that follow-up passes.
+
+C07 execution (2026-11-13): the pinned Form Post Basic plan resolves to
+the fourteen Basic modules with its fixed `response_mode=form_post`
+variant. The runner installs the normal Form Post wrapper and records
+sanitized Chrome navigation evidence separately from incoming POST
+metadata. Every case must show GET authorization, a form-encoded
+callback POST from the expected provider Origin, the 303 bridge
+redirect, Secure `SameSite=Strict` binding-cookie metadata, completed
+callback validation and final callback-query cleanup. No raw
+request/response bodies, callback queries or cookie values are retained.
+
+The full profile passes on Windows (R 4.5.1, Chrome 157) and non-root
+Linux (R 4.5.0, Chromium 156): thirteen `FINISHED/PASSED` verdicts and
+the documented unsigned-token `FINISHED/SKIPPED`, with matching app
+outcomes and verified cleanup. Module loops took 103.27 and 81.54
+seconds. Retained sanitized reports under
+`integration/openid/.artifacts/` are
+`form-post-20261113-205121-e013f0e3cb20/evidence.json` (Windows) and
+`form-post-20261113-195207-4bded3721513/evidence.json` (Linux). Their
+actual provider/app origins were `https://localhost:59182` /
+`https://localhost:60189` and `https://localhost:59345` /
+`https://localhost:41039`, respectively. Chrome observed `same-site` on
+every callback, so `cross_origin = true` and `cross_site = false`. This
+scope does not replace the separate cross-site attack fixtures.
+
+The evidence validator passes 208 assertions, including rejection of
+missing POST/bridge/binding observations, stale origins, wrong
+transports and incorrect site labels. Existing Form Post response-mode,
+module-transport and candidate storage regressions passed 532 assertions
+with no failures, warnings or skips. The query-callback smoke selection
+also passed again on Windows, with its partial-coverage flag and cleanup
+intact. Its report is
+`integration/openid/.artifacts/smoke-20261113-205453-266a10a4126f/evidence.json`;
+the module loop took 22.91 seconds. R lint, formatting, actionlint and
+patch whitespace checks pass. Manual workflow dispatch now offers
+`form-post`; pull requests continue to run smoke. The upstream Form Post
+Basic plan does not select the separate
+`oidcc-client-test-form-post-error` module; comprehensive-plan coverage
+remains a C09 task. C08 refresh identity continuity is next. The C06
+warm-cache gap remains open.
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
