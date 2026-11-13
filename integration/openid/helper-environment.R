@@ -216,8 +216,8 @@ openid_start <- function(root, output, .env = parent.frame()) {
     openssl::write_der(openssl::read_pubkey(pubkey))
   )))
   ports <- unique(c(
-    httpuv::randomPort(min = 49152L, max = 65535L),
-    httpuv::randomPort(min = 49152L, max = 65535L)
+    httpuv::randomPort(min = 20000L, max = 45000L),
+    httpuv::randomPort(min = 20000L, max = 45000L)
   ))
   if (length(ports) != 2L) {
     stop("Could not allocate distinct OpenID ports")
@@ -397,6 +397,18 @@ openid_api <- function(
 }
 
 openid_browser <- function(spki, .env = parent.frame()) {
+  profile <- tempfile("shinyOAuth-openid-chrome-")
+  dir.create(profile)
+  profile <- normalizePath(profile, winslash = "/")
+  expected_prefix <- paste0(
+    normalizePath(tempdir(), winslash = "/"),
+    "/shinyOAuth-openid-chrome-"
+  )
+  if (!startsWith(profile, expected_prefix)) {
+    stop("Unexpected browser profile directory")
+  }
+  withr::defer(unlink(profile, recursive = TRUE), envir = .env)
+  withr::local_options(chromote.timeout = 30)
   browser <- chromote::Chromote[["new"]](
     browser = chromote::Chrome[["new"]](
       args = c(
@@ -404,6 +416,7 @@ openid_browser <- function(spki, .env = parent.frame()) {
         "--disable-gpu",
         "--no-sandbox",
         "--disable-dev-shm-usage",
+        paste0("--user-data-dir=", profile),
         paste0("--ignore-certificate-errors-spki-list=", spki)
       )
     )
@@ -415,16 +428,26 @@ openid_browser <- function(spki, .env = parent.frame()) {
 openid_close_browser <- function(browser) {
   process <- browser[["get_browser"]]()[["get_process"]]()
   if (process[["is_alive"]]()) {
-    browser[["close"]](wait = TRUE)
+    # Chrome can exit before acknowledging Browser.close. Observe its promise
+    # explicitly so that a late timeout cannot become an unhandled rejection.
+    closing <- browser[["Browser"]][["close"]](wait_ = FALSE)
+    promises::catch(closing, function(error) NULL)
     process[["wait"]](timeout = 5000)
     if (process[["is_alive"]]()) {
-      process[["kill"]]()
+      process[["kill_tree"]]()
       process[["wait"]](timeout = 5000)
     }
   }
   if (process[["is_alive"]]()) {
     stop("OpenID fixture browser did not stop")
   }
+  tryCatch(browser[["close"]](wait = TRUE), error = function(error) {
+    # Only an already-closing websocket is harmless after process termination.
+    if (!identical(conditionMessage(error), "invalid state")) {
+      stop(error)
+    }
+    invisible(NULL)
+  })
   invisible(NULL)
 }
 
