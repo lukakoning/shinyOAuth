@@ -121,6 +121,27 @@ Closing that gap needs a cacheable independent provider or a reviewed suite
 configuration/version change. The existing cache regression tests remain a
 separate layer of evidence.
 
+Run all three modules in the client refresh plan:
+
+```sh
+Rscript integration/openid/run-tests.R --profile refresh --transport sync
+```
+
+Each module first completes a normal login with validated ID token, UserInfo
+and a refresh grant. The driver then clicks Refresh in that same Shiny session.
+The fixture calls the public `auth$connection()$refresh()` method and consumes
+the resulting access token through `$access_token()`. Normal refresh must
+preserve the original ID token, issuer, subject and connection, replace the
+access token, and complete the library's required UserInfo request.
+
+Changed issuer and subject responses must produce the matching typed audit
+error and clear the session under the module's default failure policy. The
+retained connection must become unusable and refuse access-token export. No
+UserInfo request may follow either rejected refresh. Evidence records private
+value comparisons as booleans, operation counts and before/after checkpoints;
+it includes no identity or credential values. All three modules must finish
+`PASSED`. This upstream refresh plan is outside OpenID certification.
+
 Each run first stops a real app after clicking login and requires the driver to
 fail for that exact reason. This control uses a separate suite plan; its
 interrupted module is never counted as a conformance pass. A passing report also
@@ -129,8 +150,9 @@ owned Docker resources.
 
 The [workflow](../../.github/workflows/openid-conformance.yml) runs preflight,
 API checks and smoke on pull requests affecting the package or this harness.
-Manual dispatch offers `smoke`, `basic`, `config` or `form-post`; larger selections remain manual while
-GitHub runner timings are unmeasured. It needs no external account or provider
+Manual dispatch offers `smoke`, `basic`, `config`, `form-post` or `refresh`;
+larger selections remain manual while GitHub runner timings are unmeasured.
+It needs no external account or provider
 credentials and uploads only explicit sanitized report paths.
 
 The [profile manifest](profiles.json) freezes each plan's variants and module
@@ -208,5 +230,8 @@ and the documented unsigned-token `SKIPPED`. Their module loops took about
 Form Post Basic also passes all fourteen expected module outcomes on both
 platforms, including its POST/303/binding evidence. Its module loops took about
 103 seconds on Windows and 82 seconds on Linux.
+All three refresh modules pass on both platforms, with the original login,
+identity continuity and credential-retirement checks above. Their module loops
+took about 26 seconds on Windows and 23 seconds on Linux.
 The [implementation plan](../../.github/protocol-quality-implementation-plan.md)
 records execution evidence and the remaining profile and CI work.

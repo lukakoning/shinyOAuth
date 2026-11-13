@@ -3,6 +3,11 @@ openid_string <- function(value) {
 }
 
 openid_variant_key <- function(variant) {
+  # The pinned refresh plan has no forced per-module variants (JSON null).
+  # Runtime evidence still has to match the full, non-null plan variant.
+  if (is.null(variant)) {
+    return("null")
+  }
   if (
     !is.list(variant) ||
       is.null(names(variant)) ||
@@ -168,14 +173,15 @@ openid_suite_module <- function(stack, plan, name, .env = parent.frame()) {
   if (length(entry) != 1L) {
     stop("Module is absent or ambiguous in this plan")
   }
+  forced <- entry[[1L]][["variant"]]
+  query <- list(test = name, plan = plan[["id"]])
+  if (!is.null(forced)) {
+    query[["variant"]] <- openid_variant_key(forced)
+  }
   created <- openid_api(
     stack,
     "/api/runner",
-    query = list(
-      test = name,
-      plan = plan[["id"]],
-      variant = openid_variant_key(entry[[1L]][["variant"]])
-    ),
+    query = query,
     method = "POST",
     status = 201L
   )
@@ -192,7 +198,7 @@ openid_suite_module <- function(stack, plan, name, .env = parent.frame()) {
     plan_id = plan[["id"]],
     variant = utils::modifyList(
       plan[["spec"]][["plan_variant"]],
-      entry[[1L]][["variant"]]
+      as.list(forced)
     )
   )
   withr::defer(openid_suite_cancel(stack, module), envir = .env)

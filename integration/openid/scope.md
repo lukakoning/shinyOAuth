@@ -15,6 +15,11 @@ bridge, binding and URL-cleanup evidence. The deployment uses two HTTPS
 `localhost` ports; Chrome records it as cross-origin and same-site. This does
 not establish cross-site deployment coverage.
 
+All three modules in the pinned client refresh plan pass on Windows and Linux
+with the original login retained through refresh. Positive refresh preserves
+identity; changed issuer and subject responses clear the session and leave
+the retained connection unable to export credentials.
+
 The Configuration selection now exercises all six pinned modules. It separates
 discovery-only setup from authentication and explicitly runs both signing-key
 rotation modules. Configuration coverage remains partial: the suite forbids
@@ -30,7 +35,7 @@ neither interruption counts as a client test pass.
 | OIDC Core code flow, ID token and UserInfo validation | Unit tests, Keycloak browser/code flows, complete pinned Basic RP module selection (C05) | Basic implemented for the variant above; further profiles below |
 | Discovery, exact issuer and signing-key changes | Discovery/JWKS tests, Keycloak rotation, and six Configuration module outcomes (C06) | Warm-cache refresh remains a C06 follow-up; pinned suite JWKS is `no-store` |
 | Form POST callback and browser binding | Real browser and retained-connection tests; complete pinned Form Post Basic plan on the same-site local rig (C07) | Form Post Basic implemented; cross-site attack cases stay in their separate layer |
-| Refresh identity continuity | Refresh validation and retained-connection tests | OIDC client refresh plan; C08 |
+| Refresh identity continuity | Refresh validation, retained-connection tests and all three pinned client refresh modules (C08) | Refresh implemented for synchronous code flow with HTTP Basic authentication |
 | Public clients, other auth methods and async transport | Keycloak and worker tests | Applicable extended-plan variants; C09 |
 | PAR, DPoP and mTLS | Keycloak and independent Python exchanges | FAPI 2.0 Security Profile; C10-C11 |
 | JAR/JARM combinations | Independent Python fixture and Keycloak capability tests | FAPI Message Signing; C12; second full provider C13-C14 |
@@ -124,6 +129,36 @@ digests establish continuity without exposing keys, tokens or identity values.
 The remaining C06 acceptance case needs cacheable independent-provider evidence;
 the local HTTP-cache, invalidation, signature and refresh-throttle tests supply
 separate package-owned coverage meanwhile.
+
+The `refresh` selection uses the pinned
+[client refresh plan](https://gitlab.com/openid/conformance-suite/-/blob/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/openid/client/OIDCCClientRefreshTokenProfileTestPlan.java).
+It selects static registration, code flow, query callbacks, HTTP Basic client
+authentication and synchronous transport. The plan has no forced per-module
+variants; runtime results must match the full plan variant. Upstream marks
+this plan as non-certifiable.
+
+| Refresh module suffix (`oidcc-client-test` prefix) | Required app evidence | Suite verdict |
+| --- | --- | --- |
+| `-refresh-token` | Original validated login and refresh grant; public connection refresh succeeds, retains issuer/subject and original ID token, fetches UserInfo and exports the replacement access token | `PASSED` |
+| `-refresh-token-invalid-issuer` | Original validated login, then ID-token rejection naming `iss`; session cleared, old connection unusable and token export blocked, no further UserInfo | `PASSED` |
+| `-refresh-token-invalid-sub` | Original validated login, then ID-token rejection naming `sub`; same retirement checks, no further UserInfo | `PASSED` |
+
+These cases exercise OIDC Core 12.2 through the module's public
+`connection()$refresh()` API. Before and after checkpoints must retain the same
+app, cache object and callback session. Exactly one login and one explicit
+refresh action are permitted. The normal refresh performs the library's
+required UserInfo retrieval; the two rejections must leave its count unchanged
+from login. Access-token export consumes the successful credential locally and
+proves that a retained connection cannot expose a rejected replacement. It
+does not send an extra provider request after the suite has finished.
+
+The audit hook observes the underlying typed ID-token error. The connection
+API exposes its normal redacted access error to the app. The fixture observes
+the default session-clearing policy without logging out or altering token
+state itself. Raw identities, tokens and error messages stay private; only
+allowlisted labels, counters and comparison booleans enter the report. Refresh
+rotation, concurrency and retained connections have their separate regression
+layers; this selection does not replace them.
 
 Baseline references: [OIDC Core](https://openid.net/specs/openid-connect-core-1_0.html),
 [Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html),

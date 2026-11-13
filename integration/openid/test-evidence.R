@@ -28,7 +28,7 @@ evidence_fixture <- function(profile = "smoke") {
       row[["suite_id"]] <- paste0("instance", i)
       row[["variant"]] <- utils::modifyList(
         spec[["plan_variant"]],
-        spec[["module_variant"]]
+        as.list(spec[["module_variant"]])
       )
       row[["suite_status"]] <- "FINISHED"
       row[["suite_result"]] <- if (is.null(expected[["suite_result"]])) {
@@ -79,6 +79,214 @@ evidence_fixture <- function(profile = "smoke") {
   )
   list(manifest = manifest, context = context, report = report)
 }
+
+refresh_fixture <- function() {
+  f <- evidence_fixture("refresh")
+  for (i in seq_along(f[["report"]][["results"]])) {
+    row <- f[["report"]][["results"]][[i]]
+    positive <- i == 1L
+    before <- row[["app"]]
+    before[c(
+      "authenticated",
+      "has_token",
+      "has_refresh_token",
+      "id_token_validated",
+      "userinfo_present"
+    )] <- TRUE
+    before[["userinfo_claims"]] <- list("sub", "email")
+    before[["error_code"]] <- NULL
+    before[["error_classes"]] <- before[["claims"]] <- before[[
+      "reasons"
+    ]] <- list()
+    before[["session_number"]] <- 2L
+    before[["app_instance"]] <- "app"
+    before[["cache_instance"]] <- "cache"
+    before[["operations"]] <- list(
+      audit_token_exchange = 1L,
+      audit_userinfo = 1L,
+      audit_login_success = 1L,
+      audit_callback_validation_success = 1L,
+      audit_token_refresh = 0L,
+      audit_session_cleared = 0L
+    )
+    initial <- before
+    initial[["session_number"]] <- 1L
+    initial[c(
+      "authenticated",
+      "has_token",
+      "has_refresh_token",
+      "id_token_validated",
+      "userinfo_present"
+    )] <- FALSE
+    initial[["operations"]][] <- 0L
+    after <- before
+    after[c(
+      "authenticated",
+      "has_token",
+      "has_refresh_token",
+      "id_token_validated",
+      "userinfo_present"
+    )] <- positive
+    after[["operations"]][["audit_userinfo"]] <- if (positive) 2L else 1L
+    after[["operations"]][["audit_token_refresh"]] <- as.integer(positive)
+    after[["operations"]][["audit_session_cleared"]] <- as.integer(!positive)
+    if (!positive) {
+      after[["error_code"]] <- "token_refresh_error"
+      after[["error_classes"]] <- list("shinyOAuth_id_token_error")
+      after[["claims"]] <- list(if (i == 2L) "iss" else "sub")
+    }
+    after[["refresh"]] <- list(
+      attempts = 1L,
+      done = TRUE,
+      result = if (positive) "succeeded" else "rejected",
+      connection_same = positive,
+      connection_present = positive,
+      old_connection_usable = positive,
+      access_changed = positive,
+      original_id_token_retained = positive,
+      issuer_unchanged = positive,
+      subject_unchanged = positive,
+      exported_current = positive,
+      export_blocked = !positive,
+      refresh_error_is_access_error = !positive
+    )
+    row[["action"]] <- "refresh"
+    row[["initial"]] <- initial
+    row[["before_refresh"]] <- before
+    row[["steps"]] <- list(before)
+    row[["between_logins"]] <- list()
+    row[["app"]] <- after
+    f[["report"]][["results"]][[i]] <- row
+  }
+  f
+}
+
+testthat::test_that("refresh coverage requires all three pinned modules and full runtime variants", {
+  f <- refresh_fixture()
+  spec <- openid_plan_spec(f[["manifest"]], "refresh")
+  testthat::expect_identical(
+    spec[["plan"]],
+    "oidcc-client-refreshtoken-test-plan"
+  )
+  testthat::expect_null(spec[["module_variant"]])
+  testthat::expect_identical(openid_variant_key(NULL), "null")
+  check <- openid_check_report(f[["report"]], f[["context"]], f[["manifest"]])
+  testthat::expect_true(check[["gate_passed"]])
+  testthat::expect_true(check[["coverage_complete"]])
+  for (i in seq_len(3L)) {
+    report <- f[["report"]]
+    report[["results"]] <- report[["results"]][-i]
+    testthat::expect_false(openid_check_report(
+      report,
+      f[["context"]],
+      f[["manifest"]]
+    )[["gate_passed"]])
+  }
+  report <- f[["report"]]
+  report[["results"]][[1L]][["variant"]] <- NULL
+  testthat::expect_false(openid_check_report(
+    report,
+    f[["context"]],
+    f[["manifest"]]
+  )[["gate_passed"]])
+})
+
+testthat::test_that("refresh cannot pass with a fresh app, session, grant or missing checkpoint", {
+  f <- refresh_fixture()
+  for (i in seq_len(3L)) {
+    for (change in list(
+      list(name = "before_refresh", value = NULL),
+      list(name = "steps", value = list()),
+      list(name = "action", value = "login")
+    )) {
+      report <- f[["report"]]
+      report[["results"]][[i]][[change[["name"]]]] <- change[["value"]]
+      testthat::expect_false(openid_check_report(
+        report,
+        f[["context"]],
+        f[["manifest"]]
+      )[["gate_passed"]])
+    }
+    for (change in list(
+      list(name = "session_number", value = 3L),
+      list(name = "app_instance", value = "fresh-app"),
+      list(name = "cache_instance", value = "fresh-cache"),
+      list(name = "package_version", value = "old-version")
+    )) {
+      report <- f[["report"]]
+      report[["results"]][[i]][["app"]][[change[["name"]]]] <- change[["value"]]
+      testthat::expect_false(openid_check_report(
+        report,
+        f[["context"]],
+        f[["manifest"]]
+      )[["gate_passed"]])
+    }
+    report <- f[["report"]]
+    report[["results"]][[i]][["before_refresh"]][["has_refresh_token"]] <- FALSE
+    report[["results"]][[i]][["steps"]] <- list(report[["results"]][[i]][[
+      "before_refresh"
+    ]])
+    testthat::expect_false(openid_check_report(
+      report,
+      f[["context"]],
+      f[["manifest"]]
+    )[["gate_passed"]])
+  }
+})
+
+testthat::test_that("refresh success and rejection require consumption and retirement evidence", {
+  f <- refresh_fixture()
+  for (i in seq_len(3L)) {
+    refresh <- f[["report"]][["results"]][[i]][["app"]][["refresh"]]
+    for (name in names(refresh)) {
+      report <- f[["report"]]
+      value <- refresh[[name]]
+      report[["results"]][[i]][["app"]][["refresh"]][[name]] <- if (
+        is.logical(value)
+      ) {
+        !value
+      } else if (is.numeric(value)) {
+        2L
+      } else {
+        "unknown"
+      }
+      testthat::expect_false(openid_check_report(
+        report,
+        f[["context"]],
+        f[["manifest"]]
+      )[["gate_passed"]])
+    }
+    for (name in names(f[["report"]][["results"]][[i]][["app"]][[
+      "operations"
+    ]])) {
+      report <- f[["report"]]
+      report[["results"]][[i]][["app"]][["operations"]][[name]] <- 99L
+      testthat::expect_false(openid_check_report(
+        report,
+        f[["context"]],
+        f[["manifest"]]
+      )[["gate_passed"]])
+    }
+    report <- f[["report"]]
+    report[["results"]][[i]][["suite_result"]] <- "SKIPPED"
+    testthat::expect_false(openid_check_report(
+      report,
+      f[["context"]],
+      f[["manifest"]]
+    )[["gate_passed"]])
+  }
+  for (i in 2:3) {
+    for (name in c("claims", "error_classes", "error_code")) {
+      report <- f[["report"]]
+      report[["results"]][[i]][["app"]][[name]] <- NULL
+      testthat::expect_false(openid_check_report(
+        report,
+        f[["context"]],
+        f[["manifest"]]
+      )[["gate_passed"]])
+    }
+  }
+})
 
 testthat::test_that("a passing smoke selection remains partial profile coverage", {
   f <- evidence_fixture()

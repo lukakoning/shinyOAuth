@@ -121,6 +121,137 @@ openid_app_matches <- function(app, expectation, case_id, package_version) {
     app[["operations"]][["audit_login_success"]] == 0L
 }
 
+openid_refresh_matches <- function(
+  result,
+  expectation,
+  case_id,
+  package_version
+) {
+  before <- result[["before_refresh"]]
+  after <- result[["app"]]
+  initial <- result[["initial"]]
+  positive <- identical(expectation[["outcome"]], "refreshed")
+  if (
+    !expectation[["outcome"]] %in% c("refreshed", "refresh_rejected") ||
+      !openid_app_matches(
+        before,
+        list(outcome = "authenticated"),
+        case_id,
+        package_version
+      ) ||
+      !isTRUE(before[["has_refresh_token"]]) ||
+      !is.null(before[["refresh"]]) ||
+      !identical(result[["steps"]], list(before)) ||
+      length(result[["between_logins"]]) != 0L ||
+      !identical(after[["run_id"]], case_id) ||
+      !identical(after[["package_version"]], package_version) ||
+      !isTRUE(after[["ready"]]) ||
+      !identical(after[["session_number"]], before[["session_number"]]) ||
+      !openid_count(
+        before[["session_number"]],
+        initial[["session_number"]] + 1L
+      ) ||
+      !identical(initial[["authenticated"]], FALSE) ||
+      !identical(initial[["has_token"]], FALSE)
+  ) {
+    return(FALSE)
+  }
+  for (name in c("app_instance", "cache_instance")) {
+    if (
+      !openid_string(initial[[name]]) ||
+        !identical(initial[[name]], before[[name]]) ||
+        !identical(initial[[name]], after[[name]])
+    ) {
+      return(FALSE)
+    }
+  }
+  count_is <- function(app, name, expected) {
+    value <- app[["operations"]][[name]]
+    openid_count(value) && value == expected
+  }
+  for (name in c(
+    "audit_token_exchange",
+    "audit_userinfo",
+    "audit_login_success",
+    "audit_callback_validation_success"
+  )) {
+    if (
+      !count_is(initial, name, 0L) ||
+        !count_is(before, name, 1L) ||
+        !count_is(
+          after,
+          name,
+          if (name == "audit_userinfo" && positive) 2L else 1L
+        )
+    ) {
+      return(FALSE)
+    }
+  }
+  for (name in c("audit_token_refresh", "audit_session_cleared")) {
+    if (
+      !count_is(initial, name, 0L) ||
+        !count_is(before, name, 0L) ||
+        !count_is(
+          after,
+          name,
+          if ((name == "audit_token_refresh") == positive) 1L else 0L
+        )
+    ) {
+      return(FALSE)
+    }
+  }
+  refresh <- after[["refresh"]]
+  if (
+    !openid_count(refresh[["attempts"]]) ||
+      refresh[["attempts"]] != 1L ||
+      !isTRUE(refresh[["done"]]) ||
+      !identical(refresh[["result"]], if (positive) "succeeded" else "rejected")
+  ) {
+    return(FALSE)
+  }
+  for (name in c(
+    "connection_same",
+    "connection_present",
+    "old_connection_usable",
+    "access_changed",
+    "original_id_token_retained",
+    "issuer_unchanged",
+    "subject_unchanged",
+    "exported_current"
+  )) {
+    if (!identical(refresh[[name]], positive)) return(FALSE)
+  }
+  for (name in c("export_blocked", "refresh_error_is_access_error")) {
+    if (!identical(refresh[[name]], !positive)) return(FALSE)
+  }
+  if (positive) {
+    return(
+      isTRUE(after[["has_refresh_token"]]) &&
+        openid_app_matches(
+          after,
+          list(outcome = "authenticated"),
+          case_id,
+          package_version
+        )
+    )
+  }
+  flags <- c(
+    "authenticated",
+    "has_token",
+    "has_refresh_token",
+    "id_token_validated",
+    "userinfo_present"
+  )
+  all(vapply(
+    flags,
+    function(name) identical(after[[name]], FALSE),
+    logical(1)
+  )) &&
+    identical(after[["error_code"]], "token_refresh_error") &&
+    "shinyOAuth_id_token_error" %in% unlist(after[["error_classes"]]) &&
+    expectation[["claim"]] %in% unlist(after[["claims"]])
+}
+
 openid_rotation_matches <- function(
   result,
   expectation,
@@ -356,7 +487,7 @@ openid_check_report <- function(report, context, manifest) {
       }
       variant <- utils::modifyList(
         spec[["plan_variant"]],
-        spec[["module_variant"]]
+        as.list(spec[["module_variant"]])
       )
       for (result in results) {
         expectation <- expected[[match(result[["module"]], names_expected)]]
@@ -403,10 +534,17 @@ openid_check_report <- function(report, context, manifest) {
           stop("Module did not finish with the expected suite verdict")
         }
         discovery <- identical(expectation[["action"]], "discovery")
+        refreshing <- identical(expectation[["action"]], "refresh")
         if (
           !identical(
             result[["action"]],
-            if (discovery) "discovery" else "login"
+            if (discovery) {
+              "discovery"
+            } else if (refreshing) {
+              "refresh"
+            } else {
+              "login"
+            }
           ) ||
             !isTRUE(result[[
               if (discovery) "no_callback" else "callback_cleaned"
@@ -422,12 +560,21 @@ openid_check_report <- function(report, context, manifest) {
           stop("Missing real-browser Form Post, bridge or binding evidence")
         }
         if (
-          !openid_app_matches(
-            result[["app"]],
-            expectation,
-            paste0(context[["run_id"]], "-", result[["suite_id"]]),
-            context[["package_version"]]
-          )
+          if (refreshing) {
+            !openid_refresh_matches(
+              result,
+              expectation,
+              paste0(context[["run_id"]], "-", result[["suite_id"]]),
+              context[["package_version"]]
+            )
+          } else {
+            !openid_app_matches(
+              result[["app"]],
+              expectation,
+              paste0(context[["run_id"]], "-", result[["suite_id"]]),
+              context[["package_version"]]
+            )
+          }
         ) {
           stop("Missing or incorrect application evidence")
         }

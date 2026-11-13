@@ -6,16 +6,17 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
       setequal(args[c(1L, 3L)], c("--profile", "--transport"))
     if (!valid) {
       stop(
-        "Usage: Rscript integration/openid/run-tests.R --check-api | --profile smoke|basic|config|form-post --transport sync"
+        "Usage: Rscript integration/openid/run-tests.R --check-api | --profile smoke|basic|config|form-post|refresh --transport sync"
       )
     }
     options <- setNames(args[c(2L, 4L)], args[c(1L, 3L)])
     if (
-      !options[["--profile"]] %in% c("smoke", "basic", "config", "form-post") ||
+      !options[["--profile"]] %in%
+        c("smoke", "basic", "config", "form-post", "refresh") ||
         !identical(options[["--transport"]], "sync")
     ) {
       stop(
-        "Only smoke, basic, config and form-post profiles with sync transport are implemented"
+        "Only smoke, basic, config, form-post and refresh profiles with sync transport are implemented"
       )
     }
   }

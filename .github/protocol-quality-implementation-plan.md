@@ -11,6 +11,8 @@ C06 now executes all six Configuration modules, with cached-key refresh coverage
 still incomplete because the pinned suite's JWKS responses prohibit storage.
 C07 covers the fourteen-module Form Post Basic plan in Chrome on the local
 cross-origin, same-site deployment.
+C08 covers all three client refresh modules, including identity substitution
+and the module's default credential-retirement policy.
 
 Execution record (2026-11-12): C00 is `d0b62ff`; C01 is `4dee03d`. C01 validated the exact server
 image/source correspondence, required plans, R certificate/hostname validation,
@@ -148,8 +150,8 @@ configuration/version that permits caching. Preserve the current no-store runs
 as their own evidence. C07's form-post work can proceed independently; the first
 OIDC milestone retains this C06 coverage gap until that follow-up passes.
 
-C07 execution (2026-11-13): the pinned Form Post Basic plan resolves to the
-fourteen Basic modules with its fixed `response_mode=form_post` variant. The
+C07 is `20966df2`. C07 execution (2026-11-13): the pinned Form Post Basic plan
+resolves to the fourteen Basic modules with its fixed `response_mode=form_post` variant. The
 runner installs the normal Form Post wrapper and records sanitized Chrome
 navigation evidence separately from incoming POST metadata. Every case must
 show GET authorization, a form-encoded callback POST from the expected provider
@@ -182,8 +184,56 @@ whitespace checks pass.
 Manual workflow dispatch now offers `form-post`; pull requests continue to run
 smoke. The upstream Form Post Basic plan does not select the separate
 `oidcc-client-test-form-post-error` module; comprehensive-plan coverage remains
-a C09 task. C08 refresh identity continuity is next. The C06 warm-cache gap
-remains open.
+a C09 task. The C06 warm-cache gap remains open.
+
+C08 execution (2026-11-13): the pinned client refresh plan resolves to three
+modules with no forced per-module variants. A live API probe established that
+the plan uses JSON null for those variants. The driver omits the optional
+runner variant parameter for those entries and still requires the complete
+plan variant in every runtime result.
+
+Each case completes a normal browser login, retains the original grant and
+validated identity in the same app and Shiny session, then explicitly calls
+the public connection's `$refresh()` method. The positive case retains the
+original ID token, issuer, subject and connection, fetches UserInfo during
+refresh, and exports the new access token through `$access_token()`. The two
+negative cases require an ID-token audit error naming `iss` or `sub`, the
+normal `token_refresh_error`, session clearing, an unusable retained connection
+and blocked access-token export. Their UserInfo count stays at the initial
+login's one request. The fixture does not log out or modify token state to
+produce those outcomes. Reports contain comparison booleans and counts,
+without identity or credential values.
+
+The changed-subject rejection already existed; diagnostic commit `bfe4fdf8`
+adds its missing safe claim label. The signed-claim audit, refresh issuer/audience
+and rejected-refresh cleanup regressions pass 321 assertions with no failures,
+warnings or skips. The expanded evidence validator passes 307 assertions,
+including attempts to pass with missing grants, new sessions/apps, absent
+checkpoints, wrong operation counts or incomplete retirement evidence.
+
+All three modules finish `FINISHED/PASSED` on Windows (R 4.5.1, Chrome 157)
+and non-root Linux (R 4.5.0, Chromium 156), with matching app outcomes, the
+real-app failure control and verified cleanup. The module loops took 25.53
+and 22.96 seconds. Retained sanitized reports are
+`integration/openid/.artifacts/refresh-20261113-222805-fd5b072e2f42/evidence.json`
+(Windows) and
+`integration/openid/.artifacts/refresh-20261113-212915-8f51a2246236/evidence.json`
+(Linux). Both record the C08 working tree based on `bfe4fdf8` with
+`checkout_dirty = true`. Each reports complete coverage for this exact
+synchronous, static-registration, code-flow refresh plan with query callbacks
+and HTTP Basic client authentication. The upstream refresh plan is outside
+certification.
+
+The query-callback smoke selection passes again with partial coverage and
+verified cleanup; its report is
+`integration/openid/.artifacts/smoke-20261113-222936-bd3794b1ce39/evidence.json`.
+R lint, formatting, actionlint and patch whitespace checks pass.
+
+Manual workflow dispatch now offers `refresh` and uploads only its sanitized
+evidence files. Pull requests continue to select smoke. The GitHub workflow
+has not run yet. C09 transport/authentication variants are next; C06's warm-cache
+gap remains open, and rotation/concurrency/retained-connection regressions
+remain separate evidence layers.
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second

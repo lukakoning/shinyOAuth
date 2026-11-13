@@ -2,6 +2,16 @@
   "schema_version": 2,
   "source_revision": "410812ef6bc72a84723c1685725edce3558e31e3",
   "plans": {
+    "refresh": {
+      "plan": "oidcc-client-refreshtoken-test-plan",
+      "plan_variant": {"client_registration": "static_client", "request_type": "plain_http_request", "client_auth_type": "client_secret_basic", "response_type": "code", "response_mode": "default"},
+      "module_variant": null,
+      "available_modules": [
+        "oidcc-client-test-refresh-token",
+        "oidcc-client-test-refresh-token-invalid-issuer",
+        "oidcc-client-test-refresh-token-invalid-sub"
+      ]
+    },
     "basic": {
       "plan": "oidcc-client-basic-certification-test-plan",
       "plan_variant": {"client_registration": "static_client", "request_type": "plain_http_request"},
@@ -56,6 +66,15 @@
     }
   },
   "profiles": {
+    "refresh": {
+      "plan": "refresh",
+      "complete_profile": true,
+      "modules": [
+        {"module": "oidcc-client-test-refresh-token", "action": "refresh", "outcome": "refreshed"},
+        {"module": "oidcc-client-test-refresh-token-invalid-issuer", "action": "refresh", "outcome": "refresh_rejected", "claim": "iss"},
+        {"module": "oidcc-client-test-refresh-token-invalid-sub", "action": "refresh", "outcome": "refresh_rejected", "claim": "sub"}
+      ]
+    },
     "form-post": {
       "plan": "form-post",
       "complete_profile": true,

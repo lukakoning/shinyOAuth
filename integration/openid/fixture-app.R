@@ -28,13 +28,15 @@ openid_fixture_app <- function(config) {
   }
   audit <- new.env(parent = emptyenv())
   audit[["counts"]] <- setNames(
-    integer(5),
+    integer(7),
     c(
       "audit_token_exchange",
       "audit_userinfo",
       "audit_login_success",
       "audit_login_failed",
-      "audit_callback_validation_success"
+      "audit_callback_validation_success",
+      "audit_token_refresh",
+      "audit_session_cleared"
     )
   )
   audit[["errors"]] <- character()
@@ -140,10 +142,12 @@ openid_fixture_app <- function(config) {
     token = NULL,
     authenticated = FALSE,
     error = NULL,
-    session_number = 0L
+    session_number = 0L,
+    refresh = NULL
   ) {
     allowed_errors <- c(
       "token_exchange_error",
+      "token_refresh_error",
       "invalid_state",
       "callback_iss_validation_error",
       "invalid_request",
@@ -184,6 +188,12 @@ openid_fixture_app <- function(config) {
         form_post = audit[["form_post"]],
         authenticated = authenticated,
         has_token = !is.null(token),
+        has_refresh_token = !is.null(token) &&
+          is.character(token@refresh_token) &&
+          length(token@refresh_token) == 1L &&
+          !is.na(token@refresh_token) &&
+          nzchar(token@refresh_token),
+        refresh = refresh,
         id_token_validated = !is.null(token) &&
           isTRUE(token@id_token_validated),
         userinfo_present = !is.null(token) && length(token@userinfo) > 0L,
@@ -262,6 +272,7 @@ openid_fixture_app <- function(config) {
   ui <- shiny::fluidPage(
     shiny::actionButton("login", "Log in"),
     shiny::actionButton("logout", "Log out"),
+    shiny::actionButton("refresh", "Refresh"),
     shiny::verbatimTextOutput("snapshot")
   )
   resolver <- function(req) {
@@ -320,6 +331,70 @@ openid_fixture_app <- function(config) {
       client,
       auto_redirect = FALSE
     )
+    refresh <- NULL
+    shiny::observeEvent(
+      input[["refresh"]],
+      {
+        attempts <- if (is.null(refresh)) 1L else refresh[["attempts"]] + 1L
+        token <- auth[["token"]]
+        connection <- auth[["connection"]]()
+        if (
+          is.null(token) ||
+            is.null(connection) ||
+            !isTRUE(token@id_token_validated)
+        ) {
+          refresh <<- list(
+            attempts = attempts,
+            done = TRUE,
+            result = "invalid_initial_state"
+          )
+          return(invisible(NULL))
+        }
+        # Keep the original grant and identity private in this same Shiny session.
+        # Evidence contains comparisons only, never token or identity values.
+        access <- token@access_token
+        original_id <- token@id_token
+        issuer <- token@id_token_claims[["iss"]]
+        subject <- token@id_token_claims[["sub"]]
+        failure <- tryCatch(
+          {
+            connection[["refresh"]]()
+            NULL
+          },
+          error = identity
+        )
+        current <- auth[["token"]]
+        current_connection <- auth[["connection"]]()
+        exported <- tryCatch(
+          connection[["access_token"]](min_valid_for_seconds = 0),
+          error = identity
+        )
+        accepted <- is.null(failure) && !is.null(current)
+        refresh <<- list(
+          attempts = attempts,
+          done = TRUE,
+          result = if (is.null(failure)) "succeeded" else "rejected",
+          connection_same = identical(connection, current_connection),
+          connection_present = !is.null(current_connection),
+          old_connection_usable = isTRUE(connection[["is_usable"]]()),
+          access_changed = accepted && !identical(access, current@access_token),
+          original_id_token_retained = accepted &&
+            identical(original_id, current@original_id_token),
+          issuer_unchanged = accepted &&
+            identical(issuer, current@id_token_claims[["iss"]]),
+          subject_unchanged = accepted &&
+            identical(subject, current@id_token_claims[["sub"]]),
+          exported_current = accepted &&
+            identical(exported, current@access_token),
+          export_blocked = inherits(exported, "shinyOAuth_access_error"),
+          refresh_error_is_access_error = inherits(
+            failure,
+            "shinyOAuth_access_error"
+          )
+        )
+      },
+      ignoreInit = TRUE
+    )
     shiny::observeEvent(
       input[["login"]],
       auth[["request_login"]](),
@@ -336,7 +411,8 @@ openid_fixture_app <- function(config) {
         auth[["token"]],
         isTRUE(auth[["authenticated"]]),
         auth[["error"]],
-        session_number
+        session_number,
+        refresh
       )
     })
   }

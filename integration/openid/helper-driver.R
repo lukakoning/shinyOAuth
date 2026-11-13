@@ -246,6 +246,33 @@ openid_run_case <- function(
       }
     }
   }
+  before_refresh <- NULL
+  refreshing <- identical(expectation[["action"]], "refresh")
+  if (refreshing) {
+    before_refresh <- snapshot
+    if (
+      !openid_app_matches(
+        before_refresh,
+        list(outcome = "authenticated"),
+        config[["run_id"]],
+        context[["package_version"]]
+      ) ||
+        !isTRUE(before_refresh[["has_refresh_token"]])
+    ) {
+      stop(
+        "OpenID refresh requires the original validated login and refresh grant"
+      )
+    }
+    openid_browser_value(tab, "document.querySelector('#refresh').click()")
+    snapshot <- openid_wait(
+      function() {
+        value <- openid_wait_app(app, browser, tab)
+        if (isTRUE(value[["refresh"]][["done"]])) value else NULL
+      },
+      "OpenID public connection refresh",
+      30
+    )
+  }
   info <- openid_suite_wait(stack, module, "FINISHED", timeout = 45)
   runtime <- openid_api(stack, paste0("/api/runner/", module[["id"]]))
   if (!identical(runtime[["id"]], module[["id"]])) {
@@ -273,7 +300,14 @@ openid_run_case <- function(
   }
   row[["app"]] <- snapshot
   row[["browser_version"]] <- chrome
-  row[["action"]] <- if (discovery) "discovery" else "login"
+  row[["action"]] <- if (discovery) {
+    "discovery"
+  } else if (refreshing) {
+    "refresh"
+  } else {
+    "login"
+  }
+  row[["before_refresh"]] <- before_refresh
   if (discovery) {
     row[["no_callback"]] <- TRUE
   } else {
