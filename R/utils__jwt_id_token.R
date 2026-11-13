@@ -398,7 +398,10 @@ validate_id_token <- function(
     is_valid_string(expected_sub) &&
       !identical(payload[["sub"]], expected_sub)
   ) {
-    err_id_token("ID token sub claim does not match original (OIDC 12.2)")
+    err_id_token(
+      "ID token sub claim does not match original (OIDC 12.2)",
+      context = list(claim = "sub")
+    )
   }
   if (is.null(payload[["exp"]])) {
     err_id_token("ID token missing exp claim")

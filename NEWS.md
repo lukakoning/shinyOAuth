@@ -8,6 +8,7 @@
 
 * ID-token audience, subject and issued-at errors also identify the failed claim.
   Algorithm and signature rejections include stable reason codes in audit events.
+  A changed subject during refresh also reports the subject claim name.
 
 # shinyOAuth 0.7.0
 

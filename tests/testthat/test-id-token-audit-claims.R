@@ -54,6 +54,10 @@ test_that("ID-token rejection events name the claim without disclosing values", 
   ))
   cases <- list(
     list(claim = "sub", payload = utils::modifyList(claims, list(sub = NULL))),
+    list(
+      claim = "sub",
+      payload = utils::modifyList(claims, list(sub = "private-other-subject"))
+    ),
     list(claim = "aud", payload = utils::modifyList(claims, list(aud = NULL))),
     list(
       claim = "aud",
@@ -99,7 +103,12 @@ test_that("ID-token rejection events name the claim without disclosing values", 
     events <- list()
     jwt <- sign(case[["payload"]])
     failure <- tryCatch(
-      validate_id_token(client, jwt, expected_nonce = claims[["nonce"]]),
+      validate_id_token(
+        client,
+        jwt,
+        expected_nonce = claims[["nonce"]],
+        expected_sub = claims[["sub"]]
+      ),
       error = identity
     )
     expect_s3_class(failure, "shinyOAuth_id_token_error")
@@ -125,6 +134,7 @@ test_that("ID-token rejection events name the claim without disclosing values", 
       "wrong-private-issuer",
       "private-wrong-audience",
       "private-extra-audience",
+      "private-other-subject",
       "private-wrong-time"
     )) {
       expect_false(grepl(private, encoded, fixed = TRUE))
