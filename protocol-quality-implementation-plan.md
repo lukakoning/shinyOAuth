@@ -15,7 +15,10 @@ incomplete because the pinned suite’s JWKS responses prohibit storage.
 C07 covers the fourteen-module Form Post Basic plan in Chrome on the
 local cross-origin, same-site deployment. C08 covers all three client
 refresh modules, including identity substitution and the module’s
-default credential-retirement policy.
+default credential-retirement policy. C09’s first slice adds verified
+mirai transport for the core selections and future multisession
+smoke/refresh parity. Client-auth variants and shared-pool issuer
+isolation remain outstanding, so C09 is not complete.
 
 Execution record (2026-11-12): C00 is `d0b62ff`; C01 is `4dee03d`. C01
 validated the exact server image/source correspondence, required plans,
@@ -214,11 +217,12 @@ Basic plan does not select the separate
 `oidcc-client-test-form-post-error` module; comprehensive-plan coverage
 remains a C09 task. The C06 warm-cache gap remains open.
 
-C08 execution (2026-11-13): the pinned client refresh plan resolves to
-three modules with no forced per-module variants. A live API probe
-established that the plan uses JSON null for those variants. The driver
-omits the optional runner variant parameter for those entries and still
-requires the complete plan variant in every runtime result.
+C08 is `3c7aa049`. C08 execution (2026-11-13): the pinned client refresh
+plan resolves to three modules with no forced per-module variants. A
+live API probe established that the plan uses JSON null for those
+variants. The driver omits the optional runner variant parameter for
+those entries and still requires the complete plan variant in every
+runtime result.
 
 Each case completes a normal browser login, retains the original grant
 and validated identity in the same app and Shiny session, then
@@ -261,10 +265,116 @@ R lint, formatting, actionlint and patch whitespace checks pass.
 
 Manual workflow dispatch now offers `refresh` and uploads only its
 sanitized evidence files. Pull requests continue to select smoke. The
-GitHub workflow has not run yet. C09 transport/authentication variants
-are next; C06’s warm-cache gap remains open, and
+GitHub workflow has not run yet. Further C09 work follows below; C06’s
+warm-cache gap remains open, and
 rotation/concurrency/retained-connection regressions remain separate
 evidence layers.
+
+C09, first slice (2026-11-13): all core selections accept
+`--transport mirai`. Future multisession is limited to smoke and refresh
+parity selections; other future profile combinations fail explicitly.
+Each module case starts its own two-worker pool and checks backend
+selection. Both workers must load the private checkout namespace, make a
+verified HTTPS request to `/api/server` using the temporary CA and
+reject a wrong hostname. These setup probes do not earn protocol
+coverage. Actual token/UserInfo and validation-error events must come
+from the observed worker PIDs, with the matching package version and CA
+setting. Main-only execution cannot satisfy an async selection.
+
+The fixture’s audit hook now writes only sanitized, allowlisted metadata
+to atomic per-event files. The main app aggregates process-specific
+operation counts and safe claim/error labels. Every event stays bound to
+its run and package installation, while credentials, identities, error
+messages and paths stay out of those records. Refresh waits for its
+promise before checking identity continuity, token export and credential
+retirement. Evidence schema 3 requires these transport checks and
+verified process cleanup; the profile manifest remains schema 2. The
+validator passes 363 assertions with no failures, warnings or skips,
+including rejection of fallback execution, missing/foreign worker PIDs,
+stale installations, failed TLS probes and absent cleanup.
+
+The app registers exit handlers for its worker pool. Linux first
+interrupts the app and permits orderly shutdown; forced termination
+remains a fallback. Cleanup checks both descendants and the specifically
+observed worker PIDs. Docker-hosted drivers need `--init` to reap
+orphaned workers; a bare R process as container PID 1 left zombie
+entries and correctly failed the strict check. The browser has an
+explicit temporary profile, a 30-second startup budget and an observed
+close-command promise. Browser process termination remains required.
+Native websocket EOF messages can appear during intentional browser
+shutdown. Browser/port fixes are in the separate harness commit
+`9b287959`. The suite now publishes random loopback ports in
+20000-45000: Linux-side port probes could not see Windows Docker
+Desktop’s excluded dynamic-port ranges, which caused real bind failures
+in the earlier 49152-65535 range.
+
+Manual dispatch now selects the transport and installs the worker
+dependencies. Pull requests retain synchronous smoke; hosted CI timings
+remain unmeasured. Configuration keeps `coverage_complete = false` in
+every transport. Its main cache template is retained, while async
+dispatch serializes worker copies; the report records that scope and
+does not claim a shared warm cache.
+
+The complete Basic, Form Post Basic, Configuration and refresh
+selections pass with mirai on Windows (R 4.5.1, Chrome 157, mirai 2.7.1)
+and non-root Linux (R 4.5.0, Chromium 156, mirai 2.7.4). All declared
+module outcomes match the suite and application checks, with the
+real-app failure control and verified cleanup. Basic and Form Post each
+retain thirteen `PASSED` verdicts plus the documented unsigned-token
+`SKIPPED`; Configuration retains five `PASSED` and that optional skip.
+Refresh has three `PASSED` verdicts.
+
+| Selection               | Windows module loop | Linux module loop |
+|-------------------------|---------------------|-------------------|
+| Basic / mirai           | 157.75 s            | 95.50 s           |
+| Form Post Basic / mirai | 150.83 s            | 95.41 s           |
+| Configuration / mirai   | 69.33 s             | 32.25 s           |
+| Refresh / mirai         | 37.74 s             | 25.45 s           |
+| Smoke / future          | 37.99 s             | 24.99 s           |
+| Refresh / future        | 45.31 s             | 27.52 s           |
+
+The future selections pass with future 1.70.0 on Windows and 1.82.0 on
+Linux. Sanitized schema-3 reports under `integration/openid/.artifacts/`
+include:
+
+- Windows: `basic-20261113-224918-c98fc0ad9117/evidence.json`,
+  `form-post-20261113-231601-f40dd9f616b5/evidence.json`,
+  `config-20261113-225346-c4dd54b93768/evidence.json`,
+  `refresh-20261113-224809-cf25641baaea/evidence.json`,
+  `smoke-20261113-224820-a2840f185a5d/evidence.json` and
+  `refresh-20261113-230418-946e7c173ce2/evidence.json`.
+- Linux: `basic-20261113-215019-b5b5bd25b46f/evidence.json`,
+  `form-post-20261113-221551-0dbc136ba7dc/evidence.json`,
+  `config-20261113-220529-54ce297a7813/evidence.json`,
+  `refresh-20261113-220408-cde4fe717945/evidence.json`,
+  `smoke-20261113-220733-29ad7872d4bc/evidence.json` and
+  `refresh-20261113-220851-65f1d7cca4d6/evidence.json`.
+
+These working-tree runs record parent `3c7aa049` and
+`checkout_dirty = true`. Earlier Linux attempts failed on reserved
+Windows ports, unreaped container zombies or Chrome’s 10-second startup
+limit; they retain failed reports and earn no coverage. Final Form Post
+runs include the explicit browser profiles and longer startup budget.
+Windows preflight and the synthetic fixture check also pass, as does
+synchronous smoke. The GitHub workflow has not run yet.
+
+The existing async serialization, option-restoration and session-context
+tests pass 222 assertions on Linux with no failures, warnings or skips
+after adding the optional `otelsdk` test dependency to the private
+runner image. Their Windows run passes the same 222 assertions with one
+environment warning: its installed future binary was built under R 4.5.3
+while the host uses R 4.5.1. No user R installation was changed. R lint,
+formatting, actionlint and patch whitespace checks pass. The final
+evidence gate also accepts all seventeen retained passing schema-3
+reports from this implementation run.
+
+C09 follow-up: add the applicable Comprehensive-plan selections for
+public S256, `client_secret_post`, `client_secret_jwt` and
+`private_key_jwt`, with positive and relevant negative cases. Add a
+shared-pool scenario across different issuers to check isolation of
+configuration, hooks and credentials. The current pools are private per
+module and reused only within that module. Keep C09 open until these
+acceptance cases pass, and retain the separate C06 warm-cache gap.
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
