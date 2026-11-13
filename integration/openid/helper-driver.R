@@ -53,6 +53,90 @@ openid_wait_app <- function(
   )
 }
 
+openid_form_post_navigation <- function(
+  tab,
+  issuer,
+  provider_origin,
+  app_origin
+) {
+  observation <- new.env(parent = emptyenv())
+  observation[["provider_origin"]] <- provider_origin
+  observation[["app_origin"]] <- app_origin
+  observation[["bridge_redirect_303"]] <- FALSE
+  root <- paste0(app_origin, "/")
+  tab[["Network"]][["enable"]]()
+  tab[["Network"]][["requestWillBeSent"]](function(params) {
+    if (!identical(params[["type"]], "Document")) {
+      return(invisible(NULL))
+    }
+    request <- params[["request"]]
+    url <- request[["url"]]
+    if (!openid_string(url)) {
+      return(invisible(NULL))
+    }
+    endpoint <- sub("[?#].*$", "", url)
+    if (identical(endpoint, paste0(issuer, "authorize"))) {
+      observation[["authorization_method"]] <- request[["method"]]
+    }
+    if (identical(endpoint, root) && identical(request[["method"]], "POST")) {
+      observation[["callback_method"]] <- "POST"
+    }
+    redirect <- params[["redirectResponse"]]
+    if (
+      identical(endpoint, root) &&
+        identical(request[["method"]], "GET") &&
+        identical(redirect[["url"]], root) &&
+        isTRUE(redirect[["status"]] == 303)
+    ) {
+      observation[["bridge_redirect_303"]] <- TRUE
+    }
+    invisible(NULL)
+  })
+  observation
+}
+
+openid_form_post_cookie <- function(tab, app_origin) {
+  openid_wait(
+    function() {
+      cookies <- tab[["Network"]][["getCookies"]](urls = list(app_origin))[[
+        "cookies"
+      ]]
+      cookies <- Filter(
+        function(cookie) {
+          startsWith(cookie[["name"]], "__Host-shinyOAuth_sid-auth-")
+        },
+        cookies
+      )
+      if (!length(cookies)) {
+        return(NULL)
+      }
+      policies <- unique(vapply(
+        cookies,
+        function(cookie) {
+          if (is.null(cookie[["sameSite"]])) "missing" else cookie[["sameSite"]]
+        },
+        character(1)
+      ))
+      list(
+        binding_cookie_count = length(cookies),
+        secure = all(vapply(
+          cookies,
+          function(cookie) isTRUE(cookie[["secure"]]),
+          logical(1)
+        )),
+        same_site = if (length(policies) == 1L) policies else "mixed",
+        http_only = all(vapply(
+          cookies,
+          function(cookie) isTRUE(cookie[["httpOnly"]]),
+          logical(1)
+        ))
+      )
+    },
+    "OpenID browser binding cookie",
+    15
+  )
+}
+
 openid_run_case <- function(
   root,
   stack,
@@ -64,11 +148,16 @@ openid_run_case <- function(
   .after_login = NULL
 ) {
   module <- openid_suite_module(stack, plan, expectation[["module"]])
+  form_post <- identical(
+    plan[["spec"]][["module_variant"]][["response_mode"]],
+    "form_post"
+  )
   config <- list(
     issuer = module[["issuer"]],
     client_id = plan[["registration"]][["client_id"]],
     client_secret = plan[["registration"]][["client_secret"]],
-    response_mode = "query",
+    response_mode = if (form_post) "form_post" else "query",
+    provider_origin = stack[["origin"]],
     run_id = paste0(context[["run_id"]], "-", module[["id"]]),
     preload_jwks = isTRUE(expectation[["preload_jwks"]]),
     report_setup_failure = identical(
@@ -79,6 +168,16 @@ openid_run_case <- function(
   app <- openid_app_start(root, stack, transport, config, library)
   browser <- openid_browser(stack[["spki"]])
   tab <- browser[["new_session"]]()
+  navigation <- if (form_post) {
+    openid_form_post_navigation(
+      tab,
+      module[["issuer"]],
+      stack[["origin"]],
+      app[["origin"]]
+    )
+  } else {
+    NULL
+  }
   tab[["Page"]][["navigate"]](paste0(app[["origin"]], "/"))
   initial <- openid_wait_app(app, browser, tab)
   discovery <- identical(expectation[["action"]], "discovery")
@@ -91,6 +190,16 @@ openid_run_case <- function(
     stop("OpenID fixture did not start in a clean state")
   }
   chrome <- tab[["Browser"]][["getVersion"]]()[["product"]]
+  cookie <- if (form_post) {
+    openid_form_post_cookie(tab, app[["origin"]])
+  } else {
+    NULL
+  }
+  secure_context <- if (form_post) {
+    openid_browser_value(tab, "window.isSecureContext")
+  } else {
+    NULL
+  }
   steps <- list()
   between <- list()
   snapshot <- initial
@@ -174,6 +283,19 @@ openid_run_case <- function(
   row[["steps"]] <- steps
   row[["between_logins"]] <- between
   row[["optional_policy"]] <- expectation[["optional_policy"]]
+  if (form_post) {
+    row[["form_post"]] <- as.list(navigation)
+    row[["form_post"]][["cookie"]] <- cookie
+    row[["form_post"]][["secure_context"]] <- secure_context
+    row[["form_post"]][["cross_origin"]] <- !identical(
+      stack[["origin"]],
+      app[["origin"]]
+    )
+    row[["form_post"]][["cross_site"]] <- identical(
+      snapshot[["form_post"]][["sec_fetch_site"]],
+      "cross-site"
+    )
+  }
   openid_stop_app(app)
   openid_close_browser(browser)
   cat(

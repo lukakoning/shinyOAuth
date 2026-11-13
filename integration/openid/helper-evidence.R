@@ -224,6 +224,52 @@ openid_rotation_matches <- function(
   TRUE
 }
 
+openid_form_post_matches <- function(result, context) {
+  navigation <- result[["form_post"]]
+  callback <- result[["app"]][["form_post"]]
+  cookie <- navigation[["cookie"]]
+  if (
+    !all(vapply(
+      context[c("provider_origin", "app_origin")],
+      openid_string,
+      logical(1)
+    )) ||
+      !all(c("provider_origin", "app_origin") %in% names(context))
+  ) {
+    return(FALSE)
+  }
+  origins <- c(context[["provider_origin"]], context[["app_origin"]])
+  if (
+    !all(grepl("^https://localhost:[0-9]+$", origins)) ||
+      identical(origins[[1L]], origins[[2L]])
+  ) {
+    return(FALSE)
+  }
+  identical(navigation[["provider_origin"]], context[["provider_origin"]]) &&
+    identical(navigation[["app_origin"]], context[["app_origin"]]) &&
+    identical(navigation[["authorization_method"]], "GET") &&
+    identical(navigation[["callback_method"]], "POST") &&
+    isTRUE(navigation[["bridge_redirect_303"]]) &&
+    isTRUE(navigation[["secure_context"]]) &&
+    identical(navigation[["cross_origin"]], TRUE) &&
+    identical(callback[["method"]], "POST") &&
+    isTRUE(callback[["origin_matched"]]) &&
+    isTRUE(callback[["form_urlencoded"]]) &&
+    openid_string(callback[["sec_fetch_site"]]) &&
+    callback[["sec_fetch_site"]] %in% c("same-site", "cross-site") &&
+    identical(
+      navigation[["cross_site"]],
+      identical(callback[["sec_fetch_site"]], "cross-site")
+    ) &&
+    openid_count(cookie[["binding_cookie_count"]], 1L) &&
+    isTRUE(cookie[["secure"]]) &&
+    identical(cookie[["same_site"]], "Strict") &&
+    openid_count(
+      result[["app"]][["operations"]][["audit_callback_validation_success"]],
+      1L
+    )
+}
+
 openid_check_report <- function(report, context, manifest) {
   tryCatch(
     {
@@ -257,6 +303,16 @@ openid_check_report <- function(report, context, manifest) {
         stop("Unknown evidence profile")
       }
       spec <- openid_plan_spec(manifest, context[["profile"]])
+      if (identical(context[["profile"]], "form-post")) {
+        for (name in c("provider_origin", "app_origin")) {
+          if (
+            !openid_string(context[[name]]) ||
+              !identical(report[[name]], context[[name]])
+          ) {
+            stop("Form Post origins do not belong to this run")
+          }
+        }
+      }
       expected <- profile[["modules"]]
       names_expected <- vapply(
         expected,
@@ -358,6 +414,12 @@ openid_check_report <- function(report, context, manifest) {
             !openid_string(result[["browser_version"]])
         ) {
           stop("Missing browser navigation evidence")
+        }
+        if (
+          identical(context[["profile"]], "form-post") &&
+            !openid_form_post_matches(result, context)
+        ) {
+          stop("Missing real-browser Form Post, bridge or binding evidence")
         }
         if (
           !openid_app_matches(

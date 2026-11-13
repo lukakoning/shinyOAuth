@@ -99,6 +99,173 @@ testthat::test_that("fixture key-ID digests serialize as plain JSON strings", {
   testthat::expect_identical(jsonlite::fromJSON(encoded)[["key_id"]], digest)
 })
 
+form_post_fixture <- function() {
+  f <- evidence_fixture("form-post")
+  for (name in c("provider_origin", "app_origin")) {
+    value <- if (name == "provider_origin") {
+      "https://localhost:41000"
+    } else {
+      "https://localhost:42000"
+    }
+    f[["context"]][[name]] <- f[["report"]][[name]] <- value
+  }
+  for (i in seq_along(f[["report"]][["results"]])) {
+    row <- f[["report"]][["results"]][[i]]
+    row[["form_post"]] <- list(
+      provider_origin = f[["context"]][["provider_origin"]],
+      app_origin = f[["context"]][["app_origin"]],
+      authorization_method = "GET",
+      callback_method = "POST",
+      bridge_redirect_303 = TRUE,
+      secure_context = TRUE,
+      cross_origin = TRUE,
+      cross_site = FALSE,
+      cookie = list(
+        binding_cookie_count = 1L,
+        secure = TRUE,
+        same_site = "Strict",
+        http_only = FALSE
+      )
+    )
+    row[["app"]][["form_post"]] <- list(
+      method = "POST",
+      origin_matched = TRUE,
+      sec_fetch_site = "same-site",
+      form_urlencoded = TRUE
+    )
+    row[["app"]][["operations"]][["audit_callback_validation_success"]] <- 1L
+    f[["report"]][["results"]][[i]] <- row
+  }
+  f
+}
+
+testthat::test_that("Form Post coverage requires all pinned modules and the response-mode variant", {
+  f <- form_post_fixture()
+  spec <- openid_plan_spec(f[["manifest"]], "form-post")
+  testthat::expect_identical(
+    spec[["plan"]],
+    "oidcc-client-formpost-basic-certification-test-plan"
+  )
+  testthat::expect_identical(
+    spec[["module_variant"]][["response_mode"]],
+    "form_post"
+  )
+  check <- openid_check_report(f[["report"]], f[["context"]], f[["manifest"]])
+  testthat::expect_true(check[["gate_passed"]])
+  testthat::expect_true(check[["coverage_complete"]])
+  for (i in seq_along(f[["report"]][["results"]])) {
+    report <- f[["report"]]
+    report[["results"]] <- report[["results"]][-i]
+    testthat::expect_false(openid_check_report(
+      report,
+      f[["context"]],
+      f[["manifest"]]
+    )[["gate_passed"]])
+  }
+  report <- f[["report"]]
+  report[["results"]][[1L]][["variant"]][["response_mode"]] <- "default"
+  testthat::expect_false(openid_check_report(
+    report,
+    f[["context"]],
+    f[["manifest"]]
+  )[["gate_passed"]])
+})
+
+testthat::test_that("Form Post cannot pass with GET callbacks, missing bridge evidence or stale origins", {
+  f <- form_post_fixture()
+  for (change in list(
+    list(name = "authorization_method", value = "POST"),
+    list(name = "callback_method", value = "GET"),
+    list(name = "bridge_redirect_303", value = FALSE),
+    list(name = "secure_context", value = FALSE),
+    list(name = "cross_origin", value = FALSE),
+    list(name = "cross_site", value = TRUE),
+    list(name = "provider_origin", value = "https://localhost:43000"),
+    list(name = "app_origin", value = "https://localhost:44000")
+  )) {
+    report <- f[["report"]]
+    report[["results"]][[1L]][["form_post"]][[change[["name"]]]] <- change[[
+      "value"
+    ]]
+    testthat::expect_false(openid_check_report(
+      report,
+      f[["context"]],
+      f[["manifest"]]
+    )[["gate_passed"]])
+  }
+  for (name in c("provider_origin", "app_origin")) {
+    report <- f[["report"]]
+    report[[name]] <- "https://localhost:45000"
+    testthat::expect_false(openid_check_report(
+      report,
+      f[["context"]],
+      f[["manifest"]]
+    )[["gate_passed"]])
+  }
+  report <- f[["report"]]
+  report[["results"]][[2L]][["form_post"]] <- NULL
+  testthat::expect_false(openid_check_report(
+    report,
+    f[["context"]],
+    f[["manifest"]]
+  )[["gate_passed"]])
+})
+
+testthat::test_that("Form Post requires browser site headers, Secure Strict binding cookies and state validation", {
+  f <- form_post_fixture()
+  for (change in list(
+    list(name = "method", value = "GET"),
+    list(name = "origin_matched", value = FALSE),
+    list(name = "form_urlencoded", value = FALSE),
+    list(name = "sec_fetch_site", value = NULL),
+    list(name = "sec_fetch_site", value = "none")
+  )) {
+    report <- f[["report"]]
+    report[["results"]][[1L]][["app"]][["form_post"]][[change[[
+      "name"
+    ]]]] <- change[["value"]]
+    testthat::expect_false(openid_check_report(
+      report,
+      f[["context"]],
+      f[["manifest"]]
+    )[["gate_passed"]])
+  }
+  for (change in list(
+    list(name = "secure", value = FALSE),
+    list(name = "same_site", value = "None"),
+    list(name = "binding_cookie_count", value = 0L)
+  )) {
+    report <- f[["report"]]
+    report[["results"]][[1L]][["form_post"]][["cookie"]][[change[[
+      "name"
+    ]]]] <- change[["value"]]
+    testthat::expect_false(openid_check_report(
+      report,
+      f[["context"]],
+      f[["manifest"]]
+    )[["gate_passed"]])
+  }
+  report <- f[["report"]]
+  report[["results"]][[1L]][["app"]][["operations"]][[
+    "audit_callback_validation_success"
+  ]] <- 0L
+  testthat::expect_false(openid_check_report(
+    report,
+    f[["context"]],
+    f[["manifest"]]
+  )[["gate_passed"]])
+  report <- f[["report"]]
+  report[["results"]][[1L]][["app"]][["form_post"]][[
+    "sec_fetch_site"
+  ]] <- "cross-site"
+  report[["results"]][[1L]][["form_post"]][["cross_site"]] <- TRUE
+  testthat::expect_true(openid_check_report(
+    report,
+    f[["context"]],
+    f[["manifest"]]
+  )[["gate_passed"]])
+})
+
 configuration_fixture <- function() {
   f <- evidence_fixture("config")
   f[["report"]][["jwks_cache_policy"]] <- list(

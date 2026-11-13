@@ -6,16 +6,16 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
       setequal(args[c(1L, 3L)], c("--profile", "--transport"))
     if (!valid) {
       stop(
-        "Usage: Rscript integration/openid/run-tests.R --check-api | --profile smoke|basic|config --transport sync"
+        "Usage: Rscript integration/openid/run-tests.R --check-api | --profile smoke|basic|config|form-post --transport sync"
       )
     }
     options <- setNames(args[c(2L, 4L)], args[c(1L, 3L)])
     if (
-      !options[["--profile"]] %in% c("smoke", "basic", "config") ||
+      !options[["--profile"]] %in% c("smoke", "basic", "config", "form-post") ||
         !identical(options[["--transport"]], "sync")
     ) {
       stop(
-        "Only smoke, basic and config profiles with sync transport are implemented"
+        "Only smoke, basic, config and form-post profiles with sync transport are implemented"
       )
     }
   }
@@ -76,6 +76,10 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
     library <- openid_install(".", output)
     stack <- openid_start(".", output)
     transport <- openid_app_transport(".", stack, httpuv::randomPort())
+    context[["provider_origin"]] <- report[["provider_origin"]] <- stack[[
+      "origin"
+    ]]
+    context[["app_origin"]] <- report[["app_origin"]] <- transport[["origin"]]
     report[["driver_failure_control_passed"]] <- openid_driver_failure_control(
       ".",
       stack,

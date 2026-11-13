@@ -28,18 +28,20 @@ openid_fixture_app <- function(config) {
   }
   audit <- new.env(parent = emptyenv())
   audit[["counts"]] <- setNames(
-    integer(4),
+    integer(5),
     c(
       "audit_token_exchange",
       "audit_userinfo",
       "audit_login_success",
-      "audit_login_failed"
+      "audit_login_failed",
+      "audit_callback_validation_success"
     )
   )
   audit[["errors"]] <- character()
   audit[["claims"]] <- character()
   audit[["reasons"]] <- character()
   audit[["sessions"]] <- 0L
+  audit[["form_post"]] <- NULL
   audit[["cache_updates"]] <- 0L
   audit[["cache_hits"]] <- 0L
   audit[["jwks_digest"]] <- NULL
@@ -179,6 +181,7 @@ openid_fixture_app <- function(config) {
         discovery_issuer_exact = !is.null(provider) &&
           identical(provider@issuer, config[["issuer"]]),
         session_number = session_number,
+        form_post = audit[["form_post"]],
         authenticated = authenticated,
         has_token = !is.null(token),
         id_token_validated = !is.null(token) &&
@@ -267,6 +270,39 @@ openid_fixture_app <- function(config) {
         !identical(req[["HTTP_HOST"]], sub("^https://", "", config[["origin"]]))
     ) {
       return(NULL)
+    }
+    if (
+      identical(config[["response_mode"]], "form_post") &&
+        identical(req[["REQUEST_METHOD"]], "POST") &&
+        identical(req[["PATH_INFO"]], "/")
+    ) {
+      site <- req[["HTTP_SEC_FETCH_SITE"]]
+      if (
+        !is.character(site) ||
+          length(site) != 1L ||
+          !site %in% c("same-site", "same-origin", "cross-site", "none")
+      ) {
+        site <- "missing_or_unknown"
+      }
+      content_type <- req[["CONTENT_TYPE"]]
+      audit[["form_post"]] <- list(
+        method = "POST",
+        origin_matched = identical(
+          req[["HTTP_ORIGIN"]],
+          config[["provider_origin"]]
+        ),
+        sec_fetch_site = site,
+        form_urlencoded = is.character(content_type) &&
+          length(content_type) == 1L &&
+          !is.na(content_type) &&
+          nzchar(content_type) &&
+          identical(
+            tolower(trimws(strsplit(content_type, ";", fixed = TRUE)[[1L]][[
+              1L
+            ]])),
+            "application/x-www-form-urlencoded"
+          )
+      )
     }
     paste0(config[["origin"]], req[["PATH_INFO"]])
   }

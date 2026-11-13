@@ -9,6 +9,12 @@ For this exact plan/variant, `basic` reports `coverage_complete = true`; the
 three-module `smoke` selection keeps it false. This establishes local Basic RP
 test coverage; OpenID certification and other profiles remain separate.
 
+The fourteen-module Form Post Basic plan also passes with its fixed
+`response_mode=form_post` variant, normal browser POST callbacks and verified
+bridge, binding and URL-cleanup evidence. The deployment uses two HTTPS
+`localhost` ports; Chrome records it as cross-origin and same-site. This does
+not establish cross-site deployment coverage.
+
 The Configuration selection now exercises all six pinned modules. It separates
 discovery-only setup from authentication and explicitly runs both signing-key
 rotation modules. Configuration coverage remains partial: the suite forbids
@@ -23,7 +29,7 @@ neither interruption counts as a client test pass.
 | --- | --- | --- |
 | OIDC Core code flow, ID token and UserInfo validation | Unit tests, Keycloak browser/code flows, complete pinned Basic RP module selection (C05) | Basic implemented for the variant above; further profiles below |
 | Discovery, exact issuer and signing-key changes | Discovery/JWKS tests, Keycloak rotation, and six Configuration module outcomes (C06) | Warm-cache refresh remains a C06 follow-up; pinned suite JWKS is `no-store` |
-| Form POST callback and browser binding | Real browser and retained-connection tests | Form Post Basic RP; C07 |
+| Form POST callback and browser binding | Real browser and retained-connection tests; complete pinned Form Post Basic plan on the same-site local rig (C07) | Form Post Basic implemented; cross-site attack cases stay in their separate layer |
 | Refresh identity continuity | Refresh validation and retained-connection tests | OIDC client refresh plan; C08 |
 | Public clients, other auth methods and async transport | Keycloak and worker tests | Applicable extended-plan variants; C09 |
 | PAR, DPoP and mTLS | Keycloak and independent Python exchanges | FAPI 2.0 Security Profile; C10-C11 |
@@ -63,6 +69,28 @@ token. Its comments mention a warning, but the executable implementation yields
 This exception applies only to that module and never converts its verdict to
 `PASSED`. Every module must reach `FINISHED`, with verified browser callback
 cleanup, the expected app package/run identity, and owned-resource cleanup.
+
+The `form-post` selection follows the pinned
+[Form Post Basic plan](https://gitlab.com/openid/conformance-suite/-/blob/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/openid/client/OIDCCClientFormPostBasicTestPlan.java)
+and its
+[response-mode adapter](https://gitlab.com/openid/conformance-suite/-/blob/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/openid/AbstractFormPostTestPlan.java).
+They select the same fourteen Basic modules with `form_post`, so every row in
+the Basic table above still applies. Each result additionally requires:
+
+- Browser-observed GET authorization, POST callback and the bridge's 303 GET redirect.
+- The app's POST metadata: form encoding, expected provider Origin and observed `Sec-Fetch-Site`.
+- Secure `SameSite=Strict` binding-cookie metadata and a completed callback-validation audit, including for ID-token rejection cases.
+- Real provider/app origins, consistent origin/site labels and an empty final callback query.
+
+Windows and Linux runs each produced thirteen `PASSED` verdicts plus the
+existing unsigned-token `SKIPPED` verdict. Chrome sent `Sec-Fetch-Site:
+same-site` for every callback. Different HTTPS ports establish different
+origins, while these `localhost` origins share a site. Cookies, request bodies,
+callback query values and full CDP events are excluded from the report.
+The separate `oidcc-client-test-form-post-error` module is not part of this
+upstream plan; it earns no verdict in this selection. General error-bridge and
+transport rejection tests remain in the package's existing tests, with broader
+comprehensive-plan selections deferred to C09.
 
 The `config` selection uses the pinned
 [Configuration plan](https://gitlab.com/openid/conformance-suite/-/blob/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/openid/client/OIDCCClientConfigTestPlan.java).

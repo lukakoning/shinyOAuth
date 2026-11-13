@@ -60,6 +60,33 @@ implements the pinned suite's documented optional support for `alg=none`;
 the report retains the original verdict. Every other module must finish
 `PASSED`. A waiting module or an unrelated app error cannot satisfy this policy.
 
+Run the Form Post Basic selection:
+
+```sh
+Rscript integration/openid/run-tests.R --profile form-post --transport sync
+```
+
+The pinned plan runs the same fourteen modules with `response_mode=form_post`.
+The app installs `oauth_form_post_ui()` and uses normal browser navigation for
+every login. Chrome network events must show an outgoing GET authorization
+request, a POST to the callback and the bridge's 303 redirect back to GET.
+The fixture separately records the POST method, form content type, expected
+Origin match and allowlisted `Sec-Fetch-Site` value. No callback body, query
+parameters, cookie values or full network events enter the report.
+
+Every case also requires a Secure `SameSite=Strict` browser-binding cookie,
+a secure browser context, a completed state/browser-binding validation audit,
+the expected identity or typed rejection, and a clean final callback URL.
+Outgoing authorization-request method and callback response mode are checked
+separately. Successful runs report complete coverage for this pinned Form Post
+Basic plan and deployment, retaining the unsigned-token optional skip policy.
+
+The local provider and app use HTTPS `localhost` on different ports. Chrome
+reports `Sec-Fetch-Site: same-site`: the requests cross origins, while remaining
+within one site. Reports retain the actual origins and observed site category;
+different ports never earn a cross-site coverage label. Cross-site attack
+fixtures remain a separate test layer.
+
 Run the Configuration module selection:
 
 ```sh
@@ -102,7 +129,7 @@ owned Docker resources.
 
 The [workflow](../../.github/workflows/openid-conformance.yml) runs preflight,
 API checks and smoke on pull requests affecting the package or this harness.
-Manual dispatch offers `smoke`, `basic` or `config`; larger selections remain manual while
+Manual dispatch offers `smoke`, `basic`, `config` or `form-post`; larger selections remain manual while
 GitHub runner timings are unmeasured. It needs no external account or provider
 credentials and uploads only explicit sanitized report paths.
 
@@ -178,5 +205,8 @@ and package setup. The Ubuntu GitHub workflow has not run yet.
 Configuration selections also pass on both platforms: five `PASSED` verdicts
 and the documented unsigned-token `SKIPPED`. Their module loops took about
 38 seconds on Windows and 30 seconds on Linux, with the cache limitation above.
+Form Post Basic also passes all fourteen expected module outcomes on both
+platforms, including its POST/303/binding evidence. Its module loops took about
+103 seconds on Windows and 82 seconds on Linux.
 The [implementation plan](../../.github/protocol-quality-implementation-plan.md)
 records execution evidence and the remaining profile and CI work.

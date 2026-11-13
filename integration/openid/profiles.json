@@ -23,6 +23,20 @@
         "oidcc-client-test-client-secret-basic"
       ]
     },
+    "form-post": {
+      "plan": "oidcc-client-formpost-basic-certification-test-plan",
+      "plan_variant": {"client_registration": "static_client", "request_type": "plain_http_request"},
+      "module_variant": {"client_auth_type": "client_secret_basic", "response_type": "code", "response_mode": "form_post"},
+      "available_modules": [
+        "oidcc-client-test", "oidcc-client-test-invalid-iss", "oidcc-client-test-missing-sub",
+        "oidcc-client-test-invalid-aud", "oidcc-client-test-missing-iat",
+        "oidcc-client-test-kid-absent-single-jwks", "oidcc-client-test-kid-absent-multiple-jwks",
+        "oidcc-client-test-idtoken-sig-rs256", "oidcc-client-test-idtoken-sig-none",
+        "oidcc-client-test-invalid-sig-rs256", "oidcc-client-test-userinfo-invalid-sub",
+        "oidcc-client-test-nonce-invalid", "oidcc-client-test-scope-userinfo-claims",
+        "oidcc-client-test-client-secret-basic"
+      ]
+    },
     "config": {
       "plan": "oidcc-client-config-certification-test-plan",
       "plan_variant": {"client_registration": "static_client", "request_type": "plain_http_request", "client_auth_type": "client_secret_basic", "response_mode": "default"},
@@ -42,6 +56,26 @@
     }
   },
   "profiles": {
+    "form-post": {
+      "plan": "form-post",
+      "complete_profile": true,
+      "modules": [
+        {"module": "oidcc-client-test", "outcome": "authenticated"},
+        {"module": "oidcc-client-test-invalid-iss", "outcome": "rejected", "claim": "iss"},
+        {"module": "oidcc-client-test-missing-sub", "outcome": "rejected", "claim": "sub"},
+        {"module": "oidcc-client-test-invalid-aud", "outcome": "rejected", "claim": "aud"},
+        {"module": "oidcc-client-test-missing-iat", "outcome": "rejected", "claim": "iat"},
+        {"module": "oidcc-client-test-kid-absent-single-jwks", "outcome": "authenticated"},
+        {"module": "oidcc-client-test-kid-absent-multiple-jwks", "outcome": "authenticated"},
+        {"module": "oidcc-client-test-idtoken-sig-rs256", "outcome": "authenticated"},
+        {"module": "oidcc-client-test-idtoken-sig-none", "outcome": "rejected", "reason": "disallowed_algorithm", "suite_result": "SKIPPED", "optional_policy": "reject_unsigned_id_token"},
+        {"module": "oidcc-client-test-invalid-sig-rs256", "outcome": "rejected", "reason": "invalid_signature"},
+        {"module": "oidcc-client-test-userinfo-invalid-sub", "outcome": "rejected", "error_class": "shinyOAuth_userinfo_mismatch"},
+        {"module": "oidcc-client-test-nonce-invalid", "outcome": "rejected", "claim": "nonce"},
+        {"module": "oidcc-client-test-scope-userinfo-claims", "outcome": "authenticated", "userinfo_claims": ["email"]},
+        {"module": "oidcc-client-test-client-secret-basic", "outcome": "authenticated"}
+      ]
+    },
     "config": {
       "plan": "config",
       "complete_profile": false,

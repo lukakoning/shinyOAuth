@@ -11,6 +11,7 @@ on:
           - smoke
           - basic
           - config
+          - form-post
   pull_request:
     paths:
       - "R/**"
@@ -88,6 +89,7 @@ jobs:
             integration/openid/.artifacts/smoke-*/evidence.json
             integration/openid/.artifacts/basic-*/evidence.json
             integration/openid/.artifacts/config-*/evidence.json
+            integration/openid/.artifacts/form-post-*/evidence.json
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
