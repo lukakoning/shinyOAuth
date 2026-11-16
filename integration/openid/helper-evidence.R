@@ -548,6 +548,24 @@ openid_check_report <- function(report, context, manifest) {
         stop("Unknown evidence profile")
       }
       spec <- openid_plan_spec(manifest, context[["profile"]])
+      auth_profile <- identical(spec[["plan"]], "oidcc-client-test-plan")
+      if (auth_profile) {
+        for (name in c("public_probe_plan_id", "public_probe_suite_id")) {
+          if (!identical(report[[name]], context[[name]])) {
+            stop("Stale public-client probe identity")
+          }
+        }
+      }
+      if (
+        auth_profile &&
+          !openid_public_capability_matches(
+            report[["public_client_capability"]],
+            context,
+            manifest
+          )
+      ) {
+        stop("Missing pinned public-client capability gap evidence")
+      }
       if (identical(context[["profile"]], "form-post")) {
         for (name in c("provider_origin", "app_origin")) {
           if (
@@ -604,6 +622,16 @@ openid_check_report <- function(report, context, manifest) {
         as.list(spec[["module_variant"]])
       )
       for (result in results) {
+        if (
+          auth_profile &&
+            (!openid_auth_matches(result, spec) ||
+              identical(
+                result[["suite_id"]],
+                report[["public_client_capability"]][["suite_id"]]
+              ))
+        ) {
+          stop("Missing actual client-authentication or S256 request evidence")
+        }
         expectation <- expected[[match(result[["module"]], names_expected)]]
         if (
           !identical(result[["run_id"]], context[["run_id"]]) ||

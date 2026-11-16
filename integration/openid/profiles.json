@@ -2,6 +2,176 @@
   "schema_version": 2,
   "source_revision": "410812ef6bc72a84723c1685725edce3558e31e3",
   "plans": {
+    "auth-post": {
+      "plan": "oidcc-client-test-plan",
+      "plan_variant": {
+        "client_registration": "static_client",
+        "request_type": "plain_http_request",
+        "client_auth_type": "client_secret_post",
+        "response_type": "code",
+        "response_mode": "default"
+      },
+      "module_variant": null,
+      "available_modules": [
+        "oidcc-client-test",
+        "oidcc-client-test-nonce-invalid",
+        "oidcc-client-test-client-secret-basic",
+        "oidcc-client-test-scope-userinfo-claims",
+        "oidcc-client-test-kid-absent-single-jwks",
+        "oidcc-client-test-kid-absent-multiple-jwks",
+        "oidcc-client-test-missing-iat",
+        "oidcc-client-test-missing-aud",
+        "oidcc-client-test-invalid-aud",
+        "oidcc-client-test-idtoken-sig-none",
+        "oidcc-client-test-idtoken-sig-rs256",
+        "oidcc-client-test-missing-sub",
+        "oidcc-client-test-invalid-sig-rs256",
+        "oidcc-client-test-invalid-iss",
+        "oidcc-client-test-userinfo-invalid-sub",
+        "oidcc-client-test-userinfo-bearer-header",
+        "oidcc-client-test-userinfo-bearer-body",
+        "oidcc-client-test-invalid-sig-hs256",
+        "oidcc-client-test-invalid-sig-es256",
+        "oidcc-client-test-aggregated-claims",
+        "oidcc-client-test-distributed-claims",
+        "oidcc-client-test-discovery-openid-config",
+        "oidcc-client-test-discovery-jwks-uri-keys",
+        "oidcc-client-test-discovery-issuer-mismatch",
+        "oidcc-client-test-signing-key-rotation-just-before-signing",
+        "oidcc-client-test-signing-key-rotation",
+        "oidcc-client-test-discovery-webfinger-acct",
+        "oidcc-client-test-discovery-webfinger-url",
+        "oidcc-client-test-userinfo-signed"
+      ],
+      "client_assertion_alg": null
+    },
+    "auth-secret-jwt": {
+      "plan": "oidcc-client-test-plan",
+      "plan_variant": {
+        "client_registration": "static_client",
+        "request_type": "plain_http_request",
+        "client_auth_type": "client_secret_jwt",
+        "response_type": "code",
+        "response_mode": "default"
+      },
+      "module_variant": null,
+      "available_modules": [
+        "oidcc-client-test",
+        "oidcc-client-test-nonce-invalid",
+        "oidcc-client-test-client-secret-basic",
+        "oidcc-client-test-scope-userinfo-claims",
+        "oidcc-client-test-kid-absent-single-jwks",
+        "oidcc-client-test-kid-absent-multiple-jwks",
+        "oidcc-client-test-missing-iat",
+        "oidcc-client-test-missing-aud",
+        "oidcc-client-test-invalid-aud",
+        "oidcc-client-test-idtoken-sig-none",
+        "oidcc-client-test-idtoken-sig-rs256",
+        "oidcc-client-test-missing-sub",
+        "oidcc-client-test-invalid-sig-rs256",
+        "oidcc-client-test-invalid-iss",
+        "oidcc-client-test-userinfo-invalid-sub",
+        "oidcc-client-test-userinfo-bearer-header",
+        "oidcc-client-test-userinfo-bearer-body",
+        "oidcc-client-test-invalid-sig-hs256",
+        "oidcc-client-test-invalid-sig-es256",
+        "oidcc-client-test-aggregated-claims",
+        "oidcc-client-test-distributed-claims",
+        "oidcc-client-test-discovery-openid-config",
+        "oidcc-client-test-discovery-jwks-uri-keys",
+        "oidcc-client-test-discovery-issuer-mismatch",
+        "oidcc-client-test-signing-key-rotation-just-before-signing",
+        "oidcc-client-test-signing-key-rotation",
+        "oidcc-client-test-discovery-webfinger-acct",
+        "oidcc-client-test-discovery-webfinger-url",
+        "oidcc-client-test-userinfo-signed"
+      ],
+      "client_assertion_alg": "HS256"
+    },
+    "auth-private-jwt": {
+      "plan": "oidcc-client-test-plan",
+      "plan_variant": {
+        "client_registration": "static_client",
+        "request_type": "plain_http_request",
+        "client_auth_type": "private_key_jwt",
+        "response_type": "code",
+        "response_mode": "default"
+      },
+      "module_variant": null,
+      "available_modules": [
+        "oidcc-client-test",
+        "oidcc-client-test-nonce-invalid",
+        "oidcc-client-test-client-secret-basic",
+        "oidcc-client-test-scope-userinfo-claims",
+        "oidcc-client-test-kid-absent-single-jwks",
+        "oidcc-client-test-kid-absent-multiple-jwks",
+        "oidcc-client-test-missing-iat",
+        "oidcc-client-test-missing-aud",
+        "oidcc-client-test-invalid-aud",
+        "oidcc-client-test-idtoken-sig-none",
+        "oidcc-client-test-idtoken-sig-rs256",
+        "oidcc-client-test-missing-sub",
+        "oidcc-client-test-invalid-sig-rs256",
+        "oidcc-client-test-invalid-iss",
+        "oidcc-client-test-userinfo-invalid-sub",
+        "oidcc-client-test-userinfo-bearer-header",
+        "oidcc-client-test-userinfo-bearer-body",
+        "oidcc-client-test-invalid-sig-es256",
+        "oidcc-client-test-aggregated-claims",
+        "oidcc-client-test-distributed-claims",
+        "oidcc-client-test-discovery-openid-config",
+        "oidcc-client-test-discovery-jwks-uri-keys",
+        "oidcc-client-test-discovery-issuer-mismatch",
+        "oidcc-client-test-signing-key-rotation-just-before-signing",
+        "oidcc-client-test-signing-key-rotation",
+        "oidcc-client-test-discovery-webfinger-acct",
+        "oidcc-client-test-discovery-webfinger-url",
+        "oidcc-client-test-userinfo-signed"
+      ],
+      "client_assertion_alg": "RS256"
+    },
+    "auth-public": {
+      "plan": "oidcc-client-test-plan",
+      "plan_variant": {
+        "client_registration": "static_client",
+        "request_type": "plain_http_request",
+        "client_auth_type": "none",
+        "response_type": "code",
+        "response_mode": "default"
+      },
+      "module_variant": null,
+      "available_modules": [
+        "oidcc-client-test",
+        "oidcc-client-test-nonce-invalid",
+        "oidcc-client-test-client-secret-basic",
+        "oidcc-client-test-scope-userinfo-claims",
+        "oidcc-client-test-kid-absent-single-jwks",
+        "oidcc-client-test-kid-absent-multiple-jwks",
+        "oidcc-client-test-missing-iat",
+        "oidcc-client-test-missing-aud",
+        "oidcc-client-test-invalid-aud",
+        "oidcc-client-test-idtoken-sig-none",
+        "oidcc-client-test-idtoken-sig-rs256",
+        "oidcc-client-test-missing-sub",
+        "oidcc-client-test-invalid-sig-rs256",
+        "oidcc-client-test-invalid-iss",
+        "oidcc-client-test-userinfo-invalid-sub",
+        "oidcc-client-test-userinfo-bearer-header",
+        "oidcc-client-test-userinfo-bearer-body",
+        "oidcc-client-test-invalid-sig-es256",
+        "oidcc-client-test-aggregated-claims",
+        "oidcc-client-test-distributed-claims",
+        "oidcc-client-test-discovery-openid-config",
+        "oidcc-client-test-discovery-jwks-uri-keys",
+        "oidcc-client-test-discovery-issuer-mismatch",
+        "oidcc-client-test-signing-key-rotation-just-before-signing",
+        "oidcc-client-test-signing-key-rotation",
+        "oidcc-client-test-discovery-webfinger-acct",
+        "oidcc-client-test-discovery-webfinger-url",
+        "oidcc-client-test-userinfo-signed"
+      ],
+      "client_assertion_alg": null
+    },
     "refresh": {
       "plan": "oidcc-client-refreshtoken-test-plan",
       "plan_variant": {"client_registration": "static_client", "request_type": "plain_http_request", "client_auth_type": "client_secret_basic", "response_type": "code", "response_mode": "default"},
@@ -65,7 +235,74 @@
       ]
     }
   },
+  "capability_probes": {
+    "public_client": {
+      "plan": "auth-public",
+      "module": "oidcc-client-test",
+      "expected": "discovery_omits_none"
+    }
+  },
   "profiles": {
+    "auth-post": {
+      "plan": "auth-post",
+      "complete_profile": false,
+      "coverage_limitations": [
+        "comprehensive_plan_selection_only",
+        "suite_public_variant_omits_none_in_discovery",
+        "suite_skips_pkce_verifier_check_companion_verifies_requests"
+      ],
+      "modules": [
+        {
+          "module": "oidcc-client-test",
+          "outcome": "authenticated"
+        },
+        {
+          "module": "oidcc-client-test-invalid-iss",
+          "outcome": "rejected",
+          "claim": "iss"
+        }
+      ]
+    },
+    "auth-secret-jwt": {
+      "plan": "auth-secret-jwt",
+      "complete_profile": false,
+      "coverage_limitations": [
+        "comprehensive_plan_selection_only",
+        "suite_public_variant_omits_none_in_discovery",
+        "suite_skips_pkce_verifier_check_companion_verifies_requests"
+      ],
+      "modules": [
+        {
+          "module": "oidcc-client-test",
+          "outcome": "authenticated"
+        },
+        {
+          "module": "oidcc-client-test-invalid-iss",
+          "outcome": "rejected",
+          "claim": "iss"
+        }
+      ]
+    },
+    "auth-private-jwt": {
+      "plan": "auth-private-jwt",
+      "complete_profile": false,
+      "coverage_limitations": [
+        "comprehensive_plan_selection_only",
+        "suite_public_variant_omits_none_in_discovery",
+        "suite_skips_pkce_verifier_check_companion_verifies_requests"
+      ],
+      "modules": [
+        {
+          "module": "oidcc-client-test",
+          "outcome": "authenticated"
+        },
+        {
+          "module": "oidcc-client-test-invalid-iss",
+          "outcome": "rejected",
+          "claim": "iss"
+        }
+      ]
+    },
     "refresh": {
       "plan": "refresh",
       "complete_profile": true,

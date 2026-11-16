@@ -37,7 +37,7 @@ neither interruption counts as a client test pass.
 | Form POST callback and browser binding | Real browser and retained-connection tests; complete pinned Form Post Basic plan on the same-site local rig (C07) | Form Post Basic implemented; cross-site attack cases stay in their separate layer |
 | Refresh identity continuity | Refresh validation, retained-connection tests and all three pinned client refresh modules (C08, extended in C09) | Code flow with HTTP Basic authentication in sync/mirai, plus future parity |
 | Worker transport | Package worker tests; verified mirai transport for the core selections and smaller future smoke/refresh parity selections (C09 first slice) | Shared-worker issuer isolation remains a C09 follow-up |
-| Public clients and other auth methods | Keycloak and worker tests | Applicable extended-plan variants; C09 follow-up |
+| Additional client authentication | Keycloak/worker tests and paired positive/issuer-rejection selections for POST, HS256 secret JWT and RS256 private-key JWT (C09) | Public-client discovery remains blocked by the pinned suite's metadata; shared-worker issuer isolation remains open |
 | PAR, DPoP and mTLS | Keycloak and independent Python exchanges | FAPI 2.0 Security Profile; C10-C11 |
 | JAR/JARM combinations | Independent Python fixture and Keycloak capability tests | FAPI Message Signing; C12; second full provider C13-C14 |
 | SMART App Launch | SMART browser fixtures and corrected Inferno simulator | Existing Inferno gate remains separate |
@@ -145,8 +145,9 @@ coverage. Discovery-only Configuration cases still run setup in the main
 process and must have no worker protocol events. Other Configuration cases
 use the worker path, with serialized cache copies and the existing no-store
 coverage limitation. The per-case pool prevents sharing credentials or hooks
-between unrelated fixtures. A shared-pool, cross-issuer scenario and the
-additional client-authentication variants remain outstanding C09 work.
+between unrelated fixtures. A shared-pool, cross-issuer scenario and public-client
+discovery coverage remain outstanding C09 work. The confidential-client selections
+below cover the additional authentication methods in sync and mirai.
 
 The `refresh` selection uses the pinned
 [client refresh plan](https://gitlab.com/openid/conformance-suite/-/blob/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/openid/client/OIDCCClientRefreshTokenProfileTestPlan.java).
@@ -177,6 +178,56 @@ state itself. Raw identities, tokens and error messages stay private; only
 allowlisted labels, counters and comparison booleans enter the report. Refresh
 rotation, concurrency and retained connections have their separate regression
 layers; this selection does not replace them.
+
+The `auth-post`, `auth-secret-jwt` and `auth-private-jwt` selections use the
+pinned [Comprehensive plan](https://gitlab.com/openid/conformance-suite/-/blob/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/openid/client/OIDCCClientTestPlan.java).
+They freeze the resolved code-flow module lists: twenty-nine for shared-secret
+methods and twenty-eight for private-key JWT. Each selects
+`oidcc-client-test` and `oidcc-client-test-invalid-iss` with static registration,
+query callbacks and its declared authentication method. Both suite verdicts
+must be `FINISHED/PASSED`. The positive case consumes validated ID-token and
+UserInfo results; the negative case must reject `iss` without retaining an
+identity or fetching UserInfo. Sync and mirai use the same expected outcomes.
+
+Actual request evidence requires one GET authorization and one POST token
+exchange, matching registered client IDs, a correct S256 challenge/verifier
+pair, and no Authorization header. POST authentication must contain the matching
+body secret and no assertion. JWT authentication must contain an assertion and
+no body secret, with the registered HS256/RS256 algorithm, matching issuer and
+subject, the token endpoint as audience, a JTI and valid short-lived timestamps.
+Private-key JWT also requires the registered key ID. Required suite condition
+results establish credential/signature and claim validation. The runner
+compares sensitive values only in memory and exports allowlisted flags.
+
+Public-client coverage remains unavailable through normal discovery in this
+deployment. The pinned
+[server-configuration condition](https://gitlab.com/openid/conformance-suite/-/blob/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/condition/as/OIDCCGenerateServerConfiguration.java)
+omits `none` from `token_endpoint_auth_methods_supported`, including when the
+plan selects `client_auth_type=none`. Its
+[public authentication sequence](https://gitlab.com/openid/conformance-suite/-/blob/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/sequence/as/OIDCCValidateClientAuthenticationWithNone.java)
+also performs no checks. A separate probe verifies the metadata, observes the
+installed package's typed rejection of unadvertised public authentication and
+ends `INTERRUPTED`. Its identities remain bound to the run, and it cannot count
+as either a positive client test or public authentication coverage. Closing
+this gap needs an appropriate independent-provider scenario or a reviewed suite
+update; the package's discovery validation stays enabled.
+
+The pinned client tests also skip PKCE verifier validation:
+[the client base class](https://gitlab.com/openid/conformance-suite/-/blob/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/openid/client/AbstractOIDCCClientTest.java)
+guards `CheckPkceCodeVerifier` with `env.containsObject("code_challenge")`, while
+[the challenge condition](https://gitlab.com/openid/conformance-suite/-/blob/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/condition/as/EnsureAuthorizationRequestContainsPkceCodeChallenge.java)
+stores it with `putString()`. The companion check computes SHA-256 and base64url
+from the observed verifier, requires equality with the observed challenge and
+requires the suite's successful S256 challenge-presence check. It records
+`suite_pkce_verifier_checked = false`. This supplements the suite's verdict
+with client-request evidence; rejection of an incorrect verifier needs a
+separate enforcing provider. Earlier Basic/Form Post coverage flags describe
+their pinned module selections and do not establish that missing enforcement.
+
+All auth selections remain partial coverage of a non-certifiable plan. They
+do not establish the entire Comprehensive plan, public-client conformance or
+cross-issuer safety in a shared worker pool. Private keys, request bodies and
+raw suite logs stay out of the uploaded evidence.
 
 Baseline references: [OIDC Core](https://openid.net/specs/openid-connect-core-1_0.html),
 [Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html),

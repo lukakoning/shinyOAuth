@@ -7,7 +7,6 @@ openid_fixture_app <- function(config) {
     "issuer",
     "origin",
     "client_id",
-    "client_secret",
     "run_id",
     "response_mode"
   )
@@ -25,6 +24,20 @@ openid_fixture_app <- function(config) {
       !config[["response_mode"]] %in% c("query", "form_post")
   ) {
     stop("Invalid private OpenID fixture configuration")
+  }
+  method <- config[["client_auth_type"]]
+  if (is.null(method)) {
+    method <- "client_secret_basic"
+  }
+  style <- switch(
+    method,
+    client_secret_basic = "header",
+    client_secret_post = "body",
+    client_secret_jwt = "client_secret_jwt",
+    private_key_jwt = "private_key_jwt"
+  )
+  if (is.null(style)) {
+    stop("Unsupported fixture client authentication method")
   }
   audit <- new.env(parent = emptyenv())
   audit[["sessions"]] <- 0L
@@ -68,7 +81,7 @@ openid_fixture_app <- function(config) {
   provider <- tryCatch(
     shinyOAuth::oauth_provider_oidc_discover(
       config[["issuer"]],
-      token_auth_style = "header",
+      token_auth_style = style,
       jwks_cache = cache
     ),
     error = function(error) {
@@ -203,7 +216,16 @@ openid_fixture_app <- function(config) {
   client <- shinyOAuth::oauth_client(
     provider,
     client_id = config[["client_id"]],
-    client_secret = config[["client_secret"]],
+    client_secret = if (is.null(config[["client_secret"]])) {
+      NA_character_
+    } else {
+      config[["client_secret"]]
+    },
+    client_assertion_private_key = config[["client_assertion_private_key"]],
+    client_assertion_private_key_kid = config[[
+      "client_assertion_private_key_kid"
+    ]],
+    client_assertion_alg = config[["client_assertion_alg"]],
     redirect_uri = paste0(config[["origin"]], "/"),
     scopes = c("openid", "profile", "email"),
     response_mode = config[["response_mode"]],

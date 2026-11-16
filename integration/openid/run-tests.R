@@ -6,13 +6,22 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
       setequal(args[c(1L, 3L)], c("--profile", "--transport"))
     if (!valid) {
       stop(
-        "Usage: Rscript integration/openid/run-tests.R --check-api | --profile smoke|basic|config|form-post|refresh --transport sync|mirai|future"
+        "Usage: Rscript integration/openid/run-tests.R --check-api | --profile smoke|basic|config|form-post|refresh|auth-post|auth-secret-jwt|auth-private-jwt --transport sync|mirai|future"
       )
     }
     options <- setNames(args[c(2L, 4L)], args[c(1L, 3L)])
     if (
       !options[["--profile"]] %in%
-        c("smoke", "basic", "config", "form-post", "refresh") ||
+        c(
+          "smoke",
+          "basic",
+          "config",
+          "form-post",
+          "refresh",
+          "auth-post",
+          "auth-secret-jwt",
+          "auth-private-jwt"
+        ) ||
         !options[["--transport"]] %in% c("sync", "mirai", "future") ||
         (identical(options[["--transport"]], "future") &&
           !options[["--profile"]] %in% c("smoke", "refresh"))
@@ -26,6 +35,7 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
   source("integration/openid/helper-environment.R", local = TRUE)
   source("integration/openid/helper-suite.R", local = TRUE)
   source("integration/openid/helper-evidence.R", local = TRUE)
+  source("integration/openid/helper-auth.R", local = TRUE)
   source("integration/openid/helper-app.R", local = TRUE)
   source("integration/openid/helper-driver.R", local = TRUE)
   openid_require(c(
@@ -36,7 +46,8 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
     "withr",
     "httpuv",
     "testthat",
-    "ps"
+    "ps",
+    "jose"
   ))
   profile <- if (api_mode) "api" else options[["--profile"]]
   output <- openid_output(".", profile)
@@ -87,6 +98,21 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
       "origin"
     ]]
     context[["app_origin"]] <- report[["app_origin"]] <- transport[["origin"]]
+    if (startsWith(profile, "auth-")) {
+      report[["public_client_capability"]] <- openid_public_capability(
+        stack,
+        manifest,
+        context,
+        paste0(transport[["origin"]], "/"),
+        library
+      )
+      for (name in c("plan_id", "suite_id")) {
+        context[[paste0("public_probe_", name)]] <- report[[paste0(
+          "public_probe_",
+          name
+        )]] <- report[["public_client_capability"]][[name]]
+      }
+    }
     report[["driver_failure_control_passed"]] <- openid_driver_failure_control(
       ".",
       stack,
@@ -111,6 +137,7 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
     context[["plan_id"]] <- plan[["id"]]
     report[["plan_id"]] <- plan[["id"]]
     report[["images"]] <- stack[["lock"]][["images"]]
+    report[["image_sources"]] <- stack[["image_sources"]]
     started <- Sys.time()
     for (expectation in manifest[["profiles"]][[profile]][["modules"]]) {
       report[["results"]][[

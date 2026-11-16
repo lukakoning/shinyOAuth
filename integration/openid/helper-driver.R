@@ -170,7 +170,14 @@ openid_run_case <- function(
   config <- list(
     issuer = module[["issuer"]],
     client_id = plan[["registration"]][["client_id"]],
-    client_secret = plan[["registration"]][["client_secret"]],
+    client_secret = plan[["credentials"]][["client_secret"]],
+    client_auth_type = utils::modifyList(
+      plan[["spec"]][["plan_variant"]],
+      as.list(plan[["spec"]][["module_variant"]])
+    )[["client_auth_type"]],
+    client_assertion_private_key = plan[["credentials"]][["private_key"]],
+    client_assertion_private_key_kid = plan[["credentials"]][["key_id"]],
+    client_assertion_alg = plan[["spec"]][["client_assertion_alg"]],
     response_mode = if (form_post) "form_post" else "query",
     provider_origin = stack[["origin"]],
     transport = context[["transport"]],
@@ -319,6 +326,13 @@ openid_run_case <- function(
     "suite_exception"
   }
   row[["app"]] <- snapshot
+  if (identical(plan[["spec"]][["plan"]], "oidcc-client-test-plan")) {
+    row[["client_auth"]] <- openid_auth_evidence(
+      openid_api(stack, paste0("/api/log/", module[["id"]])),
+      module,
+      plan
+    )
+  }
   row[["browser_version"]] <- chrome
   row[["action"]] <- if (discovery) {
     "discovery"

@@ -55,24 +55,58 @@ openid_suite_plan <- function(
   stack,
   manifest,
   redirect_uri,
-  profile = "smoke"
+  profile = "smoke",
+  .spec = NULL,
+  .request = openid_api
 ) {
-  spec <- openid_plan_spec(manifest, profile)
+  spec <- if (is.null(.spec)) openid_plan_spec(manifest, profile) else .spec
   random <- function() paste(format(openssl::rand_bytes(16)), collapse = "")
   registration <- list(
     client_id = paste0("shinyoauth-", random()),
-    client_secret = random(),
+    client_secret = paste(format(openssl::rand_bytes(32)), collapse = ""),
     redirect_uri = redirect_uri,
     scope = "openid profile email",
     request_type = "plain_http_request"
   )
+  method <- utils::modifyList(
+    spec[["plan_variant"]],
+    as.list(spec[["module_variant"]])
+  )[["client_auth_type"]]
+  credentials <- list(client_secret = registration[["client_secret"]])
+  if (identical(spec[["plan"]], "oidcc-client-test-plan")) {
+    registration[["token_endpoint_auth_method"]] <- method
+  }
+  if (method %in% c("none", "private_key_jwt")) {
+    registration[["client_secret"]] <- credentials[["client_secret"]] <- NULL
+  }
+  if (identical(method, "private_key_jwt")) {
+    key <- openssl::rsa_keygen(2048)
+    jwk <- jsonlite::fromJSON(
+      jose::write_jwk(key[["pubkey"]]),
+      simplifyVector = FALSE
+    )
+    jwk[["kid"]] <- paste0("key-", random())
+    jwk[["alg"]] <- "RS256"
+    jwk[["use"]] <- "sig"
+    if (any(c("d", "p", "q", "dp", "dq", "qi") %in% names(jwk))) {
+      stop("Private JWK cannot enter suite registration")
+    }
+    registration[["jwks"]] <- list(keys = list(jwk))
+    credentials[["private_key"]] <- openssl::write_pem(key)
+    credentials[["key_id"]] <- jwk[["kid"]]
+  }
+  if (method %in% c("client_secret_jwt", "private_key_jwt")) {
+    registration[["token_endpoint_auth_signing_alg"]] <- spec[[
+      "client_assertion_alg"
+    ]]
+  }
   config <- list(
     alias = paste0("shinyoauth-", random()),
     description = "shinyOAuth local client validation",
     publish = "nothing",
     client = registration
   )
-  plan <- openid_api(
+  plan <- .request(
     stack,
     "/api/plan",
     data = config,
@@ -113,6 +147,7 @@ openid_suite_plan <- function(
     id = plan[["id"]],
     modules = modules,
     registration = registration,
+    credentials = credentials,
     alias = config[["alias"]],
     spec = spec
   )

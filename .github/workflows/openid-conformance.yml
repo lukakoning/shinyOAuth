@@ -13,6 +13,9 @@ on:
           - config
           - form-post
           - refresh
+          - auth-post
+          - auth-secret-jwt
+          - auth-private-jwt
       transport:
         description: Transport (future supports smoke and refresh)
         type: choice
@@ -106,6 +109,9 @@ jobs:
             integration/openid/.artifacts/config-*/evidence.json
             integration/openid/.artifacts/form-post-*/evidence.json
             integration/openid/.artifacts/refresh-*/evidence.json
+            integration/openid/.artifacts/auth-post-*/evidence.json
+            integration/openid/.artifacts/auth-secret-jwt-*/evidence.json
+            integration/openid/.artifacts/auth-private-jwt-*/evidence.json
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 7

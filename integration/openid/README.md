@@ -8,12 +8,21 @@ Compose v2, Git, Chrome/Chromium, and R packages `httr2`, `jsonlite`, `processx`
 Rscript integration/openid/run-preflight.R
 ```
 
-Preflight pulls digest-pinned images, checks the full source revision embedded
-in the server jar, starts a disposable suite, verifies the reported revision
-and required client plans, and checks HTTPS from R and Chrome. It removes its
+Preflight reuses a cached image only when Docker's `RepoDigests` contains the
+locked content digest, and pulls missing images by that digest. It checks the
+full source revision embedded in the server jar, starts a disposable suite,
+verifies the reported revision and required client plans, and checks HTTPS from
+R and Chrome. It removes its
 own containers, network and database volume before recording a pass. Missing
 prerequisites, changed versions and unavailable services fail the command.
 It does not perform client login or establish conformance.
+
+On 2026-11-16 the upstream registry returned `not found` for the locked server
+digest. The verified local cache still supplies the exact image for these runs.
+A fresh machine needs an available verified mirror or a reviewed lock update;
+the runner never substitutes a tag or another digest. Reports record whether
+each image came from the verified cache or a pull. Fresh hosted CI remains
+blocked by that image's availability.
 
 Exercise the suite API and evidence validator:
 
@@ -191,15 +200,59 @@ is observed, and its process must stop even if it never acknowledges the command
 Every browser gets a separate temporary profile and a 30-second startup budget.
 
 Pools stay private to each module case and are reused within that case. A
-single shared pool across different issuers and the additional client-auth
-variants remain C09 follow-ups. Async Configuration runs preserve the main
+single shared pool across different issuers remains a C09 follow-up.
+Async Configuration runs preserve the main
 app's cache template; workers receive serialized copies per dispatch. Reports
 record that scope. The suite's no-store policy still prevents a warm-cache
 claim, and Configuration coverage remains incomplete in both transports.
 
+Client-authentication selections use the pinned Comprehensive plan:
+
+```sh
+Rscript integration/openid/run-tests.R --profile auth-post --transport sync
+Rscript integration/openid/run-tests.R --profile auth-secret-jwt --transport mirai
+Rscript integration/openid/run-tests.R --profile auth-private-jwt --transport mirai
+```
+
+All three support `sync` and `mirai`. Each runs the normal login module and an
+invalid-issuer module. Both must finish `PASSED`, with a validated login or the
+expected typed issuer rejection in the app. These are two-case selections from
+a larger, non-certifiable plan, so they retain `coverage_complete = false`.
+
+| Profile | Authentication | Credential setup |
+| --- | --- | --- |
+| `auth-post` | `client_secret_post` | Fresh shared secret in the token request body |
+| `auth-secret-jwt` | `client_secret_jwt` | Fresh shared secret, registered HS256 assertion algorithm |
+| `auth-private-jwt` | `private_key_jwt` | Fresh RSA key, registered RS256 algorithm and public JWKS |
+
+The suite receives only the public RSA key. The runner keeps the private PEM
+out of suite registration and evidence. The evidence helper reads recorded requests and
+condition results, then retains comparison booleans and allowlisted labels.
+It verifies the chosen authentication method, absence of mixed credentials,
+matching client IDs, and JWT algorithm, identity, audience, key ID and lifetime
+where applicable. The suite must also report its relevant authentication checks
+as successful. Raw logs, secrets, assertions, keys, authorization codes and
+claim values never enter the report.
+
+These selections also reproduce two limitations in the pinned suite. Its public
+variant omits `none` from discovery metadata, so normal shinyOAuth discovery
+rejects the requested public authentication method. A separate disposable
+capability probe records that rejection, then cancels its module. It earns no
+conformance credit, and `public_client_authentication_tested` stays false.
+The harness leaves discovery policy and provider metadata unchanged.
+
+The pinned client plan checks that an S256 challenge is present but skips its
+verifier-matching condition. The companion helper independently computes S256
+from the actual token request's verifier and compares it with the authorization
+request's challenge. That comparison must pass for every auth case. Reports
+retain `suite_pkce_verifier_checked = false` and the explicit coverage limitation;
+this establishes correct client requests without claiming suite enforcement
+of a bad verifier. The [scope record](scope.md) links the relevant source.
+
 The [workflow](../../.github/workflows/openid-conformance.yml) runs preflight,
 API checks and smoke on pull requests affecting the package or this harness.
-Manual dispatch offers `smoke`, `basic`, `config`, `form-post` or `refresh`;
+Manual dispatch offers `smoke`, `basic`, `config`, `form-post`, `refresh`,
+`auth-post`, `auth-secret-jwt` and `auth-private-jwt`;
 larger selections remain manual while GitHub runner timings are unmeasured.
 Manual transport choices are `sync`, `mirai` and the limited `future` parity
 selection. Pull requests keep synchronous smoke. The workflow needs no external

@@ -1349,3 +1349,5 @@ testthat::test_that("module polling rejects stale records, interruptions and req
   )
   testthat::expect_identical(calls, 1L)
 })
+
+source("test-auth.R", local = TRUE, keep.source = TRUE)
