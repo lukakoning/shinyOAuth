@@ -16,8 +16,9 @@ on:
           - auth-post
           - auth-secret-jwt
           - auth-private-jwt
+          - shared-pool
       transport:
-        description: Transport (future supports smoke and refresh)
+        description: Transport (shared-pool requires mirai; future supports smoke and refresh)
         type: choice
         default: sync
         options:
@@ -94,7 +95,16 @@ jobs:
         run: Rscript integration/openid/run-tests.R --check-api
 
       - name: Run real browser client selection
-        run: Rscript integration/openid/run-tests.R --profile "$OPENID_PROFILE" --transport "$OPENID_TRANSPORT"
+        run: |
+          if [[ "$OPENID_PROFILE" == "shared-pool" ]]; then
+            if [[ "$OPENID_TRANSPORT" != "mirai" ]]; then
+              echo "shared-pool requires mirai transport"
+              exit 1
+            fi
+            Rscript integration/openid/run-shared-pool.R
+          else
+            Rscript integration/openid/run-tests.R --profile "$OPENID_PROFILE" --transport "$OPENID_TRANSPORT"
+          fi
 
       - name: Upload sanitized reports
         if: always()
@@ -112,6 +122,7 @@ jobs:
             integration/openid/.artifacts/auth-post-*/evidence.json
             integration/openid/.artifacts/auth-secret-jwt-*/evidence.json
             integration/openid/.artifacts/auth-private-jwt-*/evidence.json
+            integration/openid/.artifacts/shared-pool-*/evidence.json
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 7

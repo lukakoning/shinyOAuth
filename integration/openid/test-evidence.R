@@ -1351,3 +1351,5 @@ testthat::test_that("module polling rejects stale records, interruptions and req
 })
 
 source("test-auth.R", local = TRUE, keep.source = TRUE)
+source("helper-shared-pool.R", local = TRUE)
+source("test-shared-pool.R", local = TRUE, keep.source = TRUE)

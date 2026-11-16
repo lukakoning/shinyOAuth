@@ -36,8 +36,8 @@ neither interruption counts as a client test pass.
 | Discovery, exact issuer and signing-key changes | Discovery/JWKS tests, Keycloak rotation, and six Configuration module outcomes (C06) | Warm-cache refresh remains a C06 follow-up; pinned suite JWKS is `no-store` |
 | Form POST callback and browser binding | Real browser and retained-connection tests; complete pinned Form Post Basic plan on the same-site local rig (C07) | Form Post Basic implemented; cross-site attack cases stay in their separate layer |
 | Refresh identity continuity | Refresh validation, retained-connection tests and all three pinned client refresh modules (C08, extended in C09) | Code flow with HTTP Basic authentication in sync/mirai, plus future parity |
-| Worker transport | Package worker tests; verified mirai transport for the core selections and smaller future smoke/refresh parity selections (C09 first slice) | Shared-worker issuer isolation remains a C09 follow-up |
-| Additional client authentication | Keycloak/worker tests and paired positive/issuer-rejection selections for POST, HS256 secret JWT and RS256 private-key JWT (C09) | Public-client discovery remains blocked by the pinned suite's metadata; shared-worker issuer isolation remains open |
+| Worker transport | Package worker tests; verified mirai transport for the core selections, future smoke/refresh parity, and an alternating shared-pool selection (C09) | Shared-pool scope is sequential reuse across distinct suite issuers, with fresh per-case app/cache objects |
+| Additional client authentication | Keycloak/worker tests and paired positive/issuer-rejection selections for POST, HS256 secret JWT and RS256 private-key JWT (C09) | Public-client discovery remains blocked by the pinned suite's metadata; shared-pool coverage pairs POST and private-key JWT |
 | PAR, DPoP and mTLS | Keycloak and independent Python exchanges | FAPI 2.0 Security Profile; C10-C11 |
 | JAR/JARM combinations | Independent Python fixture and Keycloak capability tests | FAPI Message Signing; C12; second full provider C13-C14 |
 | SMART App Launch | SMART browser fixtures and corrected Inferno simulator | Existing Inferno gate remains separate |
@@ -145,9 +145,10 @@ coverage. Discovery-only Configuration cases still run setup in the main
 process and must have no worker protocol events. Other Configuration cases
 use the worker path, with serialized cache copies and the existing no-store
 coverage limitation. The per-case pool prevents sharing credentials or hooks
-between unrelated fixtures. A shared-pool, cross-issuer scenario and public-client
-discovery coverage remain outstanding C09 work. The confidential-client selections
-below cover the additional authentication methods in sync and mirai.
+between unrelated fixtures. The separate shared-pool scenario below exercises
+reuse across issuers. Public-client discovery coverage remains outstanding C09
+work. The confidential-client selections cover the additional authentication
+methods in sync and mirai.
 
 The `refresh` selection uses the pinned
 [client refresh plan](https://gitlab.com/openid/conformance-suite/-/blob/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/openid/client/OIDCCClientRefreshTokenProfileTestPlan.java).
@@ -225,9 +226,28 @@ separate enforcing provider. Earlier Basic/Form Post coverage flags describe
 their pinned module selections and do not establish that missing enforcement.
 
 All auth selections remain partial coverage of a non-certifiable plan. They
-do not establish the entire Comprehensive plan, public-client conformance or
-cross-issuer safety in a shared worker pool. Private keys, request bodies and
-raw suite logs stay out of the uploaded evidence.
+do not establish the entire Comprehensive plan or public-client conformance.
+Private keys, request bodies and raw suite logs stay out of uploaded evidence.
+
+The separate `run-shared-pool.R` selection alternates POST and private-key-JWT
+clients in one R process with the same two mirai workers. Four plans supply two
+credential generations per method. Each plan supplies a distinct discovered
+issuer, shared by its positive and negative module instances. All eight cases
+must pass the existing confidential-client evidence gates. The execution order returns
+to both methods with fresh credentials after the first issuer rejections.
+
+The aggregate gate binds every nested plan and module to the run, requires the
+same process and worker identities throughout, and requires at least one worker
+to have performed protocol work for both methods. Each case gets a fresh app,
+client and cache object, and audit files from completed cases must remain
+unchanged. Different hooks and timeout settings must reach the workers during
+protocol work. Inspections before and after each case require both workers'
+hook/timeout options and async session context to be clear. Final cleanup must
+stop the shared process and workers before any nested case gets cleanup credit.
+
+This establishes the recorded sequential reuse scenario. Simultaneous dispatch,
+shared caches and other authentication pairings need separate evidence. The
+public-client metadata and PKCE verifier-enforcement gaps above still apply.
 
 Baseline references: [OIDC Core](https://openid.net/specs/openid-connect-core-1_0.html),
 [Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html),

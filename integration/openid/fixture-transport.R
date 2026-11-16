@@ -3,7 +3,8 @@ openid_fixture_hook <- function(
   run_id,
   package,
   ca,
-  package_name = "shinyOAuth"
+  package_name = "shinyOAuth",
+  expected_timeout = NULL
 ) {
   hook <- function(event) {
     types <- c(
@@ -42,6 +43,8 @@ openid_fixture_hook <- function(
         package
       ),
       ca_matches = identical(Sys.getenv("CURL_CA_BUNDLE"), ca),
+      options_match = is.null(expected_timeout) ||
+        identical(getOption("shinyOAuth.timeout"), expected_timeout),
       type = if (event[["type"]] %in% types) {
         event[["type"]]
       } else {
@@ -89,7 +92,8 @@ openid_fixture_hook <- function(
       run_id = run_id,
       package = package,
       ca = ca,
-      package_name = package_name
+      package_name = package_name,
+      expected_timeout = expected_timeout
     ),
     parent = baseenv()
   )
@@ -284,7 +288,8 @@ openid_fixture_audit <- function(directory, run_id, version, probes) {
           identical(event[["run_id"]], run_id) &&
             identical(event[["package_version"]], version) &&
             isTRUE(event[["package_matches"]]) &&
-            isTRUE(event[["ca_matches"]])
+            isTRUE(event[["ca_matches"]]) &&
+            isTRUE(event[["options_match"]])
         },
         logical(1)
       )),

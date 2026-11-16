@@ -160,7 +160,10 @@ openid_run_case <- function(
   context,
   transport,
   library,
-  .after_login = NULL
+  .after_login = NULL,
+  .start_app = openid_app_start,
+  .stop_app = openid_stop_app,
+  .shared_pool = FALSE
 ) {
   module <- openid_suite_module(stack, plan, expectation[["module"]])
   form_post <- identical(
@@ -188,7 +191,7 @@ openid_run_case <- function(
       "discovery_rejected"
     )
   )
-  app <- openid_app_start(root, stack, transport, config, library)
+  app <- .start_app(root, stack, transport, config, library)
   browser <- openid_browser(stack[["spki"]])
   tab <- browser[["new_session"]]()
   navigation <- if (form_post) {
@@ -364,8 +367,8 @@ openid_run_case <- function(
       "cross-site"
     )
   }
-  openid_stop_app(app)
-  row[["worker_cleanup_verified"]] <- TRUE
+  .stop_app(app)
+  row[["worker_cleanup_verified"]] <- !.shared_pool
   openid_close_browser(browser)
   cat(
     "OpenID module ",

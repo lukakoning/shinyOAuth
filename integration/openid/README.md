@@ -199,8 +199,8 @@ workers. Zombie entries fail the cleanup check. Chrome's close-command promise
 is observed, and its process must stop even if it never acknowledges the command.
 Every browser gets a separate temporary profile and a 30-second startup budget.
 
-Pools stay private to each module case and are reused within that case. A
-single shared pool across different issuers remains a C09 follow-up.
+The core selections keep pools private to each module case and reuse them
+within that case. A separate shared-pool selection checks reuse across issuers.
 Async Configuration runs preserve the main
 app's cache template; workers receive serialized copies per dispatch. Reports
 record that scope. The suite's no-store policy still prevents a warm-cache
@@ -249,13 +249,44 @@ retain `suite_pkce_verifier_checked = false` and the explicit coverage limitatio
 this establishes correct client requests without claiming suite enforcement
 of a bad verifier. The [scope record](scope.md) links the relevant source.
 
+Check worker reuse across issuers:
+
+```sh
+Rscript integration/openid/run-shared-pool.R
+```
+
+This mirai-only selection keeps one R process and two verified workers alive
+across eight browser flows. It alternates POST and private-key-JWT clients,
+requiring both normal logins and typed issuer rejections, then repeats with new
+registrations, secrets and signing keys. Each plan has a distinct discovered
+issuer, shared by its positive and negative modules. The app and client cache
+are recreated for each case; the worker pool stays alive. At least one observed
+worker must perform protocol work for both
+authentication methods.
+
+Each case uses a different audit hook and one of two timeout settings. Audit
+records require the expected setting inside protocol work. Inspections of both
+workers before and after every case require restored options and empty async
+session context. Earlier cases' audit files must remain unchanged after later
+flows. All four nested authentication selections must also pass their existing
+suite, request, app and cleanup gates. Worker termination is credited only after
+the shared process and both workers stop.
+
+This tests sequential pool reuse, including new credentials after rejected
+logins. It does not establish simultaneous multi-issuer execution, shared-cache
+behavior or every authentication pairing. Its report retains partial coverage
+and the existing public-client and PKCE suite limitations. Private handoff files
+and raw logs stay under `.artifacts/`; only the sanitized root `evidence.json`
+is eligible for upload.
+
 The [workflow](../../.github/workflows/openid-conformance.yml) runs preflight,
 API checks and smoke on pull requests affecting the package or this harness.
 Manual dispatch offers `smoke`, `basic`, `config`, `form-post`, `refresh`,
-`auth-post`, `auth-secret-jwt` and `auth-private-jwt`;
+`auth-post`, `auth-secret-jwt`, `auth-private-jwt` and `shared-pool`;
 larger selections remain manual while GitHub runner timings are unmeasured.
 Manual transport choices are `sync`, `mirai` and the limited `future` parity
-selection. Pull requests keep synchronous smoke. The workflow needs no external
+selection. `shared-pool` requires mirai. Pull requests keep synchronous smoke.
+The workflow needs no external
 account or provider credentials and uploads only explicit sanitized report paths.
 
 The [profile manifest](profiles.json) freezes each plan's variants and module

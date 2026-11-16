@@ -14,9 +14,9 @@ cross-origin, same-site deployment.
 C08 covers all three client refresh modules, including identity substitution
 and the module's default credential-retirement policy.
 C09 adds verified mirai transport for the core selections, future multisession
-smoke/refresh parity, and confidential-client authentication selections. Public
-client discovery and shared-pool issuer isolation remain outstanding, so C09
-is not complete.
+smoke/refresh parity, confidential-client authentication selections and sequential
+shared-pool issuer isolation. Public-client discovery coverage remains
+outstanding, so C09 is not complete.
 
 Execution record (2026-11-12): C00 is `d0b62ff`; C01 is `4dee03d`. C01 validated the exact server
 image/source correspondence, required plans, R certificate/hostname validation,
@@ -403,11 +403,64 @@ verified cache. Reports distinguish cached images from pulled images. A fresh
 CI runner needs an available verified mirror or a reviewed lock update; the
 hosted workflow has not run and remains blocked by that availability issue.
 
+C09, shared-pool slice (2026-11-16): `run-shared-pool.R` keeps one R process
+and two verified mirai workers alive across eight alternating browser flows.
+POST and private-key-JWT clients each complete a normal login and a typed
+issuer rejection, then repeat with fresh registrations and credentials. Each
+plan has a distinct discovered issuer, shared by its two modules. Each case
+gets a new app, client and cache object, while the process and worker identities
+must stay the same. The gate requires an observed worker to perform protocol work for both
+methods; merely starting a pool cannot establish reuse.
+
+Four nested selections retain the existing authentication evidence gates,
+including actual request comparisons, S256, suite authentication checks and
+typed issuer rejection. The aggregate gate binds the plan/module identities and
+execution order. Different audit hooks and timeout settings must reach protocol
+work. Both workers are inspected before and after every case for restored
+hook/timeout options and empty async session context. Earlier audit files must
+remain unchanged after later cases. Cleanup credit stays false until the shared
+process and observed workers stop. The first live attempt caught a fixture
+handoff bug: a completed case's stop signal could end the next app. The fixture
+now closes its session and retires that signal before the next handoff, and an
+unrequested app stop fails immediately.
+
+This checks sequential reuse, including returning to both authentication
+methods with new credentials after the first rejected logins. Concurrent
+multi-issuer dispatch, shared cache objects and other auth pairings remain
+outside this selection. Reports keep partial coverage and the existing suite
+public-client and PKCE limitations. The manual workflow exposes `shared-pool`
+with mirai and uploads only its sanitized root report. Registry availability
+still blocks a fresh hosted run.
+
+Validation completed on Windows (R 4.5.1, Chrome 157) and Linux (R 4.5.0,
+Chromium 156). Each run exited zero after eight `FINISHED/PASSED` verdicts,
+four passing nested authentication gates, the aggregate isolation gate and
+verified cleanup. All 640 evidence assertions pass with zero test failures,
+warnings or skips. The existing Windows synchronous smoke selection passed
+its three modules and cleanup again. R lint, formatting, actionlint and patch
+whitespace checks pass. No package R code or user R installation changed.
+
+Sanitized reports under `integration/openid/.artifacts/`:
+
+| Environment / selection | Module-loop seconds | Report directory (`evidence.json`) |
+| --- | ---: | --- |
+| Windows / shared-pool | 55.98 | `shared-pool-20261116-201955-29f6d05a5ba2` |
+| Linux / shared-pool | 47.95 | `shared-pool-20261116-191955-c75314810211` |
+| Windows / sync smoke | 39.75 | `smoke-20261116-201946-0a1ebbc1821f` |
+
+The shared-pool timings include all eight per-case app/browser handoffs and
+worker-state inspections, but exclude installation, suite/pool startup,
+capability/failure controls and final teardown. Both reports identify parent
+commit `b409b465` and the dirty checkout containing this slice. They record
+verified cached images at the unchanged locked digests and partial coverage.
+The gate and documentation now reflect the suite's actual issuer scope: one
+distinct issuer per plan, shared by its positive and negative modules. Failed
+development runs retain failed gates and earn no validation credit.
+
 C09 follow-up: complete public S256 coverage against an appropriate provider
-or corrected suite, and add a shared-pool scenario across different issuers to
-check configuration, hooks and credential isolation. Existing Keycloak public
-and PKCE scenarios remain separate evidence. Keep C09 open until its remaining
-acceptance cases pass, and retain the C06 warm-cache gap.
+or corrected suite. Existing Keycloak public and PKCE scenarios remain separate
+evidence. Keep C09 open until that acceptance case passes, and retain the C06
+warm-cache gap.
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second

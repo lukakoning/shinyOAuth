@@ -75,7 +75,8 @@ openid_fixture_app <- function(config) {
       config[["audit_directory"]],
       config[["run_id"]],
       config[["package_path"]],
-      config[["ca"]]
+      config[["ca"]],
+      expected_timeout = config[["expected_timeout"]]
     )
   )
   provider <- tryCatch(
@@ -307,6 +308,16 @@ openid_fixture_app <- function(config) {
   }
   ui <- wrap(ui, id = "auth", client = client, request_uri_resolver = resolver)
   server <- function(input, output, session) {
+    if (!is.null(config[["stop_file"]])) {
+      stop_observer <- shiny::observe({
+        shiny::invalidateLater(50, session)
+        if (file.exists(config[["stop_file"]])) {
+          stop_observer[["destroy"]]()
+          session[["close"]]()
+          shiny::stopApp()
+        }
+      })
+    }
     audit[["sessions"]] <- audit[["sessions"]] + 1L
     session_number <- audit[["sessions"]]
     auth <- shinyOAuth::oauth_module_server(
