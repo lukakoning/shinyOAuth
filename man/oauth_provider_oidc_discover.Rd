@@ -17,7 +17,8 @@ oauth_provider_oidc_discover(
   jwks_host_issuer_match = TRUE,
   issuer_match = c("url", "host", "none"),
   ...,
-  allowed_algs = NULL
+  allowed_algs = NULL,
+  id_token_profile = c("oidc", "fapi2")
 )
 }
 \arguments{
@@ -80,6 +81,14 @@ require the discovered issuer's standard metadata location to match that URL.
 \code{pkce_method = "plain"} for compatibility with plain-only PKCE metadata.}
 
 \item{allowed_algs}{Compatibility alias for \code{id_token_allowed_algs}. Supply only one spelling.}
+
+\item{id_token_profile}{ID-token algorithm policy: \code{"oidc"} (default)
+requires the standard RS256 discovery capability. \code{"fapi2"} accepts FAPI 2.0
+signing metadata without RS256 and restricts the negotiated algorithms to
+the implemented FAPI choices ES256, Ed25519 and EdDSA. Caller restrictions
+and advertised algorithms still apply. This selects only the ID-token
+algorithm policy; configure PAR, client authentication and sender constraint
+separately. It does not establish FAPI conformance.}
 }
 \value{
 \link{OAuthProvider} object configured from discovery
@@ -124,10 +133,13 @@ endpoint hosts. Signing-key hosts have their own policy: by default they must
 match the issuer host; use \code{jwks_host_allow_only} for a known different host.
 
 The document must advertise the code flow (\code{response_types_supported}
-includes \code{"code"}), non-empty \code{subject_types_supported}, RS256 in
-\code{id_token_signing_alg_values_supported}, and a \code{jwks_uri} even when automatic
-ID token validation is disabled. The permitted ID token algorithms are the
-intersection of \code{id_token_allowed_algs} and the advertised algorithms; an empty
+includes \code{"code"}), non-empty \code{subject_types_supported}, signing algorithm
+metadata, and a \code{jwks_uri} even when automatic ID token validation is disabled.
+Standard OIDC requires RS256 in the signing metadata. Explicit
+\code{id_token_profile = "fapi2"} instead requires a FAPI signing capability and
+restricts negotiation to implemented FAPI algorithms. The permitted algorithms
+are the intersection of the profile, \code{id_token_allowed_algs} and the
+advertised algorithms; an empty
 intersection is an error. Discovery keeps PKCE \code{S256} and errors when the
 provider explicitly excludes it, unless you select \code{pkce_method = "plain"}.
 }

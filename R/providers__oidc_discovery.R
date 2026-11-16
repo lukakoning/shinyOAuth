@@ -48,10 +48,13 @@
 #' match the issuer host; use `jwks_host_allow_only` for a known different host.
 #'
 #' The document must advertise the code flow (`response_types_supported`
-#' includes `"code"`), non-empty `subject_types_supported`, RS256 in
-#' `id_token_signing_alg_values_supported`, and a `jwks_uri` even when automatic
-#' ID token validation is disabled. The permitted ID token algorithms are the
-#' intersection of `id_token_allowed_algs` and the advertised algorithms; an empty
+#' includes `"code"`), non-empty `subject_types_supported`, signing algorithm
+#' metadata, and a `jwks_uri` even when automatic ID token validation is disabled.
+#' Standard OIDC requires RS256 in the signing metadata. Explicit
+#' `id_token_profile = "fapi2"` instead requires a FAPI signing capability and
+#' restricts negotiation to implemented FAPI algorithms. The permitted algorithms
+#' are the intersection of the profile, `id_token_allowed_algs` and the
+#' advertised algorithms; an empty
 #' intersection is an error. Discovery keeps PKCE `S256` and errors when the
 #' provider explicitly excludes it, unless you select `pkce_method = "plain"`.
 #'
@@ -99,6 +102,13 @@
 #'  supported algorithms, the intersection of advertised and caller-provided
 #'  algorithms is used to avoid runtime mismatches. If there's no overlap,
 #'  discovery fails with a configuration error (no fallback).
+#' @param id_token_profile ID-token algorithm policy: `"oidc"` (default)
+#'  requires the standard RS256 discovery capability. `"fapi2"` accepts FAPI 2.0
+#'  signing metadata without RS256 and restricts the negotiated algorithms to
+#'  the implemented FAPI choices ES256, Ed25519 and EdDSA. Caller restrictions
+#'  and advertised algorithms still apply. This selects only the ID-token
+#'  algorithm policy; configure PAR, client authentication and sender constraint
+#'  separately. It does not establish FAPI conformance.
 #' @param allowed_token_types Character vector of allowed token types for
 #'  access tokens issued by this provider. Defaults to 'Bearer'
 #' @param jwks_host_issuer_match When TRUE (default), require the discovered
@@ -143,8 +153,12 @@ oauth_provider_oidc_discover <- function(
   jwks_host_issuer_match = TRUE,
   issuer_match = c("url", "host", "none"),
   ...,
-  allowed_algs = NULL
+  allowed_algs = NULL,
+  id_token_profile = c("oidc", "fapi2")
 ) {
+  id_token_profile <- match.arg(id_token_profile)
+  default_id_token_algs <- missing(id_token_allowed_algs) &&
+    missing(allowed_algs)
   allowed_algs <- resolve_argument_alias(
     id_token_allowed_algs,
     allowed_algs,
@@ -153,6 +167,17 @@ oauth_provider_oidc_discover <- function(
     "id_token_allowed_algs",
     "allowed_algs"
   )
+  if (identical(id_token_profile, "fapi2")) {
+    fapi_algs <- c("ES256", "ED25519", "EDDSA")
+    if (default_id_token_algs) {
+      allowed_algs <- fapi_algs
+    } else {
+      allowed_algs <- intersect(toupper(allowed_algs), fapi_algs)
+    }
+    if (!length(allowed_algs)) {
+      err_config("No supported FAPI 2.0 ID-token algorithms allowed")
+    }
+  }
   issuer_match <- match.arg(issuer_match)
   original_input <- issuer
   issuer <- .discover_normalize_issuer_input(issuer)
@@ -182,7 +207,7 @@ oauth_provider_oidc_discover <- function(
   .discover_validate_jose_metadata(disc)
 
   # 3a) Reject incomplete or malformed required OIDC Provider Metadata.
-  .discover_validate_required_metadata(disc)
+  .discover_validate_required_metadata(disc, id_token_profile)
 
   # 4) Extract key endpoints
   endpoints <- .discover_extract_endpoints(disc)
@@ -659,7 +684,10 @@ oauth_provider_oidc_discover <- function(
 #'
 #' @keywords internal
 #' @noRd
-.discover_validate_required_metadata <- function(disc) {
+.discover_validate_required_metadata <- function(
+  disc,
+  id_token_profile = "oidc"
+) {
   response_types <- .discover_require_string_array(
     disc,
     "response_types_supported"
@@ -680,12 +708,17 @@ oauth_provider_oidc_discover <- function(
     disc,
     "id_token_signing_alg_values_supported"
   )
-  if (!("RS256" %in% signing_algs)) {
+  required_algs <- if (identical(id_token_profile, "fapi2")) {
+    c("PS256", "ES256", "Ed25519", "EdDSA")
+  } else {
+    "RS256"
+  }
+  if (!any(required_algs %in% signing_algs)) {
     err_parse(
       c(
         "x" = paste(
           "Discovery id_token_signing_alg_values_supported must include",
-          "RS256"
+          paste(required_algs, collapse = " or ")
         )
       ),
       context = list(
