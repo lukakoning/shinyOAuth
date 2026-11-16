@@ -38,7 +38,7 @@ neither interruption counts as a client test pass.
 | Refresh identity continuity | Refresh validation, retained-connection tests and all three pinned client refresh modules (C08, extended in C09) | Code flow with HTTP Basic authentication in sync/mirai, plus future parity |
 | Worker transport | Package worker tests; verified mirai transport for the core selections, future smoke/refresh parity, and an alternating shared-pool selection (C09) | Shared-pool scope is sequential reuse across distinct suite issuers, with fresh per-case app/cache objects |
 | Additional client authentication | Keycloak/worker tests and paired positive/issuer-rejection selections for POST, HS256 secret JWT and RS256 private-key JWT (C09) | Public-client discovery remains blocked by the pinned suite's metadata; shared-pool coverage pairs POST and private-key JWT |
-| PAR, DPoP and mTLS | Keycloak and independent Python exchanges; first FAPI private-key-JWT/DPoP selection (C10) | Three of twenty-three OIDC modules; remaining modules, OAuth-only and mTLS still pending |
+| PAR, DPoP and mTLS | Keycloak and independent Python exchanges; FAPI OIDC/private-key-JWT/DPoP module selections (C10) | Full selection requires all twenty-three resolved modules; OAuth-only and mTLS remain separate |
 | JAR/JARM combinations | Independent Python fixture and Keycloak capability tests | FAPI Message Signing; C12; second full provider C13-C14 |
 | SMART App Launch | SMART browser fixtures and corrected Inferno simulator | Existing Inferno gate remains separate |
 
@@ -284,6 +284,39 @@ the connection's synchronous imperative API in the Shiny process, with its PID
 recorded explicitly. The complete FAPI module set, OAuth-only flows, callback
 issuer/state cases, refresh, mTLS and message signing remain outside this first
 selection. Its coverage flag stays false; no certification claim follows.
+
+The `fapi-dpop-full` selection requires every one of those twenty-three modules.
+It separates discovery rejection, callback rejection and post-token validation
+in its evidence. The discovery module must identify the issuer mismatch and
+make no PAR or authorization request. Callback issuer/state cases require the
+specific allowlisted audit label, no validated identity and zero token, UserInfo
+and accounts requests. Their PAR assertions and minimal browser requests still
+need the appropriate suite/request checks. No token-verifier or resource proof
+is credited to a pre-token rejection.
+
+The eleven ID-token rejection cases cover issuer, audience (including an
+untrusted additional audience or missing authorized party), algorithm, expiry
+and nonce mutations. The seven positive cases cover the normal nonce path,
+single-element audience arrays, omitted access-token expiry, token-type case,
+DPoP challenge-scheme case, no nonce and no mTLS endpoint aliases. All must end
+`PASSED`; no optional skip substitutes for an outcome in this configured variant.
+
+All positive cases use the connection request API and check the accounts
+completion response, finite expiry and a usable connection. The omitted-expiry
+case exercises shinyOAuth's documented 3600-second fallback lifetime. The
+fixture supplies no expiry and changes no token state. Resource work stays in
+the Shiny process.
+
+Malformed callbacks are rejected by the public UI's HTTP handler before a
+callback Shiny session starts. The gate checks the actual HTTP 400 browser
+response, privacy headers, body match, absence of reflected credentials and
+allowlisted audit label. These error pages retain the callback query in the
+address bar; reports record `callback_cleaned = false` for those four cases.
+No callback session, token exchange or authenticated identity is credited.
+
+Complete coverage for this selection means the pinned OIDC/private-key-JWT/DPoP
+module set. OAuth-only, other sender constraints, refresh and certification
+remain separate. The original three-module selection stays partial.
 
 Baseline references: [OIDC Core](https://openid.net/specs/openid-connect-core-1_0.html),
 [Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html),

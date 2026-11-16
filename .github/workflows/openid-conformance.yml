@@ -18,6 +18,7 @@ on:
           - auth-private-jwt
           - shared-pool
           - fapi-dpop
+          - fapi-dpop-full
       transport:
         description: Transport (shared-pool requires mirai; future supports smoke and refresh)
         type: choice

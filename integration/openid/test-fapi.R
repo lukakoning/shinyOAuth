@@ -1,5 +1,13 @@
-fapi_logs_fixture <- function(module_name, suite_id = "instance") {
-  positive <- !endsWith(module_name, "invalid-iss")
+fapi_logs_fixture <- function(
+  module_name,
+  suite_id = "instance",
+  expectation = NULL
+) {
+  positive <- if (is.null(expectation)) {
+    !endsWith(module_name, "invalid-iss")
+  } else {
+    identical(expectation[["outcome"]], "authenticated")
+  }
   no_nonce <- endsWith(module_name, "no-dpop-nonce")
   issuer <- "https://localhost:41000/test/a/fapi/"
   plan <- list(
@@ -171,11 +179,44 @@ fapi_logs_fixture <- function(module_name, suite_id = "instance") {
       list(testId = suite_id, src = source, result = "SUCCESS")
     })
   )
+  if (
+    !is.null(expectation) &&
+      expectation[["outcome"]] %in% c("discovery_rejected", "callback_rejected")
+  ) {
+    discovery <- identical(expectation[["outcome"]], "discovery_rejected")
+    logs <- Filter(
+      function(e) {
+        identical(e[["http"]], "incoming") &&
+          !discovery &&
+          e[["incoming_path"]] %in%
+            c("/test/a/fapi/par", "/test/a/fapi/authorize")
+      },
+      logs
+    )
+    logs <- c(
+      list(request(".well-known/openid-configuration", "GET")),
+      logs,
+      lapply(openid_fapi_pre_token_checks(discovery), function(source) {
+        event <- list(testId = suite_id, src = source)
+        if (discovery) {
+          event[["msg"]] <- "Added invalid issuer to server configuration"
+          event[["issuer"]] <- paste0(issuer, "INVALID")
+        } else {
+          event[["result"]] <- "SUCCESS"
+        }
+        event
+      })
+    )
+  }
   list(
     logs = logs,
     module = list(id = suite_id, issuer = issuer, name = module_name),
     plan = plan,
-    expectation = list(outcome = if (positive) "authenticated" else "rejected"),
+    expectation = if (is.null(expectation)) {
+      list(outcome = if (positive) "authenticated" else "rejected")
+    } else {
+      expectation
+    },
     jwt = jwt
   )
 }

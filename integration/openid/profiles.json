@@ -281,6 +281,36 @@
     }
   },
   "profiles": {
+    "fapi-dpop-full": {
+      "plan": "fapi-dpop",
+      "complete_profile": true,
+      "coverage_limitations": ["fapi_oidc_private_key_jwt_dpop_only", "resource_request_in_main_process", "http_callback_rejection_retains_query"],
+      "modules": [
+        {"module": "fapi2-security-profile-final-client-test-happy-path", "outcome": "authenticated", "resource_api": "connection"},
+        {"module": "fapi2-security-profile-final-client-test-discovery-issuer-mismatch", "action": "discovery", "outcome": "discovery_rejected"},
+        {"module": "fapi2-security-profile-final-client-test-invalid-iss", "outcome": "rejected", "claim": "iss"},
+        {"module": "fapi2-security-profile-final-client-test-invalid-aud", "outcome": "rejected", "claim": "aud"},
+        {"module": "fapi2-security-profile-final-client-test-invalid-secondary-aud", "outcome": "rejected", "claims_any": ["aud", "azp"]},
+        {"module": "fapi2-security-profile-final-client-test-invalid-null-alg", "outcome": "rejected", "reason": "disallowed_algorithm"},
+        {"module": "fapi2-security-profile-final-client-test-invalid-alternate-alg", "outcome": "rejected", "reason": "disallowed_algorithm"},
+        {"module": "fapi2-security-profile-final-client-test-invalid-expired-exp", "outcome": "rejected", "claim": "exp"},
+        {"module": "fapi2-security-profile-final-client-test-invalid-missing-exp", "outcome": "rejected", "claim": "exp"},
+        {"module": "fapi2-security-profile-final-client-test-invalid-missing-aud", "outcome": "rejected", "claim": "aud"},
+        {"module": "fapi2-security-profile-final-client-test-invalid-missing-iss", "outcome": "rejected", "claim": "iss"},
+        {"module": "fapi2-security-profile-final-client-test-valid-aud-as-array", "outcome": "authenticated", "resource_api": "connection"},
+        {"module": "fapi2-security-profile-final-client-test-invalid-nonce", "outcome": "rejected", "claim": "nonce"},
+        {"module": "fapi2-security-profile-final-client-test-invalid-missing-nonce", "outcome": "rejected", "claim": "nonce"},
+        {"module": "fapi2-security-profile-final-client-test-invalid-authorization-response-iss", "outcome": "callback_rejected", "error_code": "http_callback_rejected", "callback_label": "issuer_mismatch", "state_present": true, "issuer_present": true},
+        {"module": "fapi2-security-profile-final-client-test-remove-authorization-response-iss", "outcome": "callback_rejected", "error_code": "http_callback_rejected", "callback_label": "issuer_missing", "state_present": true, "issuer_present": false},
+        {"module": "fapi2-security-profile-final-client-test-ensure-authorization-response-with-invalid-state-fails", "outcome": "callback_rejected", "error_code": "http_callback_rejected", "callback_label": "state_parse_failure", "state_present": true, "issuer_present": true},
+        {"module": "fapi2-security-profile-final-client-test-ensure-authorization-response-with-invalid-missing-state-fails", "outcome": "callback_rejected", "error_code": "http_callback_rejected", "callback_label": "callback_shape_rejected", "state_present": false, "issuer_present": true},
+        {"module": "fapi2-security-profile-final-client-test-token-endpoint-response-without-expires_in", "outcome": "authenticated", "resource_api": "connection"},
+        {"module": "fapi2-security-profile-final-client-test-token-type-case-insensitivity", "outcome": "authenticated", "resource_api": "connection"},
+        {"module": "fapi2-security-profile-final-client-test-rs-dpop-auth-scheme-case-insensitivity", "outcome": "authenticated", "resource_api": "connection"},
+        {"module": "fapi2-security-profile-final-client-test-happy-path-no-dpop-nonce", "outcome": "authenticated", "resource_api": "connection"},
+        {"module": "fapi2-security-profile-final-client-test-happy-path-no-mtls-endpoint-aliases", "outcome": "authenticated", "resource_api": "connection"}
+      ]
+    },
     "fapi-dpop": {
       "plan": "fapi-dpop",
       "complete_profile": false,

@@ -70,6 +70,36 @@ openid_app_matches <- function(app, expectation, case_id, package_version) {
   if (!isTRUE(app[["ready"]])) {
     return(FALSE)
   }
+  if (identical(expectation[["outcome"]], "callback_rejected")) {
+    return(
+      all(vapply(
+        c(
+          "authenticated",
+          "has_token",
+          "id_token_validated",
+          "userinfo_present"
+        ),
+        function(name) identical(app[[name]], FALSE),
+        logical(1)
+      )) &&
+        identical(app[["error_code"]], expectation[["error_code"]]) &&
+        expectation[["callback_label"]] %in%
+          unlist(app[["callback_rejections"]]) &&
+        all(vapply(
+          c(
+            "audit_token_exchange",
+            "audit_userinfo",
+            "audit_login_success",
+            "audit_callback_validation_success"
+          ),
+          function(name) {
+            openid_count(app[["operations"]][[name]]) &&
+              app[["operations"]][[name]] == 0L
+          },
+          logical(1)
+        ))
+    )
+  }
   if (identical(expectation[["outcome"]], "authenticated")) {
     return(
       isTRUE(app[["authenticated"]]) &&
@@ -90,7 +120,9 @@ openid_app_matches <- function(app, expectation, case_id, package_version) {
   if (is.null(expected_class)) {
     expected_class <- "shinyOAuth_id_token_error"
   }
-  category <- if (!is.null(expectation[["claim"]])) {
+  category <- if (!is.null(expectation[["claims_any"]])) {
+    any(unlist(expectation[["claims_any"]]) %in% unlist(app[["claims"]]))
+  } else if (!is.null(expectation[["claim"]])) {
     expectation[["claim"]] %in% unlist(app[["claims"]])
   } else if (!is.null(expectation[["reason"]])) {
     expectation[["reason"]] %in% unlist(app[["reasons"]])
@@ -505,6 +537,15 @@ openid_transport_matches <- function(result, expectation, context) {
   if (identical(expectation[["action"]], "discovery")) {
     return(length(pids) == 0L)
   }
+  if (identical(expectation[["outcome"]], "callback_rejected")) {
+    return(all(vapply(
+      c("audit_token_exchange", "audit_userinfo"),
+      function(name) {
+        evidence[["worker_operations"]][[name]] == 0L
+      },
+      logical(1)
+    )))
+  }
   if (!length(pids)) {
     return(FALSE)
   }
@@ -702,9 +743,13 @@ openid_check_report <- function(report, context, manifest) {
               "login"
             }
           ) ||
-            !isTRUE(result[[
-              if (discovery) "no_callback" else "callback_cleaned"
-            ]]) ||
+            !(if (identical(expectation[["outcome"]], "callback_rejected")) {
+              openid_http_callback_matches(result, expectation)
+            } else {
+              isTRUE(result[[
+                if (discovery) "no_callback" else "callback_cleaned"
+              ]])
+            }) ||
             !openid_string(result[["browser_version"]])
         ) {
           stop("Missing browser navigation evidence")

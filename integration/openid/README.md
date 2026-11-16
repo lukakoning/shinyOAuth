@@ -311,15 +311,48 @@ must retain no identity and send no UserInfo or accounts request.
 
 Login uses the chosen sync/mirai transport. The connection's imperative resource
 request runs in the Shiny process in both modes, and the report records that
-scope. The remaining FAPI modules, OAuth-only variant, callback issuer/state
-cases, refresh and mTLS are follow-up work. This selection does not establish
+scope. The full OIDC selection below adds the other resolved modules. OAuth-only
+coverage, refresh and mTLS remain follow-up work. This selection does not establish
 full FAPI conformance or certification. The [scope record](scope.md) links the
 profile requirements and pinned suite source.
+
+Run all twenty-three modules in that resolved OIDC variant:
+
+```sh
+Rscript integration/openid/run-tests.R --profile fapi-dpop-full --transport sync
+Rscript integration/openid/run-tests.R --profile fapi-dpop-full --transport mirai
+```
+
+The full selection adds discovery issuer rejection, ID-token audience, expiry,
+algorithm and nonce mutations, callback issuer/state rejections and the positive
+audience-array, token-type, DPoP scheme-case and endpoint-alias cases. Every
+module must finish `PASSED`. Discovery and callback rejections have separate
+evidence stages and must send no token or resource request. Callback evidence
+keeps allowlisted labels, without callback values. These stages earn no token
+exchange or resource-access credit.
+
+All seven positive cases use the public connection request API and require a
+usable connection with finite expiry. When the response omits `expires_in`,
+shinyOAuth applies its documented 3600-second fallback lifetime. The fixture
+uses that normal behavior without supplying an expiry or changing token state.
+
+The four malformed callbacks return HTTP 400 before a callback Shiny session
+starts. Evidence binds the browser's actual status, body and privacy headers
+to the fixture's observation of the public UI handler. It requires no-store,
+no-referrer, plain text, no reflected credentials and the matching audit label.
+The browser retains the callback query in its address bar on these error pages;
+the report records that limit explicitly. Successful callbacks and ID-token
+rejections still require a cleaned callback URL.
+
+`coverage_complete = true` for this selection means every module in the pinned
+OIDC/private-key-JWT/DPoP variant passed. Other FAPI variants and certification
+remain separate. Resource requests still execute in the Shiny process.
 
 The [workflow](../../.github/workflows/openid-conformance.yml) runs preflight,
 API checks and smoke on pull requests affecting the package or this harness.
 Manual dispatch offers `smoke`, `basic`, `config`, `form-post`, `refresh`,
-`auth-post`, `auth-secret-jwt`, `auth-private-jwt`, `shared-pool` and `fapi-dpop`;
+`auth-post`, `auth-secret-jwt`, `auth-private-jwt`, `shared-pool`, `fapi-dpop`
+and `fapi-dpop-full`;
 larger selections remain manual while GitHub runner timings are unmeasured.
 Manual transport choices are `sync`, `mirai` and the limited `future` parity
 selection. `shared-pool` requires mirai. Pull requests keep synchronous smoke.
@@ -410,5 +443,9 @@ Mirai runs also pass Basic, Configuration, Form Post Basic and refresh on both
 platforms, with worker/package/TLS and process-cleanup evidence. Future smoke
 and refresh parity selections pass on both as well. The implementation plan
 records their runtimes and report paths. Configuration retains its cache gap.
+The full FAPI OIDC/private-key-JWT/DPoP selection also passes all twenty-three
+modules in sync and mirai on both platforms: 92 `PASSED` outcomes, with matching
+app/request evidence and verified cleanup. This covers the configured variant;
+the OAuth-only variant and other FAPI profiles remain separate.
 The [implementation plan](../../.github/protocol-quality-implementation-plan.md)
 records execution evidence and the remaining profile and CI work.

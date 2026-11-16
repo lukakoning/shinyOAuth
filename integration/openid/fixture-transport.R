@@ -14,7 +14,12 @@ openid_fixture_hook <- function(
       "audit_login_failed",
       "audit_callback_validation_success",
       "audit_token_refresh",
-      "audit_session_cleared"
+      "audit_session_cleared",
+      "audit_callback_iss_missing",
+      "audit_callback_iss_mismatch",
+      "audit_callback_query_rejected",
+      "audit_state_parse_failure",
+      "audit_callback_validation_failed"
     )
     classes <- intersect(
       event[["error_class"]],
@@ -43,6 +48,20 @@ openid_fixture_hook <- function(
         package
       ),
       ca_matches = identical(Sys.getenv("CURL_CA_BUNDLE"), ca),
+      callbacks = as.list(unique(c(
+        switch(
+          event[["type"]],
+          audit_callback_iss_missing = "issuer_missing",
+          audit_callback_iss_mismatch = "issuer_mismatch",
+          audit_state_parse_failure = "state_parse_failure",
+          audit_callback_validation_failed = if (
+            identical(event[["phase"]], "form_post_request_validation")
+          ) {
+            "callback_shape_rejected"
+          }
+        ),
+        intersect(event[["reason"]], "missing_direct_callback_state")
+      ))),
       options_match = is.null(expected_timeout) ||
         identical(getOption("shinyOAuth.timeout"), expected_timeout),
       type = if (event[["type"]] %in% types) {
@@ -274,6 +293,7 @@ openid_fixture_audit <- function(directory, run_id, version, probes) {
     errors = labels("errors"),
     claims = labels("claims"),
     reasons = labels("reasons"),
+    callbacks = labels("callbacks"),
     transport = list(
       app_pid = Sys.getpid(),
       probes = probes,

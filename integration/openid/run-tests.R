@@ -6,7 +6,7 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
       setequal(args[c(1L, 3L)], c("--profile", "--transport"))
     if (!valid) {
       stop(
-        "Usage: Rscript integration/openid/run-tests.R --check-api | --profile smoke|basic|config|form-post|refresh|auth-post|auth-secret-jwt|auth-private-jwt|fapi-dpop --transport sync|mirai|future"
+        "Usage: Rscript integration/openid/run-tests.R --check-api | --profile smoke|basic|config|form-post|refresh|auth-post|auth-secret-jwt|auth-private-jwt|fapi-dpop|fapi-dpop-full --transport sync|mirai|future"
       )
     }
     options <- setNames(args[c(2L, 4L)], args[c(1L, 3L)])
@@ -21,7 +21,8 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
           "auth-post",
           "auth-secret-jwt",
           "auth-private-jwt",
-          "fapi-dpop"
+          "fapi-dpop",
+          "fapi-dpop-full"
         ) ||
         !options[["--transport"]] %in% c("sync", "mirai", "future") ||
         (identical(options[["--transport"]], "future") &&
@@ -142,9 +143,7 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
     report[["image_sources"]] <- stack[["image_sources"]]
     started <- Sys.time()
     for (expectation in manifest[["profiles"]][[profile]][["modules"]]) {
-      report[["results"]][[
-        length(report[["results"]]) + 1L
-      ]] <- openid_run_case(
+      row <- openid_run_case(
         ".",
         stack,
         plan,
@@ -153,6 +152,32 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
         transport,
         library
       )
+      report[["results"]][[length(report[["results"]]) + 1L]] <- row
+      checks <- c(
+        app = openid_app_matches(
+          row[["app"]],
+          expectation,
+          paste0(context[["run_id"]], "-", row[["suite_id"]]),
+          context[["package_version"]]
+        ),
+        transport = openid_transport_matches(row, expectation, context)
+      )
+      if (
+        identical(
+          plan[["spec"]][["plan"]],
+          "fapi2-security-profile-final-client-test-plan"
+        )
+      ) {
+        checks[["fapi"]] <- openid_fapi_matches(row, expectation)
+      }
+      if (!all(checks)) {
+        stop(
+          "Invalid ",
+          paste(names(checks)[!checks], collapse = "/"),
+          " evidence for ",
+          expectation[["module"]]
+        )
+      }
     }
     report[["module_runtime_seconds"]] <- round(
       as.numeric(difftime(Sys.time(), started, units = "secs")),

@@ -186,6 +186,10 @@ openid_run_case <- function(
       "fapi2-security-profile-final-client-test-plan"
     ),
     resource_endpoint = module[["resource_endpoint"]],
+    callback_rejection = identical(
+      expectation[["outcome"]],
+      "callback_rejected"
+    ),
     response_mode = if (form_post) "form_post" else "query",
     provider_origin = stack[["origin"]],
     transport = context[["transport"]],
@@ -211,6 +215,12 @@ openid_run_case <- function(
   }
   tab[["Page"]][["navigate"]](paste0(app[["origin"]], "/"))
   initial <- openid_wait_app(app, browser, tab)
+  http_observation <- if (isTRUE(config[["callback_rejection"]])) {
+    openid_observe_http_callback(tab, app[["origin"]])
+  } else {
+    NULL
+  }
+  callback_http <- NULL
   app[["worker_handles"]] <- lapply(
     initial[["transport"]][["probes"]],
     function(probe) ps::ps_handle(probe[["pid"]])
@@ -268,15 +278,30 @@ openid_run_case <- function(
       if (!is.null(.after_login)) {
         .after_login(app)
       }
-      snapshot <- openid_wait_app(
-        app,
-        browser,
-        tab,
-        terminal = TRUE,
-        after_session = before_login[["session_number"]]
-      )
+      snapshot <- if (isTRUE(config[["callback_rejection"]])) {
+        rejected <- openid_wait_http_callback(
+          app,
+          browser,
+          tab,
+          initial,
+          http_observation
+        )
+        callback_http <- rejected[["http"]]
+        rejected[["app"]]
+      } else {
+        openid_wait_app(
+          app,
+          browser,
+          tab,
+          terminal = TRUE,
+          after_session = before_login[["session_number"]]
+        )
+      }
       steps[[i]] <- snapshot
-      if (!identical(openid_browser_value(tab, "location.search"), "")) {
+      if (
+        is.null(callback_http) &&
+          !identical(openid_browser_value(tab, "location.search"), "")
+      ) {
         stop("OpenID callback URL was not cleaned")
       }
     }
@@ -327,7 +352,10 @@ openid_run_case <- function(
   if (!identical(runtime[["id"]], module[["id"]])) {
     stop("OpenID runner instance changed during the flow")
   }
-  if (!identical(openid_browser_value(tab, "location.search"), "")) {
+  if (
+    is.null(callback_http) &&
+      !identical(openid_browser_value(tab, "location.search"), "")
+  ) {
     stop("OpenID callback URL was not cleaned")
   }
   row <- context[c(
@@ -348,6 +376,7 @@ openid_run_case <- function(
     "suite_exception"
   }
   row[["app"]] <- snapshot
+  row[["callback_http"]] <- callback_http
   if (identical(plan[["spec"]][["plan"]], "oidcc-client-test-plan")) {
     row[["client_auth"]] <- openid_auth_evidence(
       openid_api(stack, paste0("/api/log/", module[["id"]])),
@@ -375,7 +404,10 @@ openid_run_case <- function(
   if (discovery) {
     row[["no_callback"]] <- TRUE
   } else {
-    row[["callback_cleaned"]] <- TRUE
+    row[["callback_cleaned"]] <- identical(
+      openid_browser_value(tab, "location.search"),
+      ""
+    )
   }
   row[["initial"]] <- initial
   row[["steps"]] <- steps

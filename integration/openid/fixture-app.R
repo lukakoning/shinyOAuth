@@ -131,6 +131,9 @@ openid_fixture_app <- function(config) {
       "token_refresh_error",
       "invalid_state",
       "callback_iss_validation_error",
+      "issuer_missing",
+      "issuer_mismatch",
+      "http_callback_rejected",
       "invalid_request",
       "access_denied",
       "login_required",
@@ -177,6 +180,7 @@ openid_fixture_app <- function(config) {
           nzchar(token@refresh_token),
         refresh = refresh,
         resource = audit[["resource"]],
+        callback_rejections = observed[["callbacks"]],
         id_token_validated = !is.null(token) &&
           isTRUE(token@id_token_validated),
         userinfo_present = !is.null(token) && length(token@userinfo) > 0L,
@@ -334,6 +338,51 @@ openid_fixture_app <- function(config) {
     shinyOAuth::oauth_ui
   }
   ui <- wrap(ui, id = "auth", client = client, request_uri_resolver = resolver)
+  if (isTRUE(config[["callback_rejection"]])) {
+    wrapped_ui <- ui
+    ui <- function(req) {
+      response <- wrapped_ui(req)
+      if (is.list(response) && identical(response[["status"]], 400L)) {
+        params <- shiny::parseQueryString(req[["QUERY_STRING"]])
+        sensitive <- unlist(
+          params[intersect(names(params), c("code", "state", "iss"))],
+          use.names = FALSE
+        )
+        sensitive <- sensitive[nchar(sensitive) >= 16L]
+        headers <- response[["headers"]]
+        names(headers) <- tolower(names(headers))
+        content <- response[["content"]]
+        value <- jsonlite::fromJSON(
+          snapshot(
+            error = "http_callback_rejected",
+            session_number = audit[["sessions"]]
+          ),
+          simplifyVector = FALSE
+        )
+        value[["http_rejection"]] <- list(
+          status = 400L,
+          no_store = identical(headers[["cache-control"]], "no-store"),
+          no_referrer = identical(headers[["referrer-policy"]], "no-referrer"),
+          plain_text = startsWith(response[["content_type"]], "text/plain"),
+          credentials_absent = !any(vapply(
+            sensitive,
+            function(secret) grepl(secret, content, fixed = TRUE),
+            logical(1)
+          )),
+          state_present = !is.null(params[["state"]]),
+          issuer_present = !is.null(params[["iss"]]),
+          content_digest = openid_fixture_digest(trimws(content))
+        )
+        path <- file.path(config[["audit_directory"]], "callback-http.json")
+        pending <- paste0(path, ".pending")
+        jsonlite::write_json(value, pending, auto_unbox = TRUE, null = "null")
+        if (!file.rename(pending, path)) {
+          stop("Cannot publish private HTTP rejection evidence")
+        }
+      }
+      response
+    }
+  }
   server <- function(input, output, session) {
     if (!is.null(config[["stop_file"]])) {
       stop_observer <- shiny::observe({
@@ -362,7 +411,12 @@ openid_fixture_app <- function(config) {
         }
         audit[["resource"]] <- tryCatch(
           {
-            response <- auth[["connection"]]()[["request"]]("suite", "accounts")
+            token <- auth[["token"]]
+            connection <- auth[["connection"]]()
+            connection_unusable <- !isTRUE(connection[["is_usable"]]())
+            expiry_unknown <- is.null(token) ||
+              !is.finite(as.numeric(token@expires_at))
+            response <- connection[["request"]]("suite", "accounts")
             body <- httr2::resp_body_json(response)
             list(
               done = TRUE,
@@ -372,7 +426,10 @@ openid_fixture_app <- function(config) {
                 "true"
               ),
               pid = Sys.getpid(),
-              transport = "main_process"
+              transport = "main_process",
+              api = "connection",
+              expiry_unknown = expiry_unknown,
+              connection_unusable = connection_unusable
             )
           },
           error = function(...) list(done = TRUE, succeeded = FALSE)

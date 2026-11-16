@@ -65,6 +65,11 @@ openid_fapi_evidence <- function(logs, module, plan, expectation) {
   ) {
     stop("FAPI logs do not belong to this suite instance")
   }
+  if (
+    expectation[["outcome"]] %in% c("discovery_rejected", "callback_rejected")
+  ) {
+    return(openid_fapi_pre_token_evidence(logs, module, plan, expectation))
+  }
   requests <- function(endpoint) {
     Filter(
       function(e) {
@@ -279,6 +284,11 @@ openid_fapi_evidence <- function(logs, module, plan, expectation) {
 }
 
 openid_fapi_matches <- function(result, expectation) {
+  if (
+    expectation[["outcome"]] %in% c("discovery_rejected", "callback_rejected")
+  ) {
+    return(openid_fapi_pre_token_matches(result, expectation))
+  }
   proof <- result[["fapi"]]
   positive <- identical(expectation[["outcome"]], "authenticated")
   if (!identical(proof[["suite_id"]], result[["suite_id"]])) {
@@ -316,6 +326,15 @@ openid_fapi_matches <- function(result, expectation) {
   }
   resource <- result[["app"]][["resource"]]
   if (positive) {
+    if (!is.null(expectation[["resource_api"]])) {
+      if (
+        !identical(resource[["api"]], expectation[["resource_api"]]) ||
+          !identical(resource[["expiry_unknown"]], FALSE) ||
+          !identical(resource[["connection_unusable"]], FALSE)
+      ) {
+        return(FALSE)
+      }
+    }
     if (
       !all(vapply(
         c("done", "succeeded", "response_marker_valid"),
@@ -343,4 +362,289 @@ openid_fapi_matches <- function(result, expectation) {
   ) &&
     !anyDuplicated(names(checks)) &&
     all(vapply(checks, isTRUE, logical(1)))
+}
+
+openid_fapi_pre_token_checks <- function(discovery) {
+  if (discovery) {
+    return("ChangeIssuerInServerConfigurationToBeInvalid")
+  }
+  c(
+    setdiff(
+      openid_auth_checks("private_key_jwt"),
+      "ValidateClientAssertionClaims"
+    ),
+    "ValidateClientAssertionClaimsForPAREndpoint",
+    "ValidateClientAssertionAudClaimIsIssuerAsString",
+    "EnsureAuthorizationRequestContainsOnlyExpectedParamsWhenUsingPAR"
+  )
+}
+
+openid_fapi_pre_token_evidence <- function(logs, module, plan, expectation) {
+  discovery <- identical(expectation[["outcome"]], "discovery_rejected")
+  requests <- function(endpoint) {
+    Filter(
+      function(e) {
+        identical(e[["http"]], "incoming") &&
+          identical(
+            e[["incoming_path"]],
+            paste0(sub("^https://[^/]+", "", module[["issuer"]]), endpoint)
+          )
+      },
+      logs
+    )
+  }
+  par <- requests("par")
+  authorization <- requests("authorize")
+  client_id <- plan[["registration"]][["client_id"]]
+  checks <- openid_fapi_pre_token_checks(discovery)
+  proof <- list(
+    suite_id = module[["id"]],
+    stage = if (discovery) "discovery" else "callback",
+    discovery_request_count = length(requests(
+      ".well-known/openid-configuration"
+    )),
+    par_request_count = length(par),
+    authorization_request_count = length(authorization),
+    token_request_count = length(requests("token")),
+    userinfo_request_count = length(requests("userinfo")),
+    resource_request_count = length(requests("open-banking/v1.1/accounts")),
+    suite_checks = setNames(
+      lapply(checks, function(source) {
+        any(vapply(
+          logs,
+          function(e) {
+            identical(e[["src"]], source) &&
+              if (discovery) {
+                is.null(e[["result"]]) &&
+                  identical(
+                    e[["msg"]],
+                    "Added invalid issuer to server configuration"
+                  ) &&
+                  identical(
+                    e[["issuer"]],
+                    paste0(module[["issuer"]], "INVALID")
+                  )
+              } else {
+                identical(e[["result"]], "SUCCESS")
+              }
+          },
+          logical(1)
+        ))
+      }),
+      checks
+    )
+  )
+  if (discovery) {
+    return(proof)
+  }
+  proof[["par_authenticated"]] <- length(par) > 0L &&
+    all(vapply(
+      par,
+      function(e) {
+        form <- e[["incoming_body_form_params"]]
+        jwt <- openid_fapi_decode(form[["client_assertion"]])
+        claims <- jwt[[2L]]
+        identical(e[["incoming_method"]], "POST") &&
+          identical(form[["client_id"]], client_id) &&
+          identical(
+            form[["client_assertion_type"]],
+            "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+          ) &&
+          !"client_secret" %in% names(form) &&
+          !"authorization" %in% names(e[["incoming_headers"]]) &&
+          identical(jwt[[1L]][["alg"]], "ES256") &&
+          identical(jwt[[1L]][["kid"]], plan[["credentials"]][["key_id"]]) &&
+          identical(claims[["iss"]], client_id) &&
+          identical(claims[["sub"]], client_id) &&
+          identical(claims[["aud"]], module[["issuer"]]) &&
+          openid_string(claims[["jti"]])
+      },
+      logical(1)
+    ))
+  proof[["assertion_jtis_distinct"]] <- !anyDuplicated(vapply(
+    par,
+    function(e) {
+      openid_fapi_decode(e[["incoming_body_form_params"]][[
+        "client_assertion"
+      ]])[[2L]][["jti"]]
+    },
+    character(1)
+  ))
+  proof[["pkce_s256_present"]] <- length(par) > 0L &&
+    all(vapply(
+      par,
+      function(e) {
+        form <- e[["incoming_body_form_params"]]
+        identical(form[["response_type"]], "code") &&
+          identical(form[["code_challenge_method"]], "S256") &&
+          openid_string(form[["code_challenge"]]) &&
+          grepl("^[A-Za-z0-9_-]{43}$", form[["code_challenge"]])
+      },
+      logical(1)
+    ))
+  proof[["authorization_par_only"]] <- length(authorization) == 1L &&
+    {
+      e <- authorization[[1L]]
+      query <- e[["incoming_query_string_params"]]
+      identical(e[["incoming_method"]], "GET") &&
+        setequal(names(query), c("client_id", "request_uri")) &&
+        identical(query[["client_id"]], client_id) &&
+        openid_string(query[["request_uri"]])
+    }
+  proof
+}
+
+openid_fapi_pre_token_matches <- function(result, expectation) {
+  proof <- result[["fapi"]]
+  discovery <- identical(expectation[["outcome"]], "discovery_rejected")
+  if (
+    !identical(proof[["suite_id"]], result[["suite_id"]]) ||
+      !identical(
+        proof[["stage"]],
+        if (discovery) "discovery" else "callback"
+      ) ||
+      !is.null(result[["app"]][["resource"]])
+  ) {
+    return(FALSE)
+  }
+  for (name in c(
+    "token_request_count",
+    "userinfo_request_count",
+    "resource_request_count"
+  )) {
+    if (!identical(proof[[name]], 0L)) return(FALSE)
+  }
+  if (discovery) {
+    if (
+      !identical(proof[["discovery_request_count"]], 1L) ||
+        !identical(proof[["par_request_count"]], 0L) ||
+        !identical(proof[["authorization_request_count"]], 0L)
+    ) {
+      return(FALSE)
+    }
+  } else {
+    if (!openid_http_callback_matches(result, expectation)) {
+      return(FALSE)
+    }
+    if (
+      !openid_count(proof[["discovery_request_count"]], 1L) ||
+        !openid_count(proof[["par_request_count"]], 1L) ||
+        proof[["par_request_count"]] > 2L ||
+        !identical(proof[["authorization_request_count"]], 1L) ||
+        !all(vapply(
+          c(
+            "par_authenticated",
+            "assertion_jtis_distinct",
+            "pkce_s256_present",
+            "authorization_par_only"
+          ),
+          function(name) isTRUE(proof[[name]]),
+          logical(1)
+        ))
+    ) {
+      return(FALSE)
+    }
+  }
+  checks <- proof[["suite_checks"]]
+  setequal(names(checks), openid_fapi_pre_token_checks(discovery)) &&
+    !anyDuplicated(names(checks)) &&
+    all(vapply(checks, isTRUE, logical(1)))
+}
+
+openid_observe_http_callback <- function(tab, origin) {
+  observation <- new.env(parent = emptyenv())
+  tab[["Network"]][["enable"]]()
+  tab[["Network"]][["responseReceived"]](function(params) {
+    response <- params[["response"]]
+    if (
+      identical(params[["type"]], "Document") &&
+        startsWith(response[["url"]], paste0(origin, "/"))
+    ) {
+      observation[["request_id"]] <- params[["requestId"]]
+      observation[["status"]] <- response[["status"]]
+      observation[["headers"]] <- response[["headers"]]
+    }
+    invisible(NULL)
+  })
+  observation
+}
+
+openid_wait_http_callback <- function(app, browser, tab, initial, observation) {
+  path <- file.path(app[["config"]][["audit_directory"]], "callback-http.json")
+  openid_wait(
+    function() {
+      if (
+        !app[["process"]][["is_alive"]]() ||
+          !browser[["get_browser"]]()[["get_process"]]()[["is_alive"]]()
+      ) {
+        stop("App or browser stopped before the HTTP rejection")
+      }
+      # A CDP call also services Chromote's event loop and delivers response events.
+      content <- openid_browser_value(
+        tab,
+        "document.body && document.body.textContent"
+      )
+      if (!file.exists(path) || is.null(observation[["request_id"]])) {
+        return(NULL)
+      }
+      snapshot <- jsonlite::read_json(path)
+      if (!identical(snapshot[["run_id"]], app[["config"]][["run_id"]])) {
+        stop("Stale HTTP rejection snapshot")
+      }
+      if (!openid_string(content)) {
+        return(NULL)
+      }
+      http <- snapshot[["http_rejection"]]
+      http[["body_matches"]] <- identical(
+        http[["content_digest"]],
+        paste(openssl::sha256(charToRaw(trimws(content))), collapse = "")
+      )
+      http[["content_digest"]] <- NULL
+      headers <- observation[["headers"]]
+      names(headers) <- tolower(names(headers))
+      http[["browser_status_400"]] <- identical(
+        as.integer(observation[["status"]]),
+        400L
+      )
+      http[["headers_verified"]] <- identical(
+        headers[["cache-control"]],
+        "no-store"
+      ) &&
+        identical(headers[["referrer-policy"]], "no-referrer") &&
+        startsWith(headers[["content-type"]], "text/plain")
+      http[["no_callback_module"]] <- is.null(openid_app_snapshot(
+        tab,
+        app[["config"]][["run_id"]]
+      )) &&
+        identical(snapshot[["session_number"]], initial[["session_number"]]) &&
+        identical(snapshot[["app_instance"]], initial[["app_instance"]]) &&
+        identical(snapshot[["cache_instance"]], initial[["cache_instance"]])
+      snapshot[["http_rejection"]] <- NULL
+      list(app = snapshot, http = http)
+    },
+    "Real-browser HTTP callback rejection",
+    30
+  )
+}
+
+openid_http_callback_matches <- function(result, expectation) {
+  http <- result[["callback_http"]]
+  identical(result[["callback_cleaned"]], FALSE) &&
+    identical(http[["status"]], 400L) &&
+    identical(http[["state_present"]], expectation[["state_present"]]) &&
+    identical(http[["issuer_present"]], expectation[["issuer_present"]]) &&
+    all(vapply(
+      c(
+        "no_store",
+        "no_referrer",
+        "plain_text",
+        "credentials_absent",
+        "body_matches",
+        "browser_status_400",
+        "headers_verified",
+        "no_callback_module"
+      ),
+      function(name) isTRUE(http[[name]]),
+      logical(1)
+    ))
 }
