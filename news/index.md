@@ -2,6 +2,9 @@
 
 ## shinyOAuth (development version)
 
+- Missing, malformed and expired ID-token expiry errors now identify the
+  `exp` claim in audit events without including its value.
+
 - OIDC discovery accepts an explicit `id_token_profile = "fapi2"` for
   providers that advertise FAPI signing algorithms without RS256. It
   keeps the caller’s algorithm restrictions and permits only implemented
