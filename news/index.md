@@ -2,6 +2,12 @@
 
 ## shinyOAuth (development version)
 
+- OIDC discovery accepts an explicit `id_token_profile = "fapi2"` for
+  providers that advertise FAPI signing algorithms without RS256. It
+  keeps the caller’s algorithm restrictions and permits only implemented
+  FAPI algorithms. The default OIDC discovery policy still requires
+  RS256.
+
 - Discovery issuer mismatches now identify the failed issuer check in
   audit events using a claim name and reason code, without including
   issuer values.

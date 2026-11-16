@@ -23,7 +23,8 @@ oauth_provider_oidc_discover(
   jwks_host_issuer_match = TRUE,
   issuer_match = c("url", "host", "none"),
   ...,
-  allowed_algs = NULL
+  allowed_algs = NULL,
+  id_token_profile = c("oidc", "fapi2")
 )
 ```
 
@@ -122,6 +123,16 @@ oauth_provider_oidc_discover(
   Compatibility alias for `id_token_allowed_algs`. Supply only one
   spelling.
 
+- id_token_profile:
+
+  ID-token algorithm policy: `"oidc"` (default) requires the standard
+  RS256 discovery capability. `"fapi2"` accepts FAPI 2.0 signing
+  metadata without RS256 and restricts the negotiated algorithms to the
+  implemented FAPI choices ES256, Ed25519 and EdDSA. Caller restrictions
+  and advertised algorithms still apply. This selects only the ID-token
+  algorithm policy; configure PAR, client authentication and sender
+  constraint separately. It does not establish FAPI conformance.
+
 ## Value
 
 [OAuthProvider](https://lukakoning.github.io/shinyOAuth/reference/OAuthProvider.md)
@@ -167,13 +178,16 @@ match the issuer host; use `jwks_host_allow_only` for a known different
 host.
 
 The document must advertise the code flow (`response_types_supported`
-includes `"code"`), non-empty `subject_types_supported`, RS256 in
-`id_token_signing_alg_values_supported`, and a `jwks_uri` even when
-automatic ID token validation is disabled. The permitted ID token
-algorithms are the intersection of `id_token_allowed_algs` and the
-advertised algorithms; an empty intersection is an error. Discovery
-keeps PKCE `S256` and errors when the provider explicitly excludes it,
-unless you select `pkce_method = "plain"`.
+includes `"code"`), non-empty `subject_types_supported`, signing
+algorithm metadata, and a `jwks_uri` even when automatic ID token
+validation is disabled. Standard OIDC requires RS256 in the signing
+metadata. Explicit `id_token_profile = "fapi2"` instead requires a FAPI
+signing capability and restricts negotiation to implemented FAPI
+algorithms. The permitted algorithms are the intersection of the
+profile, `id_token_allowed_algs` and the advertised algorithms; an empty
+intersection is an error. Discovery keeps PKCE `S256` and errors when
+the provider explicitly excludes it, unless you select
+`pkce_method = "plain"`.
 
 ## Advanced metadata
 

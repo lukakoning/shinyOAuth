@@ -73,7 +73,8 @@ Pass the result to <code><a href="oauth_client.html">oauth_client()</a></code>.<
 <span>  jwks_host_issuer_match <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  issuer_match <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"url"</span>, <span class="st">"host"</span>, <span class="st">"none"</span><span class="op">)</span>,</span>
 <span>  <span class="va">...</span>,</span>
-<span>  allowed_algs <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  allowed_algs <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  id_token_profile <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"oidc"</span>, <span class="st">"fapi2"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -162,6 +163,16 @@ require the discovered issuer's standard metadata location to match that URL.</p
 <dt id="arg-allowed-algs">allowed_algs<a class="anchor" aria-label="anchor" href="#arg-allowed-algs"></a></dt>
 <dd><p>Compatibility alias for <code>id_token_allowed_algs</code>. Supply only one spelling.</p></dd>
 
+
+<dt id="arg-id-token-profile">id_token_profile<a class="anchor" aria-label="anchor" href="#arg-id-token-profile"></a></dt>
+<dd><p>ID-token algorithm policy: <code>"oidc"</code> (default)
+requires the standard RS256 discovery capability. <code>"fapi2"</code> accepts FAPI 2.0
+signing metadata without RS256 and restricts the negotiated algorithms to
+the implemented FAPI choices ES256, Ed25519 and EdDSA. Caller restrictions
+and advertised algorithms still apply. This selects only the ID-token
+algorithm policy; configure PAR, client authentication and sender constraint
+separately. It does not establish FAPI conformance.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -202,10 +213,13 @@ and a loopback host. <code>options(shinyOAuth.allowed_hosts)</code> can further 
 endpoint hosts. Signing-key hosts have their own policy: by default they must
 match the issuer host; use <code>jwks_host_allow_only</code> for a known different host.</p>
 <p>The document must advertise the code flow (<code>response_types_supported</code>
-includes <code>"code"</code>), non-empty <code>subject_types_supported</code>, RS256 in
-<code>id_token_signing_alg_values_supported</code>, and a <code>jwks_uri</code> even when automatic
-ID token validation is disabled. The permitted ID token algorithms are the
-intersection of <code>id_token_allowed_algs</code> and the advertised algorithms; an empty
+includes <code>"code"</code>), non-empty <code>subject_types_supported</code>, signing algorithm
+metadata, and a <code>jwks_uri</code> even when automatic ID token validation is disabled.
+Standard OIDC requires RS256 in the signing metadata. Explicit
+<code>id_token_profile = "fapi2"</code> instead requires a FAPI signing capability and
+restricts negotiation to implemented FAPI algorithms. The permitted algorithms
+are the intersection of the profile, <code>id_token_allowed_algs</code> and the
+advertised algorithms; an empty
 intersection is an error. Discovery keeps PKCE <code>S256</code> and errors when the
 provider explicitly excludes it, unless you select <code>pkce_method = "plain"</code>.</p>
     </div>
