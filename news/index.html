@@ -46,7 +46,8 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
-<ul><li><p>Missing, malformed and expired ID-token expiry errors now identify the <code>exp</code> claim in audit events without including its value.</p></li>
+<ul><li><p><code><a href="../reference/oauth_provider_oauth_discover.html">oauth_provider_oauth_discover()</a></code> reads RFC 8414 authorization-server metadata for OAuth-only code flows, with exact issuer matching and the existing transport, endpoint and authentication checks.</p></li>
+<li><p>Missing, malformed and expired ID-token expiry errors now identify the <code>exp</code> claim in audit events without including its value.</p></li>
 <li><p>OIDC discovery accepts an explicit <code>id_token_profile = "fapi2"</code> for providers that advertise FAPI signing algorithms without RS256. It keeps the caller’s algorithm restrictions and permits only implemented FAPI algorithms. The default OIDC discovery policy still requires RS256.</p></li>
 <li><p>Discovery issuer mismatches now identify the failed issuer check in audit events using a claim name and reason code, without including issuer values.</p></li>
 <li><p>ID-token issuer and nonce validation errors now identify the failed claim in audit events. Event context contains the claim name without its value.</p></li>

@@ -60,6 +60,8 @@ help.
   : Create a Keycloak OAuthProvider (via OIDC discovery)
 - [`oauth_provider_microsoft()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_microsoft.md)
   : Create a Microsoft (Entra ID) OAuthProvider
+- [`oauth_provider_oauth_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oauth_discover.md)
+  : Discover an OAuth authorization server
 - [`oauth_provider_okta()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_okta.md)
   : Create an Okta OAuthProvider (via OIDC discovery)
 - [`oauth_provider_orcid()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_orcid.md)
