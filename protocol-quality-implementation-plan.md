@@ -19,9 +19,10 @@ default credential-retirement policy. C09 adds verified mirai transport
 for the core selections, future multisession smoke/refresh parity,
 confidential-client authentication selections and sequential shared-pool
 issuer isolation. Public-client discovery coverage remains outstanding,
-so C09 is not complete. C10 starts with a three-module
-OIDC/private-key-JWT/DPoP selection. Its remaining module set and
-OAuth-only coverage are still pending.
+so C09 is not complete. C10 includes the complete twenty-three-module
+OIDC/private-key-JWT/DPoP variant. OAuth-only coverage and further
+refresh/resource scenarios remain pending, so the broader milestone is
+still open.
 
 Execution record (2026-11-12): C00 is `d0b62ff`; C01 is `4dee03d`. C01
 validated the exact server image/source correspondence, required plans,
@@ -604,11 +605,103 @@ partial coverage. Private test libraries leave the user’s R installation
 unchanged. Failed development runs retain failed gates and receive no
 validation credit.
 
-C10 follow-up: execute the remaining twenty modules for this resolved
-OIDC variant, including callback issuer/state cases, then add separately
-resolved OAuth-only coverage and refresh/resource scenarios. C11-C12
-retain mTLS and message signing. The C09 public-client and C06
-warm-cache gaps remain open.
+C10, full OIDC variant (2026-11-16): `fapi-dpop-full` executes all
+twenty-three modules resolved for the same pinned
+OIDC/private-key-JWT/DPoP variant. The original three-module `fapi-dpop`
+selection stays partial. Manual CI now offers both selections without
+changing the source, images or suite assertions.
+
+The full selection adds discovery issuer mismatch, eleven ID-token
+rejection cases, four malformed authorization callbacks and seven
+positive flows in total. ID-token failures require the expected typed
+claim or algorithm reason, no retained token and no UserInfo/accounts
+call. The additional-audience case accepts either an audience or
+authorized-party rejection, since both reject the untrusted additional
+recipient. Positive cases cover audience arrays, omitted access-token
+expiry, token-type and DPoP challenge-scheme case, nonce absence and
+absent mTLS endpoint aliases. All use the public connection API, require
+a usable connection and check the accounts completion response. Missing
+`expires_in` exercises the package’s documented 3600-second fallback;
+the fixture supplies no expiry and changes no token or validation state.
+
+The malformed callbacks are rejected by the public UI’s HTTP handler
+before a callback Shiny session starts. The driver therefore collects
+the actual browser HTTP 400 response instead of waiting for a second
+Shiny snapshot. Its evidence requires the matching allowlisted audit
+label, response body match, no-store, no-referrer, plain text and no
+reflected credentials. App/cache/session identities must match the
+initial unauthenticated session. No token exchange, UserInfo or accounts
+request is allowed, and this stage earns no authentication or worker
+protocol-work credit. Discovery rejection likewise earns only
+discovery-stage evidence. Malformed-callback error pages retain their
+query in the address bar; reports explicitly record
+`callback_cleaned = false` for those four cases. Other callback paths
+still require URL cleanup. C15 should revisit query retention on these
+HTTP error pages as a separate privacy improvement, while preserving
+rejection and preventing reflection of callback credentials.
+
+Complete coverage for `fapi-dpop-full` means this exact resolved variant
+only. Resource requests still run in the Shiny process, including mirai
+login runs. Private HTTP observations, callback values and raw suite
+logs stay under ignored artifacts; uploaded reports contain only
+allowlisted comparisons and counters. Failed development runs keep
+failed gates and receive no validation credit.
+
+An initial full run completed all twenty-three suite modules but failed
+the local evidence gate: the issuer mutation condition emits a plain
+event without a result field, while the gate incorrectly required
+`SUCCESS`. An attempted `INFO` interpretation also failed and receives
+no validation credit. Inspection of the live API payload confirmed the
+event shape. The corrected gate matches its source, exact message and
+mutated issuer against the suite’s exported issuer, with no result
+field. Regression checks reject substituted levels, messages, sources
+and issuers; the upstream suite verdict independently must still be
+`FINISHED/PASSED`.
+
+Commit `29724328` fixes a separate audit gap exposed by the expiry
+modules: missing, malformed and expired `exp` values were correctly
+rejected, but their typed errors omitted the claim label. They now
+report `claim = "exp"` without the value. The rejection rules are
+unchanged. All 300 focused JWT/audit assertions pass with zero test
+failures, warnings or skips. The full selection continues to require the
+specific claim label; it does not accept an unrelated ID-token error.
+The runner now checks app, transport and FAPI evidence after each case,
+naming the failed module and evidence layer immediately. Final report
+validation still checks the complete selection, bindings and cleanup.
+
+Final validation passed in sync and mirai on Windows (R 4.5.1, Chrome
+157) and Linux (R 4.5.0, Chromium 156). All four commands exited zero
+with twenty-three `FINISHED/PASSED` verdicts each, matching app/request
+evidence, complete variant gates and verified cleanup. Independent
+report revalidation confirmed all 92 outcomes and all four coverage
+gates. All 966 evidence assertions pass with zero test failures,
+warnings or skips. Standard Windows synchronous smoke also passed its
+three modules and cleanup. R lint, formatting, actionlint and staged
+patch whitespace checks pass.
+
+Sanitized reports under `integration/openid/.artifacts/`:
+
+| Environment / transport | Module-loop seconds | Report directory (`evidence.json`) |
+|----|---:|----|
+| Windows / sync | 385.97 | `fapi-dpop-full-20261116-214626-859ae6ff835d` |
+| Windows / mirai | 430.34 | `fapi-dpop-full-20261116-214626-5a0b7ce12224` |
+| Linux / sync | 229.97 | `fapi-dpop-full-20261116-204730-9518d87faa9d` |
+| Linux / mirai | 257.91 | `fapi-dpop-full-20261116-204730-2fcc9fc37f06` |
+| Windows / sync smoke | 69.42 | `smoke-20261116-214555-4aa673db6b95` |
+
+The selections ran concurrently. Timings exclude installation, suite
+startup, the app-stop control and final teardown; they are local
+measurements, not hosted CI timings. Reports identify product fix
+`29724328` and the dirty checkout containing this harness slice. All
+images came from the verified cache at the unchanged locked digests.
+Test libraries stay private, and no owned Docker containers remain after
+cleanup. Earlier failed reports remain failed and receive no validation
+credit.
+
+C10 follow-up: add separately resolved OAuth-only coverage and remaining
+refresh/resource scenarios. C11-C12 retain mTLS and message signing. The
+C09 public-client and C06 warm-cache gaps remain open. Fresh hosted CI
+still needs an available verified copy of the locked server image.
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
