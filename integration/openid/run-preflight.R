@@ -45,6 +45,7 @@ run_openid_preflight <- function(args = commandArgs(trailingOnly = TRUE)) {
   evidence[["source_revision"]] <- stack[["provenance"]][["revision"]]
   evidence[["image_provenance"]] <- stack[["provenance"]]
   evidence[["images"]] <- stack[["lock"]][["images"]]
+  evidence[["image_sources"]] <- stack[["image_sources"]]
   evidence[["server_info"]] <- stack[["server_info"]][c(
     "revision",
     "version",

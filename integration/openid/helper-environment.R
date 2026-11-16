@@ -131,6 +131,48 @@ openid_image_revision <- function(lock) {
   )
 }
 
+openid_prepare_image <- function(
+  image,
+  log,
+  .run = processx::run,
+  .pull = openid_docker
+) {
+  if (!grepl("@sha256:[a-f0-9]{64}$", image)) {
+    stop("Image acquisition requires a pinned digest")
+  }
+  inspect <- function() {
+    result <- .run(
+      "docker",
+      c("image", "inspect", image, "--format", "{{json .RepoDigests}}"),
+      error_on_status = FALSE,
+      timeout = 10000
+    )
+    if (result[["status"]] != 0L) {
+      return(FALSE)
+    }
+    digests <- tryCatch(
+      jsonlite::fromJSON(result[["stdout"]]),
+      error = function(...) NULL
+    )
+    if (
+      !is.character(digests) ||
+        !length(digests) ||
+        !sub("^.*@", "", image) %in% sub("^.*@", "", digests)
+    ) {
+      stop("Cached image RepoDigests do not match the locked digest")
+    }
+    TRUE
+  }
+  if (inspect()) {
+    return("cached")
+  }
+  .pull(c("pull", image), log)
+  if (!inspect()) {
+    stop("Pinned image is missing after pull")
+  }
+  "pulled"
+}
+
 openid_start <- function(root, output, .env = parent.frame()) {
   root <- normalizePath(root, winslash = "/")
   lock <- openid_lock(root)
@@ -142,12 +184,15 @@ openid_start <- function(root, output, .env = parent.frame()) {
     stop("OpenID tests require Docker Linux containers")
   }
   openid_docker(c("compose", "version"))
-  for (name in names(lock[["images"]])) {
-    openid_docker(
-      c("pull", lock[["images"]][[name]]),
-      file.path(output, paste0("pull-", name, ".log"))
-    )
-  }
+  image_sources <- setNames(
+    lapply(names(lock[["images"]]), function(name) {
+      openid_prepare_image(
+        lock[["images"]][[name]],
+        file.path(output, paste0("pull-", name, ".log"))
+      )
+    }),
+    names(lock[["images"]])
+  )
   provenance <- openid_image_revision(lock)
   tls <- file.path(output, "tls")
   dir.create(tls)
@@ -240,6 +285,7 @@ openid_start <- function(root, output, .env = parent.frame()) {
     spki = spki,
     output = output,
     lock = lock,
+    image_sources = image_sources,
     provenance = provenance
   )
   stack[["lifecycle"]] <- new.env(parent = emptyenv())
