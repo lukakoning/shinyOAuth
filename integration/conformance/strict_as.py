@@ -49,6 +49,7 @@ require(isinstance(registered_key, rsa.RSAPublicKey) and registered_key.key_size
 ca_key = rsa.generate_private_key(65537, 2048)
 server_key = rsa.generate_private_key(65537, 2048)
 client_key = rsa.generate_private_key(65537, 2048)
+alternate_key = rsa.generate_private_key(65537, 2048)
 ca_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, 'Conformance test CA')])
 
 
@@ -68,19 +69,24 @@ def certificate(name, key, ca=False):
 
 ca_cert = certificate('Conformance test CA', ca_key, True)
 client_cert = certificate('registered-mtls-client', client_key)
+# Both certificates are eligible for this client, with the same subject DN.
+# A token must still require the particular certificate used at issuance.
+alternate_cert = certificate('registered-mtls-client', alternate_key)
 for name, cert, key in [('ca', ca_cert, ca_key),
                         ('server', certificate('localhost', server_key), server_key),
-                        ('client', client_cert, client_key)]:
+                        ('client', client_cert, client_key),
+                        ('alternate', alternate_cert, alternate_key)]:
     (root / (name + '.pem')).write_bytes(cert.public_bytes(serialization.Encoding.PEM))
     (root / (name + '-key.pem')).write_bytes(key.private_bytes(serialization.Encoding.PEM,
         serialization.PrivateFormat.PKCS8, serialization.NoEncryption()))
 
 client_der = client_cert.public_bytes(serialization.Encoding.DER)
+registered_certificates = {client_der, alternate_cert.public_bytes(serialization.Encoding.DER)}
 seen = set()
 codes = {}
 pushed = {}
 refreshes = {}
-access_tokens = set()
+access_tokens = {}
 issuer = None
 
 
@@ -113,13 +119,16 @@ def assertion_profile(claims):
     return None
 
 
-def token_response(claims, cnf=None):
+def token_response(claims, cnf=None, peer_certificate=None):
     cnf = cnf or {}
     access = secrets.token_urlsafe(32)
-    access_tokens.add(access)
+    access_tokens[access] = {'certificate': peer_certificate, 'expires_at': time.time() + 60}
     response = {'access_token': access, 'token_type': 'DPoP' if 'jkt' in cnf else 'Bearer',
                 'expires_in': 60, 'scope': claims.get('scope', ''), 'cnf': cnf}
-    if assertion_profile(claims):
+    if 'opaque-cnf' in claims.get('scope', '').split():
+        response.pop('cnf')
+    # This fixture's refresh profile only covers unbound tokens.
+    if assertion_profile(claims) and peer_certificate is None:
         refresh = secrets.token_urlsafe(32)
         refreshes[refresh] = claims
         response['refresh_token'] = refresh
@@ -167,15 +176,22 @@ def verify_dpop(token, expected_jkt):
     seen.add(claims['jti'])
 
 
+class ResourceDenied(ValueError):
+    pass
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
 
-    def respond(self, status, data, location=None):
+    def respond(self, status, data, location=None, headers=None):
         body = encode(data)
         self.send_response(status)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Content-Length', str(len(body)))
+        self.send_header('Cache-Control', 'no-store')
+        for name, value in (headers or {}).items():
+            self.send_header(name, value)
         if urlsplit(self.path).path == '/authorize':
             self.send_header('X-Fixture-Authorization-Method', self.command)
         if location:
@@ -202,6 +218,22 @@ class Handler(BaseHTTPRequestHandler):
             parsed = parse_qs(query, keep_blank_values=True)
             require(all(len(v) == 1 for v in parsed.values()), 'duplicate_parameter')
             params = {k: v[0] for k, v in parsed.items()}
+            if path == '/resource/records':
+                require(self.command == 'GET' and not params, 'resource_transport')
+                authorization = self.headers.get_all('Authorization') or []
+                scheme, _, access = authorization[0].partition(' ') if len(authorization) == 1 else ('', '', '')
+                record = access_tokens.get(access) if scheme.lower() == 'bearer' else None
+                if record is None:
+                    raise ResourceDenied('resource_token')
+                if record['expires_at'] <= time.time():
+                    raise ResourceDenied('resource_expired')
+                if record['certificate'] is None:
+                    raise ResourceDenied('resource_unbound')
+                # Read the certificate from TLS, never from forwarded headers or cnf.
+                peer = self.connection.getpeercert(binary_form=True)
+                if peer != record['certificate']:
+                    raise ResourceDenied('resource_certificate')
+                return self.respond(200, {'resource': 'certificate-bound-content'})
             if path == '/jwks':
                 n = server_key.public_key().public_numbers()
                 return self.respond(200, {'keys': [{'kty': 'RSA', 'kid': 'as', 'use': 'sig',
@@ -250,22 +282,27 @@ class Handler(BaseHTTPRequestHandler):
                 if profile:
                     verify_client_assertion(params, path, profile, self.headers.get('Authorization'))
                 cnf = {}
+                peer = None
                 if claims.get('dpop_jkt'):
                     verify_dpop(self.headers.get('DPoP'), claims['dpop_jkt'])
                     cnf = {'jkt': claims['dpop_jkt']}
                 if 'mtls' in claims.get('scope', '').split():
-                    require(self.connection.getpeercert(binary_form=True) == client_der, 'mtls_certificate')
-                    cnf = {'x5t#S256': b64(hashlib.sha256(client_der).digest())}
+                    peer = self.connection.getpeercert(binary_form=True)
+                    require(peer in registered_certificates, 'mtls_certificate')
+                    cnf = {'x5t#S256': b64(hashlib.sha256(peer).digest())}
                 del codes[params['code']]
-                return self.respond(200, token_response(claims, cnf))
+                return self.respond(200, token_response(claims, cnf, peer))
             if path in ('/legacy/introspect', '/oauth21/introspect', '/legacy/revoke', '/oauth21/revoke'):
                 profile = path.split('/')[1]
                 verify_client_assertion(params, path, profile, self.headers.get('Authorization'))
                 if path.endswith('/introspect'):
                     return self.respond(200, {'active': params.get('token') in access_tokens})
-                access_tokens.discard(params.get('token'))
+                access_tokens.pop(params.get('token'), None)
                 return self.respond(200, {})
             self.respond(404, {'error': 'unknown_endpoint'})
+        except ResourceDenied as error:
+            self.respond(401, {'error': 'invalid_token', 'reason': str(error)},
+                         headers={'WWW-Authenticate': 'Bearer error="invalid_token"'})
         except Exception as error:
             self.respond(400, {'error': 'invalid_request', 'reason': str(error) or type(error).__name__})
 

@@ -1,40 +1,8 @@
 run_strict_as <- function(alg) {
-  python <- Sys.getenv("SHINYOAUTH_TEST_PYTHON", unset = Sys.which("python"))
-  testthat::expect_true(nzchar(python))
-  root <- tempfile("strict-as-")
-  dir.create(root)
-  on.exit(unlink(root, recursive = TRUE), add = TRUE)
-  signing_key <- openssl::rsa_keygen()
-  writeLines(
-    openssl::write_pem(as.list(signing_key)[["pubkey"]]),
-    file.path(root, "registered.pem")
-  )
-  server <- processx::process[["new"]](
-    python,
-    c("strict_as.py", root, alg),
-    stdout = "|",
-    stderr = "|"
-  )
-  on.exit(server[["kill"]](), add = TRUE)
-  deadline <- Sys.time() + 15
-  ready <- character()
-  while (!length(ready) && server[["is_alive"]]() && Sys.time() < deadline) {
-    server[["poll_io"]](100)
-    ready <- server[["read_output_lines"]]()
-  }
-  if (!length(ready) || !startsWith(ready[[1]], "{")) {
-    server[["wait"]](1000)
-    stop(paste(c(ready, server[["read_all_error"]]()), collapse = "\n"))
-  }
-  issuer <- jsonlite::fromJSON(ready[[1]])[["issuer"]]
-  withr::local_envvar(CURL_CA_BUNDLE = file.path(root, "ca.pem"))
-  withr::local_options(list(
-    shinyOAuth.tls_min_version = "1.2",
-    shinyOAuth.timeout = 5,
-    shinyOAuth.skip_id_sig = FALSE,
-    shinyOAuth.otel_tracing_enabled = FALSE,
-    shinyOAuth.otel_logging_enabled = FALSE
-  ))
+  fixture <- strict_as_fixture(alg)
+  root <- fixture[["root"]]
+  issuer <- fixture[["issuer"]]
+  signing_key <- fixture[["signing_key"]]
   provider <- shinyOAuth::oauth_provider(
     name = "strict-as",
     issuer = issuer,

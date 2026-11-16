@@ -19,6 +19,7 @@ docs
 /integration/connections/.artifacts/
 /integration/openid/.artifacts/
 /integration/openid/.generated/
+/integration/conformance/.artifacts/
 
 # Environment files (secrets)
 .env
