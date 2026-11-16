@@ -197,8 +197,8 @@ returning responses. Give each client the complete
 <code class="sourceCode R"><span><span class="co"># Temporary keys for this local demo, generated once per R process.</span></span>
 <span><span class="co"># In a deployment, load two independent 32-byte raw keys from secret storage.</span></span>
 <span><span class="va">keys</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>  credentials <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://jeroen.r-universe.dev/openssl/reference/rand_bytes.html" class="external-link">rand_bytes</a></span><span class="op">(</span><span class="fl">32</span><span class="op">)</span>,</span>
-<span>  owner <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://jeroen.r-universe.dev/openssl/reference/rand_bytes.html" class="external-link">rand_bytes</a></span><span class="op">(</span><span class="fl">32</span><span class="op">)</span></span>
+<span>  credentials <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/openssl/man/rand_bytes.html" class="external-link">rand_bytes</a></span><span class="op">(</span><span class="fl">32</span><span class="op">)</span>,</span>
+<span>  owner <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/openssl/man/rand_bytes.html" class="external-link">rand_bytes</a></span><span class="op">(</span><span class="fl">32</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">manager</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_connections.html">oauth_connections</a></span><span class="op">(</span></span>

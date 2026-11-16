@@ -87,7 +87,7 @@
 <li>
 <p>Safer API requests and identity checks:</p>
 <ul><li>Package HTTPS requests now require TLS 1.2 or later by default, providing the same minimum across R installations.</li>
-<li>Protocol JSON now uses <code><a href="https://jeroen.r-universe.dev/jsonlite/reference/read_json.html" class="external-link">jsonlite::parse_json()</a></code> instead of <code>fromJSON()</code>. Responses and state envelopes are parsed as literal JSON text, preventing URL-like or file-path input from triggering server-side request forgery (SSRF) or unintended local-file reads.</li>
+<li>Protocol JSON now uses <code><a href="https://rdrr.io/pkg/jsonlite/man/read_json.html" class="external-link">jsonlite::parse_json()</a></code> instead of <code>fromJSON()</code>. Responses and state envelopes are parsed as literal JSON text, preventing URL-like or file-path input from triggering server-side request forgery (SSRF) or unintended local-file reads.</li>
 <li>Stricter checks catch malformed provider responses and configuration mistakes. Reusing an RSA key or HMAC secret with conflicting signing algorithms is rejected; use separate keys or secrets when different algorithms are required.</li>
 <li>Numeric OIDC claim requirements are no longer rounded before reaching the provider, including in signed authorization requests. Single-element <code>values</code> vectors remain JSON arrays automatically. Invalid claims requests are rejected when configuring the client.</li>
 <li>Manual <code><a href="../reference/get_userinfo.html">get_userinfo()</a></code> calls apply configured identity and signature checks even when automatic retrieval is disabled. Pass the complete <code>OAuthToken</code> so the profile can be checked against the signed-in user.</li>
@@ -295,7 +295,7 @@
 <li>
 <p>Signed UserInfo JWT validation now:</p>
 <ul><li>Enforces <code>exp</code>, <code>iat</code>, and <code>nbf</code> when those temporal claims are present, rejecting expired or not-yet-valid UserInfo JWT responses instead of accepting them based only on signature/issuer/audience. <code><a href="../reference/oauth_client.html">oauth_client()</a></code> can also require specific UserInfo JWT temporal claims to be present via <code>userinfo_jwt_required_time_claims</code>.</li>
-<li>Uses internal JWS verifier instead of <code><a href="https://r-lib.r-universe.dev/jose/reference/jwt_encode.html" class="external-link">jose::jwt_decode_sig()</a></code>, so EdDSA UserInfo JWTs can verify correctly, provider <code>leeway</code> is honored consistently, and invalid <code>typ</code> headers are rejected.</li>
+<li>Uses internal JWS verifier instead of <code><a href="https://rdrr.io/pkg/jose/man/jwt_encode.html" class="external-link">jose::jwt_decode_sig()</a></code>, so EdDSA UserInfo JWTs can verify correctly, provider <code>leeway</code> is honored consistently, and invalid <code>typ</code> headers are rejected.</li>
 </ul></li>
 <li><p>Successful token and refresh responses now always require <code>token_type</code>, even when <code>allowed_token_types = character()</code>. An empty allowlist still disables value allowlisting, but it no longer waives the RFC-required field.</p></li>
 <li><p>Refreshed OIDC ID tokens now enforce full continuity for <code>auth_time</code>, refresh-time <code>nonce</code>, and <code>azp</code> in addition to the existing <code>iss</code> / <code>sub</code> / <code>aud</code> checks.</p></li>

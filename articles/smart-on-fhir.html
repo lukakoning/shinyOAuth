@@ -176,8 +176,8 @@ returns from the hospital’s login page.</p>
 <span>  <span class="co"># Temporary keys for this local demo, created once at app startup.</span></span>
 <span>  <span class="co"># For deployment, load independent 32-byte raw keys from secret storage.</span></span>
 <span>  keys <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>    credentials <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://jeroen.r-universe.dev/openssl/reference/rand_bytes.html" class="external-link">rand_bytes</a></span><span class="op">(</span><span class="fl">32</span><span class="op">)</span>,</span>
-<span>    owner <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://jeroen.r-universe.dev/openssl/reference/rand_bytes.html" class="external-link">rand_bytes</a></span><span class="op">(</span><span class="fl">32</span><span class="op">)</span></span>
+<span>    credentials <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/openssl/man/rand_bytes.html" class="external-link">rand_bytes</a></span><span class="op">(</span><span class="fl">32</span><span class="op">)</span>,</span>
+<span>    owner <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/openssl/man/rand_bytes.html" class="external-link">rand_bytes</a></span><span class="op">(</span><span class="fl">32</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p><code>hospital</code> is your app’s name for this configuration. The
@@ -422,7 +422,7 @@ private key.</p>
 <span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"launch/patient"</span>, <span class="st">"patient/Patient.r"</span><span class="op">)</span>,</span>
 <span>  required_scopes <span class="op">=</span> <span class="st">"patient/Patient.r"</span>,</span>
 <span>  token_auth_style <span class="op">=</span> <span class="st">"private_key_jwt"</span>,</span>
-<span>  client_assertion_private_key <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://jeroen.r-universe.dev/openssl/reference/read_key.html" class="external-link">read_key</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"SMART_PRIVATE_KEY_FILE"</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  client_assertion_private_key <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/openssl/man/read_key.html" class="external-link">read_key</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"SMART_PRIVATE_KEY_FILE"</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  client_assertion_private_key_kid <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"SMART_KEY_ID"</span><span class="op">)</span>,</span>
 <span>  client_assertion_alg <span class="op">=</span> <span class="st">"RS384"</span>,</span>
 <span>  label <span class="op">=</span> <span class="st">"My hospital"</span></span>

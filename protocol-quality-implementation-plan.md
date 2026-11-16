@@ -15,10 +15,11 @@ incomplete because the pinned suite’s JWKS responses prohibit storage.
 C07 covers the fourteen-module Form Post Basic plan in Chrome on the
 local cross-origin, same-site deployment. C08 covers all three client
 refresh modules, including identity substitution and the module’s
-default credential-retirement policy. C09’s first slice adds verified
-mirai transport for the core selections and future multisession
-smoke/refresh parity. Client-auth variants and shared-pool issuer
-isolation remain outstanding, so C09 is not complete.
+default credential-retirement policy. C09 adds verified mirai transport
+for the core selections, future multisession smoke/refresh parity, and
+confidential-client authentication selections. Public client discovery
+and shared-pool issuer isolation remain outstanding, so C09 is not
+complete.
 
 Execution record (2026-11-12): C00 is `d0b62ff`; C01 is `4dee03d`. C01
 validated the exact server image/source correspondence, required plans,
@@ -368,13 +369,106 @@ formatting, actionlint and patch whitespace checks pass. The final
 evidence gate also accepts all seventeen retained passing schema-3
 reports from this implementation run.
 
-C09 follow-up: add the applicable Comprehensive-plan selections for
-public S256, `client_secret_post`, `client_secret_jwt` and
-`private_key_jwt`, with positive and relevant negative cases. Add a
-shared-pool scenario across different issuers to check isolation of
-configuration, hooks and credentials. The current pools are private per
-module and reused only within that module. Keep C09 open until these
-acceptance cases pass, and retain the separate C06 warm-cache gap.
+C09, confidential-client slice (completed 2026-11-16): `auth-post`,
+`auth-secret-jwt` and `auth-private-jwt` select two modules each from
+the pinned Comprehensive plan: the normal login and invalid-issuer
+modules. The resolved code-flow lists contain twenty-nine modules for
+shared-secret authentication and twenty-eight for private-key JWT; the
+manifest freezes those lists and requires their null per-module
+variants. These selections stay partial and the upstream plan is
+non-certifiable.
+
+Static registration declares the selected method, with fresh credentials
+per plan. Secret JWT uses HS256; private-key JWT uses RS256 with a fresh
+RSA key and public-only JWKS registration. The app receives the private
+PEM and uses normal public discovery, client and module APIs. Sync and
+mirai must each produce a validated ID-token/UserInfo login and a typed
+issuer rejection, with no retained rejected identity or UserInfo request
+after that rejection.
+
+The evidence helper reads the suite’s recorded HTTP requests and
+authentication condition results. It requires the actual expected
+method, matching client IDs, no mixed authentication mechanisms, correct
+secret or JWT metadata, and successful credential/signature and claim
+checks from the suite. Sensitive values are compared only in memory. Raw
+logs, secrets, assertions, private keys, codes and claim values stay out
+of the report. Evidence tests cover stale instance/probe identities,
+wrong credentials, mixed auth, invalid PKCE, bad assertion metadata and
+accidental disclosure. All 547 assertions pass with no failures,
+warnings or skips.
+
+Two pinned-suite gaps remain explicit. The public-client variant still
+omits `none` from discovery and its public authentication sequence
+performs no checks. A separate disposable probe confirms the missing
+advertised method and the installed package’s typed discovery rejection.
+The probe is cancelled and earns no conformance credit;
+`public_client_authentication_tested = false`. Metadata and discovery
+policy remain unchanged.
+
+The client base class also guards verifier validation with
+`env.containsObject("code_challenge")`, while the challenge condition
+stores a string. Consequently the pinned code-flow client plan skips its
+verifier check. The companion helper requires the suite’s S256
+challenge-presence check and independently computes the challenge from
+the actual token-request verifier. It retains
+`suite_pkce_verifier_checked = false` and a coverage limitation. This
+establishes matching client requests; bad-verifier rejection still needs
+an enforcing provider. The [scope
+record](https://lukakoning.github.io/integration/openid/scope.md) links
+the exact pinned source and describes the limits.
+
+All twelve authentication selections passed on Windows (R 4.5.1, Chrome
+157) and Linux (R 4.5.0, Chromium 156): three methods, two transports
+and two operating systems. Their twenty-four modules finished `PASSED`,
+each with matching app and request evidence. All twelve current evidence
+gates pass with verified cleanup and `coverage_complete = false`.
+Module-loop times and sanitized reports under
+`integration/openid/.artifacts/` are recorded below. Times exclude
+package installation, suite startup, the public capability probe,
+app-stop control and stack teardown. The four retained 2026-11-13 sync
+reports identify parent commit `6870f73d`; the eight 2026-11-16 reports
+identify `91ef76de`. All record a dirty checkout containing this
+authentication slice, rather than claiming a committed build identity.
+
+| Environment | Profile / transport | Loop seconds | Report directory (`evidence.json`) |
+|----|----|---:|----|
+| Windows | `auth-post` / sync | 21.01 | `auth-post-20261113-234810-580da618c227` |
+| Windows | `auth-post` / mirai | 30.38 | `auth-post-20261116-195235-cd2ed72978e6` |
+| Windows | `auth-secret-jwt` / sync | 21.13 | `auth-secret-jwt-20261113-234810-3c9b4258d04e` |
+| Windows | `auth-secret-jwt` / mirai | 30.59 | `auth-secret-jwt-20261116-195235-bd4bee39e8d3` |
+| Windows | `auth-private-jwt` / sync | 21.31 | `auth-private-jwt-20261113-234810-9c805b7721d6` |
+| Windows | `auth-private-jwt` / mirai | 29.66 | `auth-private-jwt-20261116-195235-cb390ae9e7f0` |
+| Linux | `auth-post` / sync | 13.14 | `auth-post-20261113-224811-906941c0d82c` |
+| Linux | `auth-post` / mirai | 17.49 | `auth-post-20261116-185235-9be6b0e71593` |
+| Linux | `auth-secret-jwt` / sync | 11.61 | `auth-secret-jwt-20261116-185400-9f2942acd2c5` |
+| Linux | `auth-secret-jwt` / mirai | 13.82 | `auth-secret-jwt-20261116-185509-7d41755f71d2` |
+| Linux | `auth-private-jwt` / sync | 11.91 | `auth-private-jwt-20261116-185616-90666f5c488d` |
+| Linux | `auth-private-jwt` / mirai | 14.56 | `auth-private-jwt-20261116-185724-2463f2a9c051` |
+
+The existing synchronous smoke selection also passed again on Windows:
+three module verdicts, the current evidence gate and cleanup, in 32.71
+seconds. Its report is
+`smoke-20261116-195540-a0f48c1f0e5f/evidence.json`. All test installs
+used private libraries. R lint, formatting, actionlint and patch
+whitespace checks pass. Hosted CI has not run.
+
+Image-acquisition fix `91ef76de` was necessary when validation resumed:
+on 2026-11-16 the upstream registry returned `not found` for the locked
+server digest. Cached images are now accepted only when their
+`RepoDigests` match the locked content digest. Missing images must still
+be pulled by that digest. The full server-jar source check and live API
+revision/TLS checks remain intact. Preflight passes all 26 environment
+assertions and the live checks using the verified cache. Reports
+distinguish cached images from pulled images. A fresh CI runner needs an
+available verified mirror or a reviewed lock update; the hosted workflow
+has not run and remains blocked by that availability issue.
+
+C09 follow-up: complete public S256 coverage against an appropriate
+provider or corrected suite, and add a shared-pool scenario across
+different issuers to check configuration, hooks and credential
+isolation. Existing Keycloak public and PKCE scenarios remain separate
+evidence. Keep C09 open until its remaining acceptance cases pass, and
+retain the C06 warm-cache gap.
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for

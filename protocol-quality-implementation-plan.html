@@ -46,7 +46,7 @@
 
 
 <p><strong>shinyOAuth protocol quality: implementation plan</strong></p>
-<p>Prepared 2026-11-12 against shinyOAuth commit <code>25318cc6488a2a98bfc83d484cbbdb3190854967</code> (version <code>0.7.0.9000</code>). Status: implementation started. The original investigation ran no external tests. C01 supplies a working local suite preflight, and C02 supplies a validated Shiny fixture. C03 adds the suite API driver and evidence validator. C04 executes three real-browser smoke modules. C05 extends the runner to all fourteen Basic RP modules for the pinned static-registration, synchronous code-flow variant. C06 now executes all six Configuration modules, with cached-key refresh coverage still incomplete because the pinned suite’s JWKS responses prohibit storage. C07 covers the fourteen-module Form Post Basic plan in Chrome on the local cross-origin, same-site deployment. C08 covers all three client refresh modules, including identity substitution and the module’s default credential-retirement policy. C09’s first slice adds verified mirai transport for the core selections and future multisession smoke/refresh parity. Client-auth variants and shared-pool issuer isolation remain outstanding, so C09 is not complete.</p>
+<p>Prepared 2026-11-12 against shinyOAuth commit <code>25318cc6488a2a98bfc83d484cbbdb3190854967</code> (version <code>0.7.0.9000</code>). Status: implementation started. The original investigation ran no external tests. C01 supplies a working local suite preflight, and C02 supplies a validated Shiny fixture. C03 adds the suite API driver and evidence validator. C04 executes three real-browser smoke modules. C05 extends the runner to all fourteen Basic RP modules for the pinned static-registration, synchronous code-flow variant. C06 now executes all six Configuration modules, with cached-key refresh coverage still incomplete because the pinned suite’s JWKS responses prohibit storage. C07 covers the fourteen-module Form Post Basic plan in Chrome on the local cross-origin, same-site deployment. C08 covers all three client refresh modules, including identity substitution and the module’s default credential-retirement policy. C09 adds verified mirai transport for the core selections, future multisession smoke/refresh parity, and confidential-client authentication selections. Public client discovery and shared-pool issuer isolation remain outstanding, so C09 is not complete.</p>
 <p>Execution record (2026-11-12): C00 is <code>d0b62ff</code>; C01 is <code>4dee03d</code>. C01 validated the exact server image/source correspondence, required plans, R certificate/hostname validation, Chrome certificate pinning and wrong-pin rejection, and complete owned-resource cleanup in consecutive disposable deployments on Windows/Docker Linux containers. Its 11 environment assertions pass with no failures or skips; formatting and lint checks pass. Startup reports the host’s existing C.UTF-8 locale warnings. This establishes environment readiness, not RP conformance. Chrome uses an isolated SPKI pin instead of installing a temporary root in the system trust store; the environment README records that scope adjustment.</p>
 <p>C02 is <code>88517ea</code>. It installed this checkout into an isolated R library and drove its public module/UI APIs in Chrome against a local HTTPS metadata fixture. The code/S256, nonce/state and openid-scope checks passed, a discovery issuer mismatch stopped startup, and the synthetic secret stayed out of the DOM and app logs. No token was issued and no independent client conformance verdict was collected. Follow-up validation also requires the failed setup’s private diagnostic to identify an issuer mismatch, so an unrelated app crash cannot satisfy that check. The follow-up preflight and fixture checks both passed, along with the 11 helper assertions, <code>jarl check integration/openid</code>, <code>air format integration/openid --check</code> and patch whitespace validation.</p>
 <p>C03 is <code>2b06b7a</code>. It passed 51 evidence assertions with no failures or skips. Its live API check created the pinned Basic plan, checked all module variants, retrieved a waiting module’s issuer, rejected an unknown instance and verified interruption on cancellation. Owned Docker resources were removed. Its sanitized report marks client conformance unattempted and keeps the conformance gate false.</p>
@@ -103,7 +103,79 @@
 <li>Linux: <code>basic-20261113-215019-b5b5bd25b46f/evidence.json</code>, <code>form-post-20261113-221551-0dbc136ba7dc/evidence.json</code>, <code>config-20261113-220529-54ce297a7813/evidence.json</code>, <code>refresh-20261113-220408-cde4fe717945/evidence.json</code>, <code>smoke-20261113-220733-29ad7872d4bc/evidence.json</code> and <code>refresh-20261113-220851-65f1d7cca4d6/evidence.json</code>.</li>
 </ul><p>These working-tree runs record parent <code>3c7aa049</code> and <code>checkout_dirty = true</code>. Earlier Linux attempts failed on reserved Windows ports, unreaped container zombies or Chrome’s 10-second startup limit; they retain failed reports and earn no coverage. Final Form Post runs include the explicit browser profiles and longer startup budget. Windows preflight and the synthetic fixture check also pass, as does synchronous smoke. The GitHub workflow has not run yet.</p>
 <p>The existing async serialization, option-restoration and session-context tests pass 222 assertions on Linux with no failures, warnings or skips after adding the optional <code>otelsdk</code> test dependency to the private runner image. Their Windows run passes the same 222 assertions with one environment warning: its installed future binary was built under R 4.5.3 while the host uses R 4.5.1. No user R installation was changed. R lint, formatting, actionlint and patch whitespace checks pass. The final evidence gate also accepts all seventeen retained passing schema-3 reports from this implementation run.</p>
-<p>C09 follow-up: add the applicable Comprehensive-plan selections for public S256, <code>client_secret_post</code>, <code>client_secret_jwt</code> and <code>private_key_jwt</code>, with positive and relevant negative cases. Add a shared-pool scenario across different issuers to check isolation of configuration, hooks and credentials. The current pools are private per module and reused only within that module. Keep C09 open until these acceptance cases pass, and retain the separate C06 warm-cache gap.</p>
+<p>C09, confidential-client slice (completed 2026-11-16): <code>auth-post</code>, <code>auth-secret-jwt</code> and <code>auth-private-jwt</code> select two modules each from the pinned Comprehensive plan: the normal login and invalid-issuer modules. The resolved code-flow lists contain twenty-nine modules for shared-secret authentication and twenty-eight for private-key JWT; the manifest freezes those lists and requires their null per-module variants. These selections stay partial and the upstream plan is non-certifiable.</p>
+<p>Static registration declares the selected method, with fresh credentials per plan. Secret JWT uses HS256; private-key JWT uses RS256 with a fresh RSA key and public-only JWKS registration. The app receives the private PEM and uses normal public discovery, client and module APIs. Sync and mirai must each produce a validated ID-token/UserInfo login and a typed issuer rejection, with no retained rejected identity or UserInfo request after that rejection.</p>
+<p>The evidence helper reads the suite’s recorded HTTP requests and authentication condition results. It requires the actual expected method, matching client IDs, no mixed authentication mechanisms, correct secret or JWT metadata, and successful credential/signature and claim checks from the suite. Sensitive values are compared only in memory. Raw logs, secrets, assertions, private keys, codes and claim values stay out of the report. Evidence tests cover stale instance/probe identities, wrong credentials, mixed auth, invalid PKCE, bad assertion metadata and accidental disclosure. All 547 assertions pass with no failures, warnings or skips.</p>
+<p>Two pinned-suite gaps remain explicit. The public-client variant still omits <code>none</code> from discovery and its public authentication sequence performs no checks. A separate disposable probe confirms the missing advertised method and the installed package’s typed discovery rejection. The probe is cancelled and earns no conformance credit; <code>public_client_authentication_tested = false</code>. Metadata and discovery policy remain unchanged.</p>
+<p>The client base class also guards verifier validation with <code>env.containsObject("code_challenge")</code>, while the challenge condition stores a string. Consequently the pinned code-flow client plan skips its verifier check. The companion helper requires the suite’s S256 challenge-presence check and independently computes the challenge from the actual token-request verifier. It retains <code>suite_pkce_verifier_checked = false</code> and a coverage limitation. This establishes matching client requests; bad-verifier rejection still needs an enforcing provider. The <a href="../integration/openid/scope.html">scope record</a> links the exact pinned source and describes the limits.</p>
+<p>All twelve authentication selections passed on Windows (R 4.5.1, Chrome 157) and Linux (R 4.5.0, Chromium 156): three methods, two transports and two operating systems. Their twenty-four modules finished <code>PASSED</code>, each with matching app and request evidence. All twelve current evidence gates pass with verified cleanup and <code>coverage_complete = false</code>. Module-loop times and sanitized reports under <code>integration/openid/.artifacts/</code> are recorded below. Times exclude package installation, suite startup, the public capability probe, app-stop control and stack teardown. The four retained 2026-11-13 sync reports identify parent commit <code>6870f73d</code>; the eight 2026-11-16 reports identify <code>91ef76de</code>. All record a dirty checkout containing this authentication slice, rather than claiming a committed build identity.</p>
+<table class="table"><colgroup><col width="23%"><col width="23%"><col width="30%"><col width="23%"></colgroup><thead><tr><th>Environment</th>
+<th>Profile / transport</th>
+<th align="right">Loop seconds</th>
+<th>Report directory (<code>evidence.json</code>)</th>
+</tr></thead><tbody><tr><td>Windows</td>
+<td>
+<code>auth-post</code> / sync</td>
+<td align="right">21.01</td>
+<td><code>auth-post-20261113-234810-580da618c227</code></td>
+</tr><tr><td>Windows</td>
+<td>
+<code>auth-post</code> / mirai</td>
+<td align="right">30.38</td>
+<td><code>auth-post-20261116-195235-cd2ed72978e6</code></td>
+</tr><tr><td>Windows</td>
+<td>
+<code>auth-secret-jwt</code> / sync</td>
+<td align="right">21.13</td>
+<td><code>auth-secret-jwt-20261113-234810-3c9b4258d04e</code></td>
+</tr><tr><td>Windows</td>
+<td>
+<code>auth-secret-jwt</code> / mirai</td>
+<td align="right">30.59</td>
+<td><code>auth-secret-jwt-20261116-195235-bd4bee39e8d3</code></td>
+</tr><tr><td>Windows</td>
+<td>
+<code>auth-private-jwt</code> / sync</td>
+<td align="right">21.31</td>
+<td><code>auth-private-jwt-20261113-234810-9c805b7721d6</code></td>
+</tr><tr><td>Windows</td>
+<td>
+<code>auth-private-jwt</code> / mirai</td>
+<td align="right">29.66</td>
+<td><code>auth-private-jwt-20261116-195235-cb390ae9e7f0</code></td>
+</tr><tr><td>Linux</td>
+<td>
+<code>auth-post</code> / sync</td>
+<td align="right">13.14</td>
+<td><code>auth-post-20261113-224811-906941c0d82c</code></td>
+</tr><tr><td>Linux</td>
+<td>
+<code>auth-post</code> / mirai</td>
+<td align="right">17.49</td>
+<td><code>auth-post-20261116-185235-9be6b0e71593</code></td>
+</tr><tr><td>Linux</td>
+<td>
+<code>auth-secret-jwt</code> / sync</td>
+<td align="right">11.61</td>
+<td><code>auth-secret-jwt-20261116-185400-9f2942acd2c5</code></td>
+</tr><tr><td>Linux</td>
+<td>
+<code>auth-secret-jwt</code> / mirai</td>
+<td align="right">13.82</td>
+<td><code>auth-secret-jwt-20261116-185509-7d41755f71d2</code></td>
+</tr><tr><td>Linux</td>
+<td>
+<code>auth-private-jwt</code> / sync</td>
+<td align="right">11.91</td>
+<td><code>auth-private-jwt-20261116-185616-90666f5c488d</code></td>
+</tr><tr><td>Linux</td>
+<td>
+<code>auth-private-jwt</code> / mirai</td>
+<td align="right">14.56</td>
+<td><code>auth-private-jwt-20261116-185724-2463f2a9c051</code></td>
+</tr></tbody></table><p>The existing synchronous smoke selection also passed again on Windows: three module verdicts, the current evidence gate and cleanup, in 32.71 seconds. Its report is <code>smoke-20261116-195540-a0f48c1f0e5f/evidence.json</code>. All test installs used private libraries. R lint, formatting, actionlint and patch whitespace checks pass. Hosted CI has not run.</p>
+<p>Image-acquisition fix <code>91ef76de</code> was necessary when validation resumed: on 2026-11-16 the upstream registry returned <code>not found</code> for the locked server digest. Cached images are now accepted only when their <code>RepoDigests</code> match the locked content digest. Missing images must still be pulled by that digest. The full server-jar source check and live API revision/TLS checks remain intact. Preflight passes all 26 environment assertions and the live checks using the verified cache. Reports distinguish cached images from pulled images. A fresh CI runner needs an available verified mirror or a reviewed lock update; the hosted workflow has not run and remains blocked by that availability issue.</p>
+<p>C09 follow-up: complete public S256 coverage against an appropriate provider or corrected suite, and add a shared-pool scenario across different issuers to check configuration, hooks and credential isolation. Existing Keycloak public and PKCE scenarios remain separate evidence. Keep C09 open until its remaining acceptance cases pass, and retain the C06 warm-cache gap.</p>
 <p>Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works, extend it to FAPI 2.0, then add <code>oidc-provider</code> for interoperability with a second full provider. Add another mock server only when a remaining test case justifies its maintenance cost. The ranking below reflects the gaps in this repository; it is an engineering assessment, not a benchmark of the tools.</p>
 <p><strong>Starting point.</strong> Keep the existing test layers and their stated limits.</p>
 <table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr><th>Existing layer</th>

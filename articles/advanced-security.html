@@ -153,7 +153,7 @@ matching private key:</p>
 <span>  client_id <span class="op">=</span> <span class="st">"client-id"</span>,</span>
 <span>  redirect_uri <span class="op">=</span> <span class="st">"https://app.example.com"</span>,</span>
 <span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"profile"</span><span class="op">)</span>,</span>
-<span>  client_assertion_private_key <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://jeroen.r-universe.dev/openssl/reference/read_key.html" class="external-link">read_key</a></span><span class="op">(</span><span class="st">"keys/client-key.pem"</span><span class="op">)</span>,</span>
+<span>  client_assertion_private_key <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/openssl/man/read_key.html" class="external-link">read_key</a></span><span class="op">(</span><span class="st">"keys/client-key.pem"</span><span class="op">)</span>,</span>
 <span>  client_assertion_private_key_kid <span class="op">=</span> <span class="st">"registered-key-id"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>The provider uses the public key to verify the app’s message. For
@@ -263,7 +263,7 @@ shinyOAuth’s local setting controls request construction.</p>
 <span>  redirect_uri <span class="op">=</span> <span class="st">"https://app.example.com/auth/callback"</span>,</span>
 <span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"profile"</span><span class="op">)</span>,</span>
 <span>  <span class="co"># Signing key for the Request Object</span></span>
-<span>  client_assertion_private_key <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://jeroen.r-universe.dev/openssl/reference/read_key.html" class="external-link">read_key</a></span><span class="op">(</span><span class="st">"keys/client-key.pem"</span><span class="op">)</span>,</span>
+<span>  client_assertion_private_key <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/openssl/man/read_key.html" class="external-link">read_key</a></span><span class="op">(</span><span class="st">"keys/client-key.pem"</span><span class="op">)</span>,</span>
 <span>  <span class="co"># Send the authorization request as a JWT in the request parameter</span></span>
 <span>  request_object_mode <span class="op">=</span> <span class="st">"request"</span>,</span>
 <span>  request_object_signing_alg <span class="op">=</span> <span class="st">"RS256"</span></span>
@@ -359,7 +359,7 @@ support it.</p>
 <span>  redirect_uri <span class="op">=</span> <span class="st">"https://app.example.com/auth/callback"</span>,</span>
 <span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"profile"</span>, <span class="st">"api.read"</span><span class="op">)</span>,</span>
 <span>  <span class="co"># Private key used to sign DPoP proofs</span></span>
-<span>  dpop_private_key <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://jeroen.r-universe.dev/openssl/reference/read_key.html" class="external-link">read_key</a></span><span class="op">(</span><span class="st">"keys/dpop-key.pem"</span><span class="op">)</span>,</span>
+<span>  dpop_private_key <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/openssl/man/read_key.html" class="external-link">read_key</a></span><span class="op">(</span><span class="st">"keys/dpop-key.pem"</span><span class="op">)</span>,</span>
 <span>  dpop_signing_alg <span class="op">=</span> <span class="st">"ES256"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>After login, let the request helper attach the proof and handle
@@ -416,7 +416,7 @@ authentication:</p>
 <span>  <span class="op">)</span>,</span>
 <span>  revocation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>    token_auth_style <span class="op">=</span> <span class="st">"private_key_jwt"</span>,</span>
-<span>    client_assertion_private_key <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://jeroen.r-universe.dev/openssl/reference/read_key.html" class="external-link">read_key</a></span><span class="op">(</span><span class="st">"keys/revocation-key.pem"</span><span class="op">)</span>,</span>
+<span>    client_assertion_private_key <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/openssl/man/read_key.html" class="external-link">read_key</a></span><span class="op">(</span><span class="st">"keys/revocation-key.pem"</span><span class="op">)</span>,</span>
 <span>    client_assertion_alg <span class="op">=</span> <span class="st">"RS256"</span>,</span>
 <span>    client_assertion_audience <span class="op">=</span> <span class="st">"https://id.example.com/revocation"</span></span>
 <span>  <span class="op">)</span></span>
@@ -520,7 +520,7 @@ or its prefix if your provider requires this:</p>
 <span>  client_secret <span class="op">=</span> <span class="st">"client-secret"</span>,</span>
 <span>  redirect_uri <span class="op">=</span> <span class="st">"https://app.example.com/auth/callback"</span>,</span>
 <span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"profile"</span><span class="op">)</span>,</span>
-<span>  client_assertion_private_key <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://jeroen.r-universe.dev/openssl/reference/read_key.html" class="external-link">read_key</a></span><span class="op">(</span><span class="st">"keys/client-key.pem"</span><span class="op">)</span>,</span>
+<span>  client_assertion_private_key <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/openssl/man/read_key.html" class="external-link">read_key</a></span><span class="op">(</span><span class="st">"keys/client-key.pem"</span><span class="op">)</span>,</span>
 <span>  <span class="co"># Publish the Request Object by reference instead of sending it inline</span></span>
 <span>  request_object_mode <span class="op">=</span> <span class="st">"request_uri"</span>,</span>
 <span>  request_object_signing_alg <span class="op">=</span> <span class="st">"RS256"</span></span>
@@ -585,7 +585,7 @@ origin and callback path.</p>
 <span>  <span class="co"># Optional: decrypt JARM before validating the signed payload</span></span>
 <span>  jarm_encrypted_response_alg <span class="op">=</span> <span class="st">"RSA-OAEP"</span>,</span>
 <span>  jarm_encrypted_response_enc <span class="op">=</span> <span class="st">"A128CBC-HS256"</span>,</span>
-<span>  jarm_decryption_private_key <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://jeroen.r-universe.dev/openssl/reference/read_key.html" class="external-link">read_key</a></span><span class="op">(</span><span class="st">"keys/jarm-decrypt.pem"</span><span class="op">)</span></span>
+<span>  jarm_decryption_private_key <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/openssl/man/read_key.html" class="external-link">read_key</a></span><span class="op">(</span><span class="st">"keys/jarm-decrypt.pem"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>Use <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> and, for
 <code>form_post.jwt</code>, <code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code>. Encrypted

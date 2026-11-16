@@ -107,7 +107,7 @@ CRAN release: 2026-10-31
   - Package HTTPS requests now require TLS 1.2 or later by default,
     providing the same minimum across R installations.
   - Protocol JSON now uses
-    [`jsonlite::parse_json()`](https://jeroen.r-universe.dev/jsonlite/reference/read_json.html)
+    [`jsonlite::parse_json()`](https://rdrr.io/pkg/jsonlite/man/read_json.html)
     instead of `fromJSON()`. Responses and state envelopes are parsed as
     literal JSON text, preventing URL-like or file-path input from
     triggering server-side request forgery (SSRF) or unintended
@@ -788,7 +788,7 @@ CRAN release: 2026-05-23
     can also require specific UserInfo JWT temporal claims to be present
     via `userinfo_jwt_required_time_claims`.
   - Uses internal JWS verifier instead of
-    [`jose::jwt_decode_sig()`](https://r-lib.r-universe.dev/jose/reference/jwt_encode.html),
+    [`jose::jwt_decode_sig()`](https://rdrr.io/pkg/jose/man/jwt_encode.html),
     so EdDSA UserInfo JWTs can verify correctly, provider `leeway` is
     honored consistently, and invalid `typ` headers are rejected.
 

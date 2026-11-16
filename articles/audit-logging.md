@@ -58,7 +58,7 @@ When a Shiny session is available, `shiny_session` contains:
 - `http`: a summary with request method, host, and scheme by default.
 
 The session context is a JSON-friendly list suitable for
-[`jsonlite::toJSON()`](https://jeroen.r-universe.dev/jsonlite/reference/fromJSON.html);
+[`jsonlite::toJSON()`](https://rdrr.io/pkg/jsonlite/man/fromJSON.html);
 the raw Shiny `session[["request"]]` object is not included. If
 `shinyOAuth.audit_include_raw_session_token = TRUE`, the raw session
 token is available as `shiny_session[["token"]]` in native hook events.
