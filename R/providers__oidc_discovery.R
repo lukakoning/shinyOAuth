@@ -156,6 +156,39 @@ oauth_provider_oidc_discover <- function(
   allowed_algs = NULL,
   id_token_profile = c("oidc", "fapi2")
 ) {
+  args <- as.list(match.call())[-1L]
+  if (".oauth_only" %in% names(args)) {
+    err_input("Unsupported discovery argument")
+  }
+  args <- lapply(args, eval, envir = parent.frame())
+  do.call(.discover_provider, args)
+}
+
+.discover_provider <- function(
+  issuer,
+  name = NULL,
+  use_pkce = TRUE,
+  use_nonce = TRUE,
+  id_token_validation = TRUE,
+  token_auth_style = NULL,
+  id_token_allowed_algs = c(
+    "RS256",
+    "RS384",
+    "RS512",
+    "ES256",
+    "ES384",
+    "ES512",
+    "Ed25519",
+    "EdDSA"
+  ),
+  allowed_token_types = c("Bearer"),
+  jwks_host_issuer_match = TRUE,
+  issuer_match = c("url", "host", "none"),
+  ...,
+  allowed_algs = NULL,
+  id_token_profile = c("oidc", "fapi2"),
+  .oauth_only = FALSE
+) {
   id_token_profile <- match.arg(id_token_profile)
   default_id_token_algs <- missing(id_token_allowed_algs) &&
     missing(allowed_algs)
@@ -180,7 +213,11 @@ oauth_provider_oidc_discover <- function(
   }
   issuer_match <- match.arg(issuer_match)
   original_input <- issuer
-  issuer <- .discover_normalize_issuer_input(issuer)
+  issuer <- if (.oauth_only) {
+    issuer
+  } else {
+    .discover_normalize_issuer_input(issuer)
+  }
   document_input <- !identical(original_input, issuer)
 
   # If callers explicitly turn off ID
@@ -199,7 +236,11 @@ oauth_provider_oidc_discover <- function(
   .discover_assert_valid_issuer(issuer)
 
   # 2) Build and fetch discovery document
-  req <- .discover_build_request(issuer)
+  req <- if (.oauth_only) {
+    .discover_build_oauth_request(issuer)
+  } else {
+    .discover_build_request(issuer)
+  }
   resp <- .discover_fetch_response(req, issuer)
 
   # 3) Parse JSON and normalize to list
@@ -207,7 +248,11 @@ oauth_provider_oidc_discover <- function(
   .discover_validate_jose_metadata(disc)
 
   # 3a) Reject incomplete or malformed required OIDC Provider Metadata.
-  .discover_validate_required_metadata(disc, id_token_profile)
+  .discover_validate_required_metadata(
+    disc,
+    id_token_profile,
+    oauth_only = .oauth_only
+  )
 
   # 4) Extract key endpoints
   endpoints <- .discover_extract_endpoints(disc)
@@ -303,7 +348,9 @@ oauth_provider_oidc_discover <- function(
   dots[["userinfo_allowed_algs"]] <- userinfo_allowed_algs
 
   # 11) Negotiate allowed ID token algs
-  allowed_algs <- .discover_negotiate_algs(allowed_algs, disc, iss)
+  if (!.oauth_only) {
+    allowed_algs <- .discover_negotiate_algs(allowed_algs, disc, iss)
+  }
   par_required <- .discover_parse_optional_boolean(
     disc,
     "require_pushed_authorization_requests"
@@ -453,7 +500,7 @@ oauth_provider_oidc_discover <- function(
   if (length(duplicate_dot_names) > 0) {
     provider_args[duplicate_dot_names] <- NULL
   }
-  provider_args[["infer_oidc_from_issuer"]] <- TRUE
+  provider_args[["infer_oidc_from_issuer"]] <- !.oauth_only
   dots[["infer_oidc_from_issuer"]] <- NULL
 
   do.call(oauth_provider, c(provider_args, dots))
@@ -673,7 +720,7 @@ oauth_provider_oidc_discover <- function(
   disc
 }
 
-#' Internal: validate required OpenID Provider Metadata
+#' Internal: validate required discovery metadata for the selected protocol
 #'
 #' Enforces the mandatory metadata and capabilities needed by shinyOAuth's
 #' Authorization Code Flow before any discovered values are used.
@@ -686,7 +733,8 @@ oauth_provider_oidc_discover <- function(
 #' @noRd
 .discover_validate_required_metadata <- function(
   disc,
-  id_token_profile = "oidc"
+  id_token_profile = "oidc",
+  oauth_only = FALSE
 ) {
   response_types <- .discover_require_string_array(
     disc,
@@ -702,37 +750,67 @@ oauth_provider_oidc_discover <- function(
     )
   }
 
-  .discover_require_string_array(disc, "subject_types_supported")
+  if (!oauth_only) {
+    .discover_require_string_array(disc, "subject_types_supported")
 
-  signing_algs <- .discover_require_string_array(
-    disc,
-    "id_token_signing_alg_values_supported"
-  )
-  required_algs <- if (identical(id_token_profile, "fapi2")) {
-    c("PS256", "ES256", "Ed25519", "EdDSA")
-  } else {
-    "RS256"
-  }
-  if (!any(required_algs %in% signing_algs)) {
-    err_parse(
-      c(
-        "x" = paste(
-          "Discovery id_token_signing_alg_values_supported must include",
-          paste(required_algs, collapse = " or ")
+    signing_algs <- .discover_require_string_array(
+      disc,
+      "id_token_signing_alg_values_supported"
+    )
+    required_algs <- if (identical(id_token_profile, "fapi2")) {
+      c("PS256", "ES256", "Ed25519", "EdDSA")
+    } else {
+      "RS256"
+    }
+    if (!any(required_algs %in% signing_algs)) {
+      err_parse(
+        c(
+          "x" = paste(
+            "Discovery id_token_signing_alg_values_supported must include",
+            paste(required_algs, collapse = " or ")
+          )
+        ),
+        context = list(
+          id_token_signing_alg_values_supported = signing_algs
         )
-      ),
-      context = list(
-        id_token_signing_alg_values_supported = signing_algs
       )
+    }
+
+    jwks_uri <- disc[["jwks_uri"]] %||% ""
+    if (!is_valid_string(jwks_uri) || !nzchar(trimws(jwks_uri))) {
+      err_parse(
+        "Discovery missing required jwks_uri metadata",
+        context = list(jwks_uri = jwks_uri)
+      )
+    }
+  }
+  if (
+    oauth_only &&
+      any(
+        c("private_key_jwt", "client_secret_jwt") %in%
+          unlist(disc[["token_endpoint_auth_methods_supported"]])
+      ) &&
+      is.null(disc[["token_endpoint_auth_signing_alg_values_supported"]])
+  ) {
+    err_parse(
+      "OAuth discovery requires token_endpoint_auth_signing_alg_values_supported for JWT client authentication"
     )
   }
-
-  jwks_uri <- disc[["jwks_uri"]] %||% ""
-  if (!is_valid_string(jwks_uri) || !nzchar(trimws(jwks_uri))) {
+  if (
+    oauth_only &&
+      "none" %in%
+        unlist(disc[["token_endpoint_auth_signing_alg_values_supported"]])
+  ) {
     err_parse(
-      "Discovery missing required jwks_uri metadata",
-      context = list(jwks_uri = jwks_uri)
+      "OAuth discovery must not advertise none for JWT client authentication"
     )
+  }
+  if (
+    oauth_only &&
+      "jwks_uri" %in% names(disc) &&
+      !is_valid_string(disc[["jwks_uri"]])
+  ) {
+    err_parse("OAuth discovery jwks_uri must be a non-empty URL string")
   }
 
   # OIDC Discovery 4.2 requires zero-element claims to be omitted. In

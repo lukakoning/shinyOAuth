@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* `oauth_provider_oauth_discover()` reads RFC 8414 authorization-server metadata
+  for OAuth-only code flows, with exact issuer matching and the existing
+  transport, endpoint and authentication checks.
+
 * Missing, malformed and expired ID-token expiry errors now identify the `exp`
   claim in audit events without including its value.
 
