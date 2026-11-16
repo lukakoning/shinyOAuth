@@ -65,7 +65,11 @@ openid_suite_plan <- function(
     client_id = paste0("shinyoauth-", random()),
     client_secret = paste(format(openssl::rand_bytes(32)), collapse = ""),
     redirect_uri = redirect_uri,
-    scope = "openid profile email",
+    scope = if (is.null(spec[["scope"]])) {
+      "openid profile email"
+    } else {
+      spec[["scope"]]
+    },
     request_type = "plain_http_request"
   )
   method <- utils::modifyList(
@@ -275,6 +279,20 @@ openid_suite_module <- function(stack, plan, name, .env = parent.frame()) {
   }
   issuer <- runtime[["exposed"]][["issuer"]]
   discovery <- runtime[["exposed"]][["discoveryUrl"]]
+  expected_discovery <- if (
+    identical(
+      plan[["spec"]][["plan_variant"]][["fapi_client_type"]],
+      "plain_oauth"
+    )
+  ) {
+    paste0(
+      stack[["origin"]],
+      "/.well-known/oauth-authorization-server",
+      sub("^https://[^/]+", "", issuer)
+    )
+  } else {
+    paste0(sub("/$", "", issuer), "/.well-known/openid-configuration")
+  }
   if (
     !openid_string(issuer) ||
       !startsWith(
@@ -283,7 +301,7 @@ openid_suite_module <- function(stack, plan, name, .env = parent.frame()) {
       ) ||
       !identical(
         discovery,
-        paste0(sub("/$", "", issuer), "/.well-known/openid-configuration")
+        expected_discovery
       )
   ) {
     stop("OpenID exported issuer is missing or outside this local test")

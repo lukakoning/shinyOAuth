@@ -79,19 +79,31 @@ openid_fixture_app <- function(config) {
       expected_timeout = config[["expected_timeout"]]
     )
   )
+  discover <- if (isTRUE(config[["oauth_only"]])) {
+    shinyOAuth::oauth_provider_oauth_discover
+  } else {
+    shinyOAuth::oauth_provider_oidc_discover
+  }
+  discovery_args <- list(
+    issuer = config[["issuer"]],
+    token_auth_style = style,
+    allowed_token_types = if (isTRUE(config[["fapi"]])) "DPoP" else "Bearer",
+    authorization_request_front_channel_mode = if (isTRUE(config[["fapi"]])) {
+      "minimal"
+    } else {
+      "compat"
+    },
+    jwks_cache = cache
+  )
+  if (!isTRUE(config[["oauth_only"]])) {
+    discovery_args[["id_token_profile"]] <- if (isTRUE(config[["fapi"]])) {
+      "fapi2"
+    } else {
+      "oidc"
+    }
+  }
   provider <- tryCatch(
-    shinyOAuth::oauth_provider_oidc_discover(
-      config[["issuer"]],
-      token_auth_style = style,
-      id_token_profile = if (isTRUE(config[["fapi"]])) "fapi2" else "oidc",
-      allowed_token_types = if (isTRUE(config[["fapi"]])) "DPoP" else "Bearer",
-      authorization_request_front_channel_mode = if (isTRUE(config[["fapi"]])) {
-        "minimal"
-      } else {
-        "compat"
-      },
-      jwks_cache = cache
-    ),
+    do.call(discover, discovery_args),
     error = function(error) {
       if (!isTRUE(config[["report_setup_failure"]])) {
         stop(error)
@@ -146,6 +158,13 @@ openid_fixture_app <- function(config) {
         run_id = config[["run_id"]],
         transport = observed[["transport"]],
         ready = !is.null(provider),
+        oauth_only_configured = !is.null(provider) &&
+          !provider@infer_oidc_from_issuer &&
+          !provider@use_nonce &&
+          !provider@id_token_required &&
+          !provider@id_token_validation &&
+          !provider@userinfo_required &&
+          !provider@userinfo_id_token_match,
         app_instance = app_instance,
         cache_instance = cache_instance,
         cache_updates = audit[["cache_updates"]],
@@ -173,6 +192,11 @@ openid_fixture_app <- function(config) {
         form_post = audit[["form_post"]],
         authenticated = authenticated,
         has_token = !is.null(token),
+        id_token_present = !is.null(token) &&
+          is.character(token@id_token) &&
+          length(token@id_token) == 1L &&
+          !is.na(token@id_token) &&
+          nzchar(token@id_token),
         has_refresh_token = !is.null(token) &&
           is.character(token@refresh_token) &&
           length(token@refresh_token) == 1L &&
@@ -256,7 +280,11 @@ openid_fixture_app <- function(config) {
       character()
     },
     redirect_uri = paste0(config[["origin"]], "/"),
-    scopes = c("openid", "profile", "email"),
+    scopes = if (is.null(config[["scopes"]])) {
+      c("openid", "profile", "email")
+    } else {
+      config[["scopes"]]
+    },
     response_mode = config[["response_mode"]],
     state_key = openssl::rand_bytes(32)
   )

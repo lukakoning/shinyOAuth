@@ -186,6 +186,13 @@ openid_run_case <- function(
       "fapi2-security-profile-final-client-test-plan"
     ),
     resource_endpoint = module[["resource_endpoint"]],
+    oauth_only = identical(
+      plan[["spec"]][["plan_variant"]][["fapi_client_type"]],
+      "plain_oauth"
+    ),
+    scopes = strsplit(plan[["registration"]][["scope"]], " ", fixed = TRUE)[[
+      1L
+    ]],
     callback_rejection = identical(
       expectation[["outcome"]],
       "callback_rejected"
@@ -335,7 +342,7 @@ openid_run_case <- function(
   }
   if (
     isTRUE(config[["fapi"]]) &&
-      identical(expectation[["outcome"]], "authenticated")
+      expectation[["outcome"]] %in% c("authenticated", "authorized")
   ) {
     openid_browser_value(tab, "document.querySelector('#resource').click()")
     snapshot <- openid_wait(

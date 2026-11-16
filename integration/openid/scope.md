@@ -38,7 +38,7 @@ neither interruption counts as a client test pass.
 | Refresh identity continuity | Refresh validation, retained-connection tests and all three pinned client refresh modules (C08, extended in C09) | Code flow with HTTP Basic authentication in sync/mirai, plus future parity |
 | Worker transport | Package worker tests; verified mirai transport for the core selections, future smoke/refresh parity, and an alternating shared-pool selection (C09) | Shared-pool scope is sequential reuse across distinct suite issuers, with fresh per-case app/cache objects |
 | Additional client authentication | Keycloak/worker tests and paired positive/issuer-rejection selections for POST, HS256 secret JWT and RS256 private-key JWT (C09) | Public-client discovery remains blocked by the pinned suite's metadata; shared-pool coverage pairs POST and private-key JWT |
-| PAR, DPoP and mTLS | Keycloak and independent Python exchanges; FAPI OIDC/private-key-JWT/DPoP module selections (C10) | Full selection requires all twenty-three resolved modules; OAuth-only and mTLS remain separate |
+| PAR, DPoP and mTLS | Keycloak and independent Python exchanges; FAPI OIDC and OAuth-only private-key-JWT/DPoP selections (C10) | OIDC requires all twenty-three modules; OAuth-only runs all eleven with an open state-length advisory; mTLS remains pending |
 | JAR/JARM combinations | Independent Python fixture and Keycloak capability tests | FAPI Message Signing; C12; second full provider C13-C14 |
 | SMART App Launch | SMART browser fixtures and corrected Inferno simulator | Existing Inferno gate remains separate |
 
@@ -315,8 +315,37 @@ address bar; reports record `callback_cleaned = false` for those four cases.
 No callback session, token exchange or authenticated identity is credited.
 
 Complete coverage for this selection means the pinned OIDC/private-key-JWT/DPoP
-module set. OAuth-only, other sender constraints, refresh and certification
+module set. Other sender constraints, refresh and certification
 remain separate. The original three-module selection stays partial.
+
+The `fapi-oauth-dpop` selection uses the separately resolved `plain_oauth`
+variant. Its eleven modules comprise six positive resource flows, discovery
+issuer mismatch and the same four callback issuer/state mutations. It excludes
+all twelve modules specific to ID tokens. Static registration requests
+`accounts`; the public OAuth discovery helper reads RFC 8414 metadata and
+configures no OIDC scope, nonce, ID-token validation or UserInfo request.
+
+An `authorized` outcome requires the actual access token, no ID token in the
+suite response or app, zero UserInfo traffic, matching PAR scope with no OIDC
+nonce, and a successful public connection request to the accounts endpoint.
+The existing private-key-JWT, S256, DPoP key/URI/method/JTI/hash and nonce gates
+still apply. Both transports require the same outcome; mirai must perform the
+code exchange in a verified worker. Resource work remains in the Shiny process.
+The module's `authenticated` signal indicates accepted credentials in this
+OAuth-only flow and earns no OIDC identity credit. Discovery and callback
+rejections earn no token or resource credit.
+
+All eleven resolved OAuth-only modules are required for selection completion.
+Three happy-path modules retain `WARNING` for `CheckStateLength`: encrypted
+state exceeds the suite's 128-character interoperability threshold. The gate
+checks the exact event source/message, the measured state length and absence
+of other warning/failure/review findings. The remaining eight modules require
+`PASSED`. This selection always keeps `coverage_complete = false` while the
+state-length advisory is expected. It earns execution and resource-use evidence
+without claiming complete warning-free OAuth-only coverage.
+Metadata is unsigned JSON fetched over verified TLS, with the RFC 8414 URL
+layout and exact issuer check. This adds no signed-metadata, refresh, mTLS or
+certification claim. Callback error-page query retention remains visible.
 
 Baseline references: [OIDC Core](https://openid.net/specs/openid-connect-core-1_0.html),
 [Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html),

@@ -1,10 +1,15 @@
-fapi_full_fixture <- function(backend = "sync") {
-  f <- evidence_fixture("fapi-dpop-full")
-  expected <- f[["manifest"]][["profiles"]][["fapi-dpop-full"]][["modules"]]
+fapi_full_fixture <- function(backend = "sync", profile = "fapi-dpop-full") {
+  f <- evidence_fixture(profile)
+  expected <- f[["manifest"]][["profiles"]][[profile]][["modules"]]
+  oauth_only <- identical(profile, "fapi-oauth-dpop")
   for (i in seq_along(expected)) {
     e <- expected[[i]]
     row <- f[["report"]][["results"]][[i]]
+    if (!is.null(e[["advisory_policy"]])) {
+      row[["suite_result"]] <- "WARNING"
+    }
     app <- row[["app"]]
+    app[["oauth_only_configured"]] <- oauth_only
     if (identical(e[["action"]], "discovery")) {
       row[["action"]] <- "discovery"
       row[["no_callback"]] <- TRUE
@@ -38,7 +43,16 @@ fapi_full_fixture <- function(backend = "sync") {
     } else if (!is.null(e[["claims_any"]])) {
       app[["claims"]] <- e[["claims_any"]][1L]
     }
-    if (identical(e[["outcome"]], "authenticated")) {
+    if (identical(e[["outcome"]], "authorized")) {
+      app[["authenticated"]] <- app[["has_token"]] <- TRUE
+      app[["id_token_present"]] <- app[["id_token_validated"]] <- app[[
+        "userinfo_present"
+      ]] <- FALSE
+      app[["error_code"]] <- NULL
+      app[["error_classes"]] <- app[["claims"]] <- app[["reasons"]] <- list()
+      app[["operations"]][["audit_login_success"]] <- 1L
+    }
+    if (e[["outcome"]] %in% c("authenticated", "authorized")) {
       app[["resource"]] <- list(
         done = TRUE,
         succeeded = TRUE,
@@ -52,7 +66,12 @@ fapi_full_fixture <- function(backend = "sync") {
     }
     row[["app"]] <- app
     row[["initial"]] <- NULL
-    logs <- fapi_logs_fixture(row[["module"]], row[["suite_id"]], e)
+    logs <- fapi_logs_fixture(
+      row[["module"]],
+      row[["suite_id"]],
+      e,
+      oauth_only = oauth_only
+    )
     row[["fapi"]] <- openid_fapi_evidence(
       logs[["logs"]],
       logs[["module"]],

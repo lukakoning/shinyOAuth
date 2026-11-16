@@ -70,6 +70,23 @@ openid_app_matches <- function(app, expectation, case_id, package_version) {
   if (!isTRUE(app[["ready"]])) {
     return(FALSE)
   }
+  if (identical(expectation[["outcome"]], "authorized")) {
+    return(
+      isTRUE(app[["oauth_only_configured"]]) &&
+        isTRUE(app[["authenticated"]]) &&
+        isTRUE(app[["has_token"]]) &&
+        all(vapply(
+          c("id_token_present", "id_token_validated", "userinfo_present"),
+          function(name) identical(app[[name]], FALSE),
+          logical(1)
+        )) &&
+        is.null(app[["error_code"]]) &&
+        !length(app[["error_classes"]]) &&
+        openid_count(app[["operations"]][["audit_token_exchange"]], 1L) &&
+        openid_count(app[["operations"]][["audit_login_success"]], 1L) &&
+        identical(app[["operations"]][["audit_userinfo"]], 0L)
+    )
+  }
   if (identical(expectation[["outcome"]], "callback_rejected")) {
     return(
       all(vapply(
@@ -552,6 +569,15 @@ openid_transport_matches <- function(result, expectation, context) {
   if (expectation[["outcome"]] %in% c("rejected", "refresh_rejected")) {
     return(openid_count(evidence[["worker_validation_errors"]], 1L))
   }
+  if (identical(expectation[["outcome"]], "authorized")) {
+    return(
+      openid_count(
+        evidence[["worker_operations"]][["audit_token_exchange"]],
+        1L
+      ) &&
+        identical(evidence[["worker_operations"]][["audit_userinfo"]], 0L)
+    )
+  }
   openid_count(evidence[["worker_operations"]][["audit_token_exchange"]], 1L) &&
     openid_count(evidence[["worker_operations"]][["audit_userinfo"]], 1L)
 }
@@ -710,6 +736,15 @@ openid_check_report <- function(report, context, manifest) {
         expected_verdict <- "PASSED"
         if (
           identical(
+            expectation[["advisory_policy"]],
+            "state_length_over_128"
+          ) &&
+            openid_fapi_state_advisory_matches(result, expectation)
+        ) {
+          expected_verdict <- "WARNING"
+        }
+        if (
+          identical(
             expectation[["optional_policy"]],
             "reject_unsigned_id_token"
           ) &&
@@ -803,13 +838,20 @@ openid_check_report <- function(report, context, manifest) {
       }
       cache_limited <- identical(context[["profile"]], "config") &&
         isTRUE(report[["jwks_cache_policy"]][["no_store"]])
+      advisory_limited <- any(vapply(
+        expected,
+        function(e) identical(e[["advisory_policy"]], "state_length_over_128"),
+        logical(1)
+      ))
       list(
         gate_passed = TRUE,
         selection_complete = TRUE,
         coverage_complete = isTRUE(profile[["complete_profile"]]) &&
-          !cache_limited,
+          !cache_limited &&
+          !advisory_limited,
         coverage_limitations = as.list(unique(c(
           unlist(profile[["coverage_limitations"]]),
+          if (advisory_limited) "oauth_state_length_over_128_warning",
           if (cache_limited) {
             "suite_jwks_no_store_prevents_cached_key_refresh_test"
           }

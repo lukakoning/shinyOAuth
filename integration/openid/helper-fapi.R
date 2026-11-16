@@ -36,6 +36,18 @@ openid_fapi_hash <- function(value) {
   )
 }
 
+openid_fapi_oauth_scope <- function(par) {
+  length(par) > 0L &&
+    all(vapply(
+      par,
+      function(event) {
+        form <- event[["incoming_body_form_params"]]
+        identical(form[["scope"]], "accounts") && !"nonce" %in% names(form)
+      },
+      logical(1)
+    ))
+}
+
 openid_fapi_checks <- function(positive, nonce = TRUE) {
   c(
     openid_auth_checks("private_key_jwt"),
@@ -90,7 +102,11 @@ openid_fapi_evidence <- function(logs, module, plan, expectation) {
   if (!length(par) || length(authorization) != 1L || !length(token)) {
     stop("Missing actual FAPI requests")
   }
-  positive <- identical(expectation[["outcome"]], "authenticated")
+  positive <- expectation[["outcome"]] %in% c("authenticated", "authorized")
+  oauth_only <- identical(
+    plan[["spec"]][["plan_variant"]][["fapi_client_type"]],
+    "plain_oauth"
+  )
   no_nonce <- identical(
     module[["name"]],
     "fapi2-security-profile-final-client-test-happy-path-no-dpop-nonce"
@@ -197,7 +213,7 @@ openid_fapi_evidence <- function(logs, module, plan, expectation) {
     })
     openid_string(nonces[[2L]]) && !identical(nonces[[1L]], nonces[[2L]])
   }
-  list(
+  proof <- list(
     suite_id = module[["id"]],
     par_request_count = length(par),
     token_request_count = length(token),
@@ -259,7 +275,10 @@ openid_fapi_evidence <- function(logs, module, plan, expectation) {
       length(resource_proofs) == 0L
     },
     nonce_handshake_valid = if (no_nonce) {
-      all(lengths(list(par, token, userinfo, resource)) == 1L) &&
+      length(par) == 1L &&
+        length(token) == 1L &&
+        length(resource) == 1L &&
+        length(userinfo) == (if (oauth_only) 0L else 1L) &&
         all(vapply(
           proofs,
           function(jwt) is.null(jwt[[2L]][["nonce"]]),
@@ -281,6 +300,52 @@ openid_fapi_evidence <- function(logs, module, plan, expectation) {
       openid_fapi_checks(positive, !no_nonce)
     )
   )
+  if (oauth_only) {
+    responses <- Filter(
+      function(event) {
+        identical(event[["src"]], "CreateTokenEndpointResponse") &&
+          identical(event[["result"]], "SUCCESS")
+      },
+      logs
+    )
+    proof[["oauth_scope_valid"]] <- openid_fapi_oauth_scope(par)
+    proof[["token_response_oauth_only"]] <- length(responses) == 1L &&
+      {
+        body <- responses[[1L]][["Created token endpoint response"]]
+        is.list(body) &&
+          openid_string(body[["access_token"]]) &&
+          !"id_token" %in% names(body)
+      }
+    if (identical(expectation[["advisory_policy"]], "state_length_over_128")) {
+      states <- lapply(par, function(event) {
+        event[["incoming_body_form_params"]][["state"]]
+      })
+      state <- states[[1L]]
+      findings <- Filter(
+        function(event) {
+          isTRUE(
+            event[["result"]] %in% c("WARNING", "FAILURE", "ERROR", "REVIEW")
+          )
+        },
+        logs
+      )
+      proof[["state_characters"]] <- if (openid_string(state)) {
+        nchar(state)
+      } else {
+        0L
+      }
+      proof[["state_length_advisory_verified"]] <- length(findings) == 1L &&
+        identical(findings[[1L]][["src"]], "CheckStateLength") &&
+        identical(findings[[1L]][["result"]], "WARNING") &&
+        identical(
+          findings[[1L]][["msg"]],
+          "State contains in excess of 128 characters. This may introduce interoperability issues."
+        ) &&
+        openid_string(state) &&
+        all(vapply(states, identical, logical(1), state))
+    }
+  }
+  proof
 }
 
 openid_fapi_matches <- function(result, expectation) {
@@ -290,7 +355,33 @@ openid_fapi_matches <- function(result, expectation) {
     return(openid_fapi_pre_token_matches(result, expectation))
   }
   proof <- result[["fapi"]]
-  positive <- identical(expectation[["outcome"]], "authenticated")
+  positive <- expectation[["outcome"]] %in% c("authenticated", "authorized")
+  oauth_only <- identical(
+    result[["variant"]][["fapi_client_type"]],
+    "plain_oauth"
+  )
+  if (
+    positive &&
+      !identical(
+        expectation[["outcome"]],
+        if (oauth_only) "authorized" else "authenticated"
+      )
+  ) {
+    return(FALSE)
+  }
+  if (
+    oauth_only &&
+      (!isTRUE(proof[["oauth_scope_valid"]]) ||
+        !isTRUE(proof[["token_response_oauth_only"]]))
+  ) {
+    return(FALSE)
+  }
+  if (
+    !is.null(expectation[["advisory_policy"]]) &&
+      !openid_fapi_state_advisory_matches(result, expectation)
+  ) {
+    return(FALSE)
+  }
   if (!identical(proof[["suite_id"]], result[["suite_id"]])) {
     return(FALSE)
   }
@@ -301,9 +392,11 @@ openid_fapi_matches <- function(result, expectation) {
     return(FALSE)
   }
   for (name in c("userinfo_request_count", "resource_request_count")) {
+    required <- positive &&
+      !(oauth_only && identical(name, "userinfo_request_count"))
     if (
-      !openid_count(proof[[name]], if (positive) 1L else 0L) ||
-        proof[[name]] > if (positive) 2L else 0L
+      !openid_count(proof[[name]], if (required) 1L else 0L) ||
+        proof[[name]] > if (required) 2L else 0L
     ) {
       return(FALSE)
     }
@@ -364,6 +457,21 @@ openid_fapi_matches <- function(result, expectation) {
     all(vapply(checks, isTRUE, logical(1)))
 }
 
+openid_fapi_state_advisory_matches <- function(result, expectation) {
+  identical(expectation[["advisory_policy"]], "state_length_over_128") &&
+    identical(expectation[["outcome"]], "authorized") &&
+    identical(result[["variant"]][["fapi_client_type"]], "plain_oauth") &&
+    result[["module"]] %in%
+      c(
+        "fapi2-security-profile-final-client-test-happy-path",
+        "fapi2-security-profile-final-client-test-happy-path-no-dpop-nonce",
+        "fapi2-security-profile-final-client-test-happy-path-no-mtls-endpoint-aliases"
+      ) &&
+    identical(result[["suite_result"]], "WARNING") &&
+    openid_count(result[["fapi"]][["state_characters"]], 129L) &&
+    isTRUE(result[["fapi"]][["state_length_advisory_verified"]])
+}
+
 openid_fapi_pre_token_checks <- function(discovery) {
   if (discovery) {
     return("ChangeIssuerInServerConfigurationToBeInvalid")
@@ -397,11 +505,32 @@ openid_fapi_pre_token_evidence <- function(logs, module, plan, expectation) {
   authorization <- requests("authorize")
   client_id <- plan[["registration"]][["client_id"]]
   checks <- openid_fapi_pre_token_checks(discovery)
+  metadata_path <- if (
+    identical(
+      plan[["spec"]][["plan_variant"]][["fapi_client_type"]],
+      "plain_oauth"
+    )
+  ) {
+    paste0(
+      "/.well-known/oauth-authorization-server",
+      sub("/+$", "", sub("^https://[^/]+", "", module[["issuer"]]))
+    )
+  } else {
+    paste0(
+      sub("^https://[^/]+", "", module[["issuer"]]),
+      ".well-known/openid-configuration"
+    )
+  }
   proof <- list(
     suite_id = module[["id"]],
     stage = if (discovery) "discovery" else "callback",
-    discovery_request_count = length(requests(
-      ".well-known/openid-configuration"
+    discovery_request_count = sum(vapply(
+      logs,
+      function(event) {
+        identical(event[["http"]], "incoming") &&
+          identical(event[["incoming_path"]], metadata_path)
+      },
+      logical(1)
     )),
     par_request_count = length(par),
     authorization_request_count = length(authorization),
@@ -491,6 +620,14 @@ openid_fapi_pre_token_evidence <- function(logs, module, plan, expectation) {
         identical(query[["client_id"]], client_id) &&
         openid_string(query[["request_uri"]])
     }
+  if (
+    identical(
+      plan[["spec"]][["plan_variant"]][["fapi_client_type"]],
+      "plain_oauth"
+    )
+  ) {
+    proof[["oauth_scope_valid"]] <- openid_fapi_oauth_scope(par)
+  }
   proof
 }
 
@@ -523,6 +660,13 @@ openid_fapi_pre_token_matches <- function(result, expectation) {
       return(FALSE)
     }
   } else {
+    if (
+      identical(result[["variant"]][["fapi_client_type"]], "plain_oauth") &&
+        (!isTRUE(proof[["oauth_scope_valid"]]) ||
+          !isTRUE(result[["app"]][["oauth_only_configured"]]))
+    ) {
+      return(FALSE)
+    }
     if (!openid_http_callback_matches(result, expectation)) {
       return(FALSE)
     }

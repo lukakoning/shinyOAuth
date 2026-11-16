@@ -19,6 +19,7 @@ on:
           - shared-pool
           - fapi-dpop
           - fapi-dpop-full
+          - fapi-oauth-dpop
       transport:
         description: Transport (shared-pool requires mirai; future supports smoke and refresh)
         type: choice
@@ -126,6 +127,7 @@ jobs:
             integration/openid/.artifacts/auth-private-jwt-*/evidence.json
             integration/openid/.artifacts/shared-pool-*/evidence.json
             integration/openid/.artifacts/fapi-dpop-*/evidence.json
+            integration/openid/.artifacts/fapi-oauth-dpop-*/evidence.json
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 7

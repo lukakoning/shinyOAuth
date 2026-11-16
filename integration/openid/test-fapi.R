@@ -1,18 +1,27 @@
 fapi_logs_fixture <- function(
   module_name,
   suite_id = "instance",
-  expectation = NULL
+  expectation = NULL,
+  oauth_only = FALSE
 ) {
   positive <- if (is.null(expectation)) {
     !endsWith(module_name, "invalid-iss")
   } else {
-    identical(expectation[["outcome"]], "authenticated")
+    expectation[["outcome"]] %in% c("authenticated", "authorized")
   }
   no_nonce <- endsWith(module_name, "no-dpop-nonce")
   issuer <- "https://localhost:41000/test/a/fapi/"
   plan <- list(
-    registration = list(client_id = "DO_NOT_EXPORT_CLIENT"),
-    credentials = list(key_id = "DO_NOT_EXPORT_KID")
+    registration = list(
+      client_id = "DO_NOT_EXPORT_CLIENT",
+      scope = if (oauth_only) "accounts" else "openid profile email"
+    ),
+    credentials = list(key_id = "DO_NOT_EXPORT_KID"),
+    spec = list(
+      plan_variant = list(
+        fapi_client_type = if (oauth_only) "plain_oauth" else "oidc"
+      )
+    )
   )
   encode <- function(value) {
     sub(
@@ -105,6 +114,7 @@ fapi_logs_fixture <- function(
       "POST",
       form = list(
         response_type = "code",
+        scope = plan[["registration"]][["scope"]],
         code_challenge_method = "S256",
         code_challenge = openid_fapi_hash(verifier)
       )
@@ -140,21 +150,35 @@ fapi_logs_fixture <- function(
     )
   }
   if (positive) {
-    logs <- c(
-      logs,
-      list(request(
-        "userinfo",
-        "GET",
-        dpop = TRUE,
-        resource = TRUE,
-        nonce = FALSE
-      ))
-    )
-    if (!no_nonce) {
+    if (oauth_only && !no_nonce) {
       logs <- c(
         logs,
-        list(request("userinfo", "GET", dpop = TRUE, resource = TRUE))
+        list(request(
+          "open-banking/v1.1/accounts",
+          "GET",
+          dpop = TRUE,
+          resource = TRUE,
+          nonce = FALSE
+        ))
       )
+    }
+    if (!oauth_only) {
+      logs <- c(
+        logs,
+        list(request(
+          "userinfo",
+          "GET",
+          dpop = TRUE,
+          resource = TRUE,
+          nonce = FALSE
+        ))
+      )
+      if (!no_nonce) {
+        logs <- c(
+          logs,
+          list(request("userinfo", "GET", dpop = TRUE, resource = TRUE))
+        )
+      }
     }
     logs <- c(
       logs,
@@ -167,6 +191,20 @@ fapi_logs_fixture <- function(
         )
       )
     )
+    if (oauth_only) {
+      logs <- c(
+        logs,
+        list(list(
+          testId = suite_id,
+          src = "CreateTokenEndpointResponse",
+          result = "SUCCESS",
+          `Created token endpoint response` = list(
+            access_token = "DO_NOT_EXPORT_ACCESS_TOKEN",
+            token_type = "DPoP"
+          )
+        ))
+      )
+    }
   }
   checks <- c(
     openid_fapi_checks(positive, !no_nonce),
@@ -179,6 +217,22 @@ fapi_logs_fixture <- function(
       list(testId = suite_id, src = source, result = "SUCCESS")
     })
   )
+  if (identical(expectation[["advisory_policy"]], "state_length_over_128")) {
+    for (i in seq_along(logs)) {
+      if (identical(logs[[i]][["incoming_path"]], "/test/a/fapi/par")) {
+        logs[[i]][["incoming_body_form_params"]][["state"]] <- strrep("s", 256L)
+      }
+    }
+    logs <- c(
+      logs,
+      list(list(
+        testId = suite_id,
+        src = "CheckStateLength",
+        result = "WARNING",
+        msg = "State contains in excess of 128 characters. This may introduce interoperability issues."
+      ))
+    )
+  }
   if (
     !is.null(expectation) &&
       expectation[["outcome"]] %in% c("discovery_rejected", "callback_rejected")
@@ -193,8 +247,14 @@ fapi_logs_fixture <- function(
       },
       logs
     )
+    metadata_request <- request(".well-known/openid-configuration", "GET")
+    if (oauth_only) {
+      metadata_request[[
+        "incoming_path"
+      ]] <- "/.well-known/oauth-authorization-server/test/a/fapi"
+    }
     logs <- c(
-      list(request(".well-known/openid-configuration", "GET")),
+      list(metadata_request),
       logs,
       lapply(openid_fapi_pre_token_checks(discovery), function(source) {
         event <- list(testId = suite_id, src = source)

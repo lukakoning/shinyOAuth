@@ -311,8 +311,8 @@ must retain no identity and send no UserInfo or accounts request.
 
 Login uses the chosen sync/mirai transport. The connection's imperative resource
 request runs in the Shiny process in both modes, and the report records that
-scope. The full OIDC selection below adds the other resolved modules. OAuth-only
-coverage, refresh and mTLS remain follow-up work. This selection does not establish
+scope. The selections below cover the resolved OIDC and OAuth-only modules.
+Refresh and mTLS remain separate work. This selection does not establish
 full FAPI conformance or certification. The [scope record](scope.md) links the
 profile requirements and pinned suite source.
 
@@ -348,11 +348,49 @@ rejections still require a cleaned callback URL.
 OIDC/private-key-JWT/DPoP variant passed. Other FAPI variants and certification
 remain separate. Resource requests still execute in the Shiny process.
 
+Run the eleven modules resolved for the OAuth-only variant:
+
+```sh
+Rscript integration/openid/run-tests.R --profile fapi-oauth-dpop --transport sync
+Rscript integration/openid/run-tests.R --profile fapi-oauth-dpop --transport mirai
+```
+
+This variant uses `fapi_client_type=plain_oauth` with the same ES256 private-key
+JWT, DPoP, PAR and S256 configuration. The fixture calls the public
+`oauth_provider_oauth_discover()` helper against the suite's [RFC 8414](https://www.rfc-editor.org/rfc/rfc8414.html#section-3) metadata
+endpoint. It requests only `accounts`, with no `openid` scope or OIDC nonce.
+OIDC behavior is disabled by that helper's normal provider configuration;
+the standard OIDC discovery helper retains its defaults and metadata rules.
+
+Six positive flows must return an access token without an ID token, make no
+UserInfo request and complete the accounts request through the public connection
+API. Reports label these outcomes `authorized`. The module's `authenticated`
+signal records grant acceptance here; it does not establish an OIDC identity.
+The gate verifies the actual PAR scope and nonce fields, token-response field
+presence, DPoP proofs and retries, usable connection and resource completion.
+The discovery and four callback rejection cases retain their separate stages.
+All eleven modules are required; missing results and skips fail.
+
+The three happy-path modules report the upstream
+[`CheckStateLength`](https://gitlab.com/openid/conformance-suite/-/blob/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/condition/as/CheckStateLength.java) advisory:
+the library's encrypted state exceeds 128 characters. Their retained verdict
+is `WARNING`. The gate requires that exact condition and fixed message, a
+measured state length above 128, and no other warning, failure or review event.
+Every other module must finish `PASSED`. This records the completed exchanges
+while keeping `coverage_complete = false`, including if the manifest's complete
+flag is changed. The original encrypted state and its binding checks remain
+in use. A compact state reference needs separate implementation and validation.
+
+The helper reads unsigned JSON metadata over verified TLS. Signed metadata,
+refresh, other sender constraints and certification remain separate. Resource
+requests still run in the Shiny process, and HTTP callback error pages retain
+their query as described above.
+
 The [workflow](../../.github/workflows/openid-conformance.yml) runs preflight,
 API checks and smoke on pull requests affecting the package or this harness.
 Manual dispatch offers `smoke`, `basic`, `config`, `form-post`, `refresh`,
-`auth-post`, `auth-secret-jwt`, `auth-private-jwt`, `shared-pool`, `fapi-dpop`
-and `fapi-dpop-full`;
+`auth-post`, `auth-secret-jwt`, `auth-private-jwt`, `shared-pool`, `fapi-dpop`,
+`fapi-dpop-full` and `fapi-oauth-dpop`;
 larger selections remain manual while GitHub runner timings are unmeasured.
 Manual transport choices are `sync`, `mirai` and the limited `future` parity
 selection. `shared-pool` requires mirai. Pull requests keep synchronous smoke.
@@ -365,7 +403,7 @@ which requires worker/transport and process-cleanup evidence. Prior reports
 retain their original version. The evidence validator binds each result to its
 run, attempt, checkout, source revision, plan, instance and variants, then
 requires both a completed allowed suite verdict and the expected app outcome.
-Missing results, app failures, suite warnings, unexpected skips and timeouts fail.
+Missing results, app failures, unrecognized suite warnings, unexpected skips and timeouts fail.
 The evidence regression checks also require zero warnings and skips.
 A passing smoke selection keeps `coverage_complete = false`; a passing Basic
 selection reports `coverage_complete = true` for the pinned Basic plan with
@@ -446,6 +484,11 @@ records their runtimes and report paths. Configuration retains its cache gap.
 The full FAPI OIDC/private-key-JWT/DPoP selection also passes all twenty-three
 modules in sync and mirai on both platforms: 92 `PASSED` outcomes, with matching
 app/request evidence and verified cleanup. This covers the configured variant;
-the OAuth-only variant and other FAPI profiles remain separate.
+the OAuth-only variant and other FAPI profiles have separate gates.
+The eleven-module OAuth-only selection also runs in sync and mirai on both
+platforms. Each run records eight `PASSED` outcomes and the three state-length
+`WARNING` outcomes described above, with verified cleanup and incomplete
+coverage. The implementation plan records those reports and the compact-state
+follow-up.
 The [implementation plan](../../.github/protocol-quality-implementation-plan.md)
 records execution evidence and the remaining profile and CI work.
