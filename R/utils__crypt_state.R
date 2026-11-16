@@ -178,7 +178,7 @@ state_decrypt_fail <- function(msg, context = list()) {
 #' @return Compact encrypted state token string.
 #' @keywords internal
 #' @noRd
-state_encrypt_gcm <- function(payload, key, version = 1L, min_key_chars = 32L) {
+state_encrypt_gcm <- function(payload, key, version = 2L, min_key_chars = 32L) {
   if (is.null(payload)) {
     err_input(c("x" = "payload is NULL"), context = list(phase = "encrypt"))
   }
@@ -201,43 +201,18 @@ state_encrypt_gcm <- function(payload, key, version = 1L, min_key_chars = 32L) {
 
   enc <- openssl::aes_gcm_encrypt(charToRaw(json), key = key, iv = iv)
 
-  # Handle both return shapes (list with [["data"]]/[["tag"]] or raw(ct||tag))
-  if (
-    is.list(enc) &&
-      !is.null(enc[["data"]]) &&
-      !is.null(enc[["tag"]])
-  ) {
-    ct <- enc[["data"]]
-    tag <- enc[["tag"]]
-  } else if (is.raw(enc) && !is.null(attr(enc, "tag", exact = TRUE))) {
-    # Some versions return ciphertext as raw with tag attribute
-    ct <- enc
-    tag <- attr(enc, "tag", exact = TRUE)
-    if (!is.raw(tag) || length(tag) != 16L) {
-      err_config(
-        c("x" = "Unexpected GCM tag attribute length"),
-        context = list(phase = "encrypt")
-      )
-    }
-  } else if (is.raw(enc)) {
-    n <- length(enc)
-    if (n < 16L) {
-      err_invalid_state(
-        c("x" = "ciphertext too short"),
-        context = list(phase = "encrypt")
-      )
-    }
-    if (n == 16L) {
-      # zero-length ciphertext, tag only
-      tag <- enc
-      ct <- raw(0)
-    } else {
-      tag <- enc[(n - 15L):n]
-      ct <- enc[1:(n - 16L)]
-    }
-  } else {
+  if (!is.raw(enc)) {
     err_config(
       c("x" = "Unexpected return type from aes_gcm_encrypt()"),
+      context = list(phase = "encrypt")
+    )
+  }
+  # openssl >= 2.6.0 returns the authentication tag as an attribute.
+  # Ciphertext bytes must never be substituted for a missing tag.
+  tag <- attr(enc, "tag", exact = TRUE)
+  if (!is.raw(tag) || length(tag) != 16L) {
+    err_config(
+      "AES-GCM encryption requires a 16-byte authentication tag",
       context = list(phase = "encrypt")
     )
   }
@@ -246,7 +221,7 @@ state_encrypt_gcm <- function(payload, key, version = 1L, min_key_chars = 32L) {
     v = as.integer(version),
     iv = base64url_encode(iv),
     tg = base64url_encode(tag),
-    ct = base64url_encode(ct)
+    ct = base64url_encode(enc)
   )
   base64url_encode(charToRaw(jsonlite::toJSON(token_obj, auto_unbox = TRUE)))
 }
@@ -292,7 +267,7 @@ normalize_state_envelope_version <- function(value) {
 state_decrypt_gcm <- function(
   token,
   key,
-  expected_version = 1L,
+  expected_version = 2L,
   min_key_chars = 32L,
   size_limits = NULL
 ) {
@@ -550,9 +525,8 @@ state_decrypt_gcm <- function(
     )
   }
 
-  # 3-arg API expects data = ct||tag
   res <- try(
-    openssl::aes_gcm_decrypt(data = c(ct, tg), key = key, iv = iv),
+    openssl::aes_gcm_decrypt(data = ct, tag = tg, key = key, iv = iv),
     silent = TRUE
   )
   if (inherits(res, "try-error")) {

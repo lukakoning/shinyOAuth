@@ -23,7 +23,9 @@ test_that("tampered state payload fails AES-GCM auth during callback", {
       code = "c",
       state = tampered,
       browser_token = tok
-    )
+    ),
+    "GCM authentication failed",
+    class = "shinyOAuth_state_error"
   )
 })
 
@@ -42,7 +44,7 @@ test_that("state_decrypt_gcm fails safely for malformed tokens", {
   )
 
   missing_fields <- shinyOAuth:::base64url_encode(charToRaw(jsonlite::toJSON(
-    list(v = 1),
+    list(v = 2),
     auto_unbox = TRUE
   )))
   expect_error(

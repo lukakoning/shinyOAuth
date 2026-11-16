@@ -52,13 +52,13 @@ test_that("state_decrypt_gcm rejects invalid token shapes and types", {
 
   # Version mismatch
   w <- wrapper
-  w[["v"]] <- 2L
+  w[["v"]] <- 1L
   t2 <- shinyOAuth:::base64url_encode(charToRaw(jsonlite::toJSON(
     w,
     auto_unbox = TRUE
   )))
   expect_error(
-    shinyOAuth:::state_decrypt_gcm(t2, key = key, expected_version = 1L),
+    shinyOAuth:::state_decrypt_gcm(t2, key = key),
     "state token version mismatch",
     class = "shinyOAuth_state_error"
   )
@@ -207,7 +207,7 @@ test_that("state_encrypt_gcm validates inputs and decrypt fails on tamper", {
   )))
   expect_error(
     shinyOAuth:::state_decrypt_gcm(tampered, key = key),
-    "state token decrypted payload is not valid JSON",
+    "GCM authentication failed",
     class = "shinyOAuth_state_error"
   )
 })

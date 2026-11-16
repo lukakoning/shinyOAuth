@@ -17,7 +17,7 @@ test_that("audit events fire on malformed state tokens", {
 
   # 2) Valid JSON envelope but bad fields
   bad_env <- jsonlite::toJSON(
-    list(v = 1L, iv = "?", tg = "?", ct = "?"),
+    list(v = 2L, iv = "?", tg = "?", ct = "?"),
     auto_unbox = TRUE
   )
   tkn <- openssl::base64_encode(charToRaw(bad_env))

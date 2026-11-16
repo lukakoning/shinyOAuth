@@ -1,5 +1,17 @@
 # shinyOAuth (development version)
 
+* Fixed AES-GCM authentication with `openssl >= 2.6.0`, which is now required
+  (#26, thanks to Jeroen Ooms). State decryption passes the authentication tag
+  separately, and encryption rejects output without a valid tag. Earlier
+  openssl versions did not return a tag; the previous fallback incorrectly
+  treated ciphertext bytes as one, leaving those envelopes unauthenticated.
+  New envelopes use version 2 and reject version 1. After upgrading, restart
+  pending logins and recreate persisted connections through authorization.
+  This also invalidates old encrypted state-store records, callback handoffs,
+  routing records and SMART launch continuations.
+  Until openssl 2.6.0 is on CRAN, install it from
+  `https://jeroen.r-universe.dev`.
+
 * `oauth_client(state_transport = "reference")` sends a short opaque state value
   and keeps the encrypted login payload in the state store. It preserves browser
   binding and single-use checks; shared stores must provide atomic `take()`.

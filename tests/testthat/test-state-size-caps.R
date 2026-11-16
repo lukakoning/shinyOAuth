@@ -24,7 +24,7 @@ test_that("state_decrypt_gcm enforces size caps and is configurable", {
   # Disable random delay to speed up tests
   old <- options(
     shinyOAuth.state_fail_delay_ms = 0,
-    shinyOAuth.state_max_token_chars = 128, # very small for testing
+    shinyOAuth.state_max_token_chars = 256, # very small for testing
     shinyOAuth.state_max_wrapper_bytes = 256,
     shinyOAuth.state_max_ct_b64_chars = 128,
     shinyOAuth.state_max_ct_bytes = 128

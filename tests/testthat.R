@@ -42,6 +42,7 @@ cran_tests <- c(
   "key-normalization",
   "pkce-s256-encoding",
   "state-envelope-roundtrip",
+  "state-gcm-authentication",
   "state-payload-tamper",
   "state-store-atomic-take",
   "state-record-consistency",
