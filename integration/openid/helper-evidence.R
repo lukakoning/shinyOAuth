@@ -623,6 +623,20 @@ openid_check_report <- function(report, context, manifest) {
       )
       for (result in results) {
         if (
+          identical(
+            spec[["plan"]],
+            "fapi2-security-profile-final-client-test-plan"
+          ) &&
+            !openid_fapi_matches(
+              result,
+              expected[[match(result[["module"]], names_expected)]]
+            )
+        ) {
+          stop(
+            "Missing FAPI PAR, client authentication, DPoP or resource evidence"
+          )
+        }
+        if (
           auth_profile &&
             (!openid_auth_matches(result, spec) ||
               identical(

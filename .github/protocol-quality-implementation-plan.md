@@ -17,6 +17,8 @@ C09 adds verified mirai transport for the core selections, future multisession
 smoke/refresh parity, confidential-client authentication selections and sequential
 shared-pool issuer isolation. Public-client discovery coverage remains
 outstanding, so C09 is not complete.
+C10 starts with a three-module OIDC/private-key-JWT/DPoP selection. Its remaining
+module set and OAuth-only coverage are still pending.
 
 Execution record (2026-11-12): C00 is `d0b62ff`; C01 is `4dee03d`. C01 validated the exact server
 image/source correspondence, required plans, R certificate/hostname validation,
@@ -461,6 +463,80 @@ C09 follow-up: complete public S256 coverage against an appropriate provider
 or corrected suite. Existing Keycloak public and PKCE scenarios remain separate
 evidence. Keep C09 open until that acceptance case passes, and retain the C06
 warm-cache gap.
+
+C10, first slice (2026-11-16): `fapi-dpop` selects the generic OIDC,
+private-key-JWT, DPoP, simple-authorization variant of the pinned final Security
+Profile client plan. The API resolves twenty-three modules and forces unsigned
+PAR requests with plain authorization responses. The manifest freezes that
+module/variant list. This slice selects the nonce happy path, the happy path
+without DPoP nonce, and invalid ID-token issuer rejection. Coverage stays false.
+
+Commit `d3736366` adds the explicit `id_token_profile = "fapi2"` discovery
+policy. The first live attempt exposed the mismatch between standard OIDC's
+RS256 discovery requirement and FAPI's permitted signing algorithms. The new
+policy keeps normal issuer, endpoint, JWKS and metadata validation, and
+intersects implemented FAPI algorithms with the caller and advertised sets.
+Standard OIDC still requires RS256. PS256-only metadata has no supported
+algorithm overlap. The discovery fix passed 367 focused assertions with zero
+test failures, warnings or skips, including the existing standard OIDC cases.
+
+The fixture supplies separate ephemeral ES256 server, client-authentication
+and DPoP keys through the normal suite/provider configuration. Client
+registration contains only its public key. Normal discovery selects DPoP token
+types and the existing minimal front-channel mode; compatibility mode's extra
+browser parameters correctly failed the first suite run. Client assertions
+use the discovered issuer as a string audience. The app validates its ID token
+and UserInfo before explicitly requesting the exported accounts endpoint
+through the public connection API. HTTP 200 and the suite's completion marker
+are required; UserInfo alone cannot satisfy resource coverage.
+
+Evidence compares actual PAR, token, UserInfo and accounts requests in memory.
+It requires ES256 assertions, correct S256, only client ID/request URI at the
+authorization endpoint, DPoP method/URI/key consistency, distinct JTIs and the
+resource access-token hash. Nonce cases require observed repeated requests
+with changed nonces and the suite's successful nonce checks. The no-nonce case
+requires one request at each endpoint and absent proof nonces. The suite's
+verifier-matching condition runs in this plan; the separate OIDC-plan PKCE
+limitation remains unchanged. Invalid ID-token issuer handling must retain no
+token and make no UserInfo or accounts call.
+
+Login executes in the chosen sync/mirai transport. The connection's imperative
+resource request runs in the Shiny process, and reports record that PID and
+scope. Raw logs, assertions, proofs, keys, credential values and response bodies
+stay out of uploaded reports. Manual CI offers this selection; fresh hosted
+execution still needs the pinned server image to become available.
+
+Validation completed in sync and mirai on Windows (R 4.5.1, Chrome 157) and
+Linux (R 4.5.0, Chromium 156). All four commands exited zero after three
+`FINISHED/PASSED` verdicts, matching application/request evidence and verified
+cleanup. The nonce happy paths each made two PAR, token, UserInfo and accounts
+requests; the no-nonce paths made one at each endpoint. Invalid-issuer cases
+stopped after the token response. All 779 evidence assertions pass with no
+test failures, warnings or skips. The standard Windows synchronous smoke
+selection also passed its three modules and cleanup. R lint, formatting,
+actionlint and patch whitespace checks pass.
+
+Sanitized reports under `integration/openid/.artifacts/`:
+
+| Environment / transport | Module-loop seconds | Report directory (`evidence.json`) |
+| --- | ---: | --- |
+| Windows / sync | 36.49 | `fapi-dpop-20261116-204524-67ca76edf8d7` |
+| Windows / mirai | 42.78 | `fapi-dpop-20261116-204730-0eafe2c719b0` |
+| Linux / sync | 21.05 | `fapi-dpop-20261116-194525-3e3d0fabba04` |
+| Linux / mirai | 25.72 | `fapi-dpop-20261116-194730-30a5b7663c7e` |
+| Windows / sync smoke | 40.07 | `smoke-20261116-204730-94d6b0f8e4f9` |
+
+These timings exclude installation, suite startup, the app-stop control and
+final teardown. The four FAPI reports identify committed product fix
+`d3736366` and the dirty checkout containing this runner slice. All report
+verified cached images at the unchanged locked digests and partial coverage.
+Private test libraries leave the user's R installation unchanged. Failed
+development runs retain failed gates and receive no validation credit.
+
+C10 follow-up: execute the remaining twenty modules for this resolved OIDC
+variant, including callback issuer/state cases, then add separately resolved
+OAuth-only coverage and refresh/resource scenarios. C11-C12 retain mTLS and
+message signing. The C09 public-client and C06 warm-cache gaps remain open.
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second

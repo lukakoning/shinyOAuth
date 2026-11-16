@@ -279,10 +279,47 @@ and the existing public-client and PKCE suite limitations. Private handoff files
 and raw logs stay under `.artifacts/`; only the sanitized root `evidence.json`
 is eligible for upload.
 
+Run the first FAPI 2.0 Security Profile selection:
+
+```sh
+Rscript integration/openid/run-tests.R --profile fapi-dpop --transport sync
+Rscript integration/openid/run-tests.R --profile fapi-dpop --transport mirai
+```
+
+The pinned generic OIDC variant resolves twenty-three modules. This selection
+runs three: the normal DPoP nonce flow, the happy path without DPoP nonces,
+and an invalid ID-token issuer. It uses authenticated PAR, private-key JWT,
+S256 and DPoP, with ES256 keys and query callbacks. Each suite instance must
+finish `PASSED` with matching app and request evidence. Coverage stays partial.
+
+The fixture selects `id_token_profile = "fapi2"`, DPoP token types and the
+existing `minimal` front-channel mode. Browser authorization requests contain
+only `client_id` and `request_uri`; state, nonce, scope and S256 go through PAR.
+Client assertions use the discovered issuer as a string audience. The suite's
+normal server-key configuration receives a separate ephemeral ES256 signing key.
+Client registration contains only its public signing key; client private keys,
+proofs, assertions and credential values stay out of the report.
+
+Both positive cases must read the suite's exported accounts endpoint through
+`auth$connection()$request()`, check HTTP 200 and consume its completion marker.
+UserInfo alone cannot complete the gate. The evidence helper checks actual PAR,
+token, UserInfo and accounts requests, signature/nonce condition results, S256,
+DPoP method/URI binding, consistent proof keys, distinct JTIs and resource-token
+hashes. Nonce cases require observed retries with changed nonces. The no-nonce
+case requires one request per endpoint and no proof nonce. The issuer rejection
+must retain no identity and send no UserInfo or accounts request.
+
+Login uses the chosen sync/mirai transport. The connection's imperative resource
+request runs in the Shiny process in both modes, and the report records that
+scope. The remaining FAPI modules, OAuth-only variant, callback issuer/state
+cases, refresh and mTLS are follow-up work. This selection does not establish
+full FAPI conformance or certification. The [scope record](scope.md) links the
+profile requirements and pinned suite source.
+
 The [workflow](../../.github/workflows/openid-conformance.yml) runs preflight,
 API checks and smoke on pull requests affecting the package or this harness.
 Manual dispatch offers `smoke`, `basic`, `config`, `form-post`, `refresh`,
-`auth-post`, `auth-secret-jwt`, `auth-private-jwt` and `shared-pool`;
+`auth-post`, `auth-secret-jwt`, `auth-private-jwt`, `shared-pool` and `fapi-dpop`;
 larger selections remain manual while GitHub runner timings are unmeasured.
 Manual transport choices are `sync`, `mirai` and the limited `future` parity
 selection. `shared-pool` requires mirai. Pull requests keep synchronous smoke.

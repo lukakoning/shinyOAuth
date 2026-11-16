@@ -17,6 +17,7 @@ on:
           - auth-secret-jwt
           - auth-private-jwt
           - shared-pool
+          - fapi-dpop
       transport:
         description: Transport (shared-pool requires mirai; future supports smoke and refresh)
         type: choice
@@ -123,6 +124,7 @@ jobs:
             integration/openid/.artifacts/auth-secret-jwt-*/evidence.json
             integration/openid/.artifacts/auth-private-jwt-*/evidence.json
             integration/openid/.artifacts/shared-pool-*/evidence.json
+            integration/openid/.artifacts/fapi-dpop-*/evidence.json
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 7

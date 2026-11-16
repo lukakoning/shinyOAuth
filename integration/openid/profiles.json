@@ -2,6 +2,44 @@
   "schema_version": 2,
   "source_revision": "410812ef6bc72a84723c1685725edce3558e31e3",
   "plans": {
+    "fapi-dpop": {
+      "plan": "fapi2-security-profile-final-client-test-plan",
+      "plan_variant": {
+        "fapi_profile": "plain_fapi",
+        "client_auth_type": "private_key_jwt",
+        "sender_constrain": "dpop",
+        "fapi_client_type": "oidc",
+        "authorization_request_type": "simple",
+        "grant_management": "disabled"
+      },
+      "module_variant": {"fapi_request_method": "unsigned", "fapi_response_mode": "plain_response"},
+      "available_modules": [
+        "fapi2-security-profile-final-client-test-happy-path",
+        "fapi2-security-profile-final-client-test-discovery-issuer-mismatch",
+        "fapi2-security-profile-final-client-test-invalid-iss",
+        "fapi2-security-profile-final-client-test-invalid-aud",
+        "fapi2-security-profile-final-client-test-invalid-secondary-aud",
+        "fapi2-security-profile-final-client-test-invalid-null-alg",
+        "fapi2-security-profile-final-client-test-invalid-alternate-alg",
+        "fapi2-security-profile-final-client-test-invalid-expired-exp",
+        "fapi2-security-profile-final-client-test-invalid-missing-exp",
+        "fapi2-security-profile-final-client-test-invalid-missing-aud",
+        "fapi2-security-profile-final-client-test-invalid-missing-iss",
+        "fapi2-security-profile-final-client-test-valid-aud-as-array",
+        "fapi2-security-profile-final-client-test-invalid-nonce",
+        "fapi2-security-profile-final-client-test-invalid-missing-nonce",
+        "fapi2-security-profile-final-client-test-invalid-authorization-response-iss",
+        "fapi2-security-profile-final-client-test-remove-authorization-response-iss",
+        "fapi2-security-profile-final-client-test-ensure-authorization-response-with-invalid-state-fails",
+        "fapi2-security-profile-final-client-test-ensure-authorization-response-with-invalid-missing-state-fails",
+        "fapi2-security-profile-final-client-test-token-endpoint-response-without-expires_in",
+        "fapi2-security-profile-final-client-test-token-type-case-insensitivity",
+        "fapi2-security-profile-final-client-test-rs-dpop-auth-scheme-case-insensitivity",
+        "fapi2-security-profile-final-client-test-happy-path-no-dpop-nonce",
+        "fapi2-security-profile-final-client-test-happy-path-no-mtls-endpoint-aliases"
+      ],
+      "client_assertion_alg": "ES256"
+    },
     "auth-post": {
       "plan": "oidcc-client-test-plan",
       "plan_variant": {
@@ -243,6 +281,16 @@
     }
   },
   "profiles": {
+    "fapi-dpop": {
+      "plan": "fapi-dpop",
+      "complete_profile": false,
+      "coverage_limitations": ["fapi_security_profile_selection_only", "fapi_oidc_private_key_jwt_dpop_only", "resource_request_in_main_process"],
+      "modules": [
+        {"module": "fapi2-security-profile-final-client-test-happy-path", "outcome": "authenticated"},
+        {"module": "fapi2-security-profile-final-client-test-happy-path-no-dpop-nonce", "outcome": "authenticated"},
+        {"module": "fapi2-security-profile-final-client-test-invalid-iss", "outcome": "rejected", "claim": "iss"}
+      ]
+    },
     "auth-post": {
       "plan": "auth-post",
       "complete_profile": false,

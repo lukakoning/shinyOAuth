@@ -6,7 +6,7 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
       setequal(args[c(1L, 3L)], c("--profile", "--transport"))
     if (!valid) {
       stop(
-        "Usage: Rscript integration/openid/run-tests.R --check-api | --profile smoke|basic|config|form-post|refresh|auth-post|auth-secret-jwt|auth-private-jwt --transport sync|mirai|future"
+        "Usage: Rscript integration/openid/run-tests.R --check-api | --profile smoke|basic|config|form-post|refresh|auth-post|auth-secret-jwt|auth-private-jwt|fapi-dpop --transport sync|mirai|future"
       )
     }
     options <- setNames(args[c(2L, 4L)], args[c(1L, 3L)])
@@ -20,7 +20,8 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
           "refresh",
           "auth-post",
           "auth-secret-jwt",
-          "auth-private-jwt"
+          "auth-private-jwt",
+          "fapi-dpop"
         ) ||
         !options[["--transport"]] %in% c("sync", "mirai", "future") ||
         (identical(options[["--transport"]], "future") &&
@@ -36,6 +37,7 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
   source("integration/openid/helper-suite.R", local = TRUE)
   source("integration/openid/helper-evidence.R", local = TRUE)
   source("integration/openid/helper-auth.R", local = TRUE)
+  source("integration/openid/helper-fapi.R", local = TRUE)
   source("integration/openid/helper-app.R", local = TRUE)
   source("integration/openid/helper-driver.R", local = TRUE)
   openid_require(c(

@@ -38,7 +38,7 @@ neither interruption counts as a client test pass.
 | Refresh identity continuity | Refresh validation, retained-connection tests and all three pinned client refresh modules (C08, extended in C09) | Code flow with HTTP Basic authentication in sync/mirai, plus future parity |
 | Worker transport | Package worker tests; verified mirai transport for the core selections, future smoke/refresh parity, and an alternating shared-pool selection (C09) | Shared-pool scope is sequential reuse across distinct suite issuers, with fresh per-case app/cache objects |
 | Additional client authentication | Keycloak/worker tests and paired positive/issuer-rejection selections for POST, HS256 secret JWT and RS256 private-key JWT (C09) | Public-client discovery remains blocked by the pinned suite's metadata; shared-pool coverage pairs POST and private-key JWT |
-| PAR, DPoP and mTLS | Keycloak and independent Python exchanges | FAPI 2.0 Security Profile; C10-C11 |
+| PAR, DPoP and mTLS | Keycloak and independent Python exchanges; first FAPI private-key-JWT/DPoP selection (C10) | Three of twenty-three OIDC modules; remaining modules, OAuth-only and mTLS still pending |
 | JAR/JARM combinations | Independent Python fixture and Keycloak capability tests | FAPI Message Signing; C12; second full provider C13-C14 |
 | SMART App Launch | SMART browser fixtures and corrected Inferno simulator | Existing Inferno gate remains separate |
 
@@ -248,6 +248,42 @@ stop the shared process and workers before any nested case gets cleanup credit.
 This establishes the recorded sequential reuse scenario. Simultaneous dispatch,
 shared caches and other authentication pairings need separate evidence. The
 public-client metadata and PKCE verifier-enforcement gaps above still apply.
+
+The `fapi-dpop` selection uses the pinned
+[FAPI 2.0 Security Profile client plan](https://gitlab.com/openid/conformance-suite/-/blob/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/fapi2spfinal/FAPI2SPFinalClientTestPlan.java).
+Its generic OIDC, private-key-JWT, DPoP, simple authorization, no-grant-management
+variant resolves twenty-three modules. The plan forces unsigned PAR requests
+and plain authorization responses. This first selection runs only the happy
+path, happy path without DPoP nonce, and invalid ID-token issuer modules.
+
+Configuration follows [client requirements 5.3.3](https://openid.net/specs/fapi-security-profile-2_0-final.html#section-5.3.3)
+and [cryptography requirements 5.4.1](https://openid.net/specs/fapi-security-profile-2_0-final.html#section-5.4.1):
+ES256 client authentication and proof keys, issuer-string assertion audience,
+S256, authenticated PAR, minimal browser parameters, and DPoP-bound resource
+access. The normal suite server configuration supplies a fresh ES256 signing
+key. Assertions and nonce handling remain unmodified upstream checks.
+
+`id_token_profile = "fapi2"` explicitly selects the library's implemented FAPI
+ID-token algorithm set during discovery. It permits metadata without RS256,
+keeps the advertised/caller intersection and all other discovery validation,
+and does not enable the rest of FAPI automatically. PS256-only metadata has no
+supported algorithm overlap under this policy. Standard OIDC discovery retains
+its RS256 metadata requirement.
+
+The gate requires both UserInfo and an explicit accounts GET through the public
+connection API, with HTTP 200 and the suite's completion marker. Request evidence
+binds all logs to the current instance, checks actual ES256 assertions, S256 and
+DPoP method/URI/key/JTI/`ath` values in memory, and requires the corresponding
+suite conditions. Nonce cases require repeated requests whose final proof has a
+different nonce and successful suite nonce validation. The no-nonce module must
+make exactly one request at each endpoint and omit nonce claims. Invalid issuer
+handling must stop before either resource endpoint and retain no rejected token.
+
+The login path runs in the selected sync/mirai transport. Resource access uses
+the connection's synchronous imperative API in the Shiny process, with its PID
+recorded explicitly. The complete FAPI module set, OAuth-only flows, callback
+issuer/state cases, refresh, mTLS and message signing remain outside this first
+selection. Its coverage flag stays false; no certification claim follows.
 
 Baseline references: [OIDC Core](https://openid.net/specs/openid-connect-core-1_0.html),
 [Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html),

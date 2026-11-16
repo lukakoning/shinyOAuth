@@ -181,6 +181,11 @@ openid_run_case <- function(
     client_assertion_private_key = plan[["credentials"]][["private_key"]],
     client_assertion_private_key_kid = plan[["credentials"]][["key_id"]],
     client_assertion_alg = plan[["spec"]][["client_assertion_alg"]],
+    fapi = identical(
+      plan[["spec"]][["plan"]],
+      "fapi2-security-profile-final-client-test-plan"
+    ),
+    resource_endpoint = module[["resource_endpoint"]],
     response_mode = if (form_post) "form_post" else "query",
     provider_origin = stack[["origin"]],
     transport = context[["transport"]],
@@ -303,6 +308,20 @@ openid_run_case <- function(
       30
     )
   }
+  if (
+    isTRUE(config[["fapi"]]) &&
+      identical(expectation[["outcome"]], "authenticated")
+  ) {
+    openid_browser_value(tab, "document.querySelector('#resource').click()")
+    snapshot <- openid_wait(
+      function() {
+        value <- openid_wait_app(app, browser, tab)
+        if (isTRUE(value[["resource"]][["done"]])) value else NULL
+      },
+      "FAPI public connection resource request",
+      30
+    )
+  }
   info <- openid_suite_wait(stack, module, "FINISHED", timeout = 45)
   runtime <- openid_api(stack, paste0("/api/runner/", module[["id"]]))
   if (!identical(runtime[["id"]], module[["id"]])) {
@@ -337,6 +356,14 @@ openid_run_case <- function(
     )
   }
   row[["browser_version"]] <- chrome
+  if (isTRUE(config[["fapi"]])) {
+    row[["fapi"]] <- openid_fapi_evidence(
+      openid_api(stack, paste0("/api/log/", module[["id"]])),
+      module,
+      plan,
+      expectation
+    )
+  }
   row[["action"]] <- if (discovery) {
     "discovery"
   } else if (refreshing) {

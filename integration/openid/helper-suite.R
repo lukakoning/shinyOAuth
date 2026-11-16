@@ -73,20 +73,30 @@ openid_suite_plan <- function(
     as.list(spec[["module_variant"]])
   )[["client_auth_type"]]
   credentials <- list(client_secret = registration[["client_secret"]])
-  if (identical(spec[["plan"]], "oidcc-client-test-plan")) {
+  if (
+    spec[["plan"]] %in%
+      c(
+        "oidcc-client-test-plan",
+        "fapi2-security-profile-final-client-test-plan"
+      )
+  ) {
     registration[["token_endpoint_auth_method"]] <- method
   }
   if (method %in% c("none", "private_key_jwt")) {
     registration[["client_secret"]] <- credentials[["client_secret"]] <- NULL
   }
   if (identical(method, "private_key_jwt")) {
-    key <- openssl::rsa_keygen(2048)
+    key <- if (identical(spec[["client_assertion_alg"]], "ES256")) {
+      openssl::ec_keygen("P-256")
+    } else {
+      openssl::rsa_keygen(2048)
+    }
     jwk <- jsonlite::fromJSON(
       jose::write_jwk(key[["pubkey"]]),
       simplifyVector = FALSE
     )
     jwk[["kid"]] <- paste0("key-", random())
-    jwk[["alg"]] <- "RS256"
+    jwk[["alg"]] <- spec[["client_assertion_alg"]]
     jwk[["use"]] <- "sig"
     if (any(c("d", "p", "q", "dp", "dq", "qi") %in% names(jwk))) {
       stop("Private JWK cannot enter suite registration")
@@ -106,6 +116,19 @@ openid_suite_plan <- function(
     publish = "nothing",
     client = registration
   )
+  if (
+    identical(spec[["plan"]], "fapi2-security-profile-final-client-test-plan")
+  ) {
+    server_key <- openssl::ec_keygen("P-256")
+    server_jwk <- jsonlite::fromJSON(
+      jose::write_jwk(server_key),
+      simplifyVector = FALSE
+    )
+    server_jwk[["kid"]] <- paste0("server-", random())
+    server_jwk[["alg"]] <- "ES256"
+    server_jwk[["use"]] <- "sig"
+    config[["server"]] <- list(jwks = list(keys = list(server_jwk)))
+  }
   plan <- .request(
     stack,
     "/api/plan",
@@ -266,6 +289,18 @@ openid_suite_module <- function(stack, plan, name, .env = parent.frame()) {
     stop("OpenID exported issuer is missing or outside this local test")
   }
   module[["issuer"]] <- issuer
+  if (
+    identical(
+      plan[["spec"]][["plan"]],
+      "fapi2-security-profile-final-client-test-plan"
+    )
+  ) {
+    resource <- runtime[["exposed"]][["accounts_endpoint"]]
+    if (!identical(resource, paste0(issuer, "open-banking/v1.1/accounts"))) {
+      stop("FAPI resource endpoint is missing or outside this local issuer")
+    }
+    module[["resource_endpoint"]] <- resource
+  }
   module
 }
 

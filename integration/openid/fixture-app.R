@@ -83,6 +83,13 @@ openid_fixture_app <- function(config) {
     shinyOAuth::oauth_provider_oidc_discover(
       config[["issuer"]],
       token_auth_style = style,
+      id_token_profile = if (isTRUE(config[["fapi"]])) "fapi2" else "oidc",
+      allowed_token_types = if (isTRUE(config[["fapi"]])) "DPoP" else "Bearer",
+      authorization_request_front_channel_mode = if (isTRUE(config[["fapi"]])) {
+        "minimal"
+      } else {
+        "compat"
+      },
       jwks_cache = cache
     ),
     error = function(error) {
@@ -169,6 +176,7 @@ openid_fixture_app <- function(config) {
           !is.na(token@refresh_token) &&
           nzchar(token@refresh_token),
         refresh = refresh,
+        resource = audit[["resource"]],
         id_token_validated = !is.null(token) &&
           isTRUE(token@id_token_validated),
         userinfo_present = !is.null(token) && length(token@userinfo) > 0L,
@@ -227,6 +235,22 @@ openid_fixture_app <- function(config) {
       "client_assertion_private_key_kid"
     ]],
     client_assertion_alg = config[["client_assertion_alg"]],
+    client_assertion_audience = if (isTRUE(config[["fapi"]])) {
+      config[["issuer"]]
+    } else {
+      NULL
+    },
+    dpop_private_key = if (isTRUE(config[["fapi"]])) {
+      openssl::write_pem(openssl::ec_keygen("P-256"))
+    } else {
+      NULL
+    },
+    dpop_signing_alg = if (isTRUE(config[["fapi"]])) "ES256" else NULL,
+    resource_bases = if (isTRUE(config[["fapi"]])) {
+      c(suite = sub("accounts$", "", config[["resource_endpoint"]]))
+    } else {
+      character()
+    },
     redirect_uri = paste0(config[["origin"]], "/"),
     scopes = c("openid", "profile", "email"),
     response_mode = config[["response_mode"]],
@@ -257,6 +281,9 @@ openid_fixture_app <- function(config) {
     shiny::actionButton("login", "Log in"),
     shiny::actionButton("logout", "Log out"),
     shiny::actionButton("refresh", "Refresh"),
+    if (isTRUE(config[["fapi"]])) {
+      shiny::actionButton("resource", "Read resource")
+    },
     shiny::verbatimTextOutput("snapshot")
   )
   resolver <- function(req) {
@@ -327,6 +354,32 @@ openid_fixture_app <- function(config) {
       async = !identical(config[["transport"]], "sync")
     )
     refresh <- NULL
+    shiny::observeEvent(
+      input[["resource"]],
+      {
+        if (!isTRUE(config[["fapi"]]) || !is.null(audit[["resource"]])) {
+          return(invisible(NULL))
+        }
+        audit[["resource"]] <- tryCatch(
+          {
+            response <- auth[["connection"]]()[["request"]]("suite", "accounts")
+            body <- httr2::resp_body_json(response)
+            list(
+              done = TRUE,
+              succeeded = identical(httr2::resp_status(response), 200L),
+              response_marker_valid = identical(
+                body[["conformance-test-finished"]],
+                "true"
+              ),
+              pid = Sys.getpid(),
+              transport = "main_process"
+            )
+          },
+          error = function(...) list(done = TRUE, succeeded = FALSE)
+        )
+      },
+      ignoreInit = TRUE
+    )
     shiny::observeEvent(
       input[["refresh"]],
       {
