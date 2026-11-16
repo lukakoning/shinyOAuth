@@ -2,6 +2,12 @@
 
 ## shinyOAuth (development version)
 
+- `oauth_client(state_transport = "reference")` sends a short opaque
+  state value and keeps the encrypted login payload in the state store.
+  It preserves browser binding and single-use checks; shared stores must
+  provide atomic `take()`. The default remains
+  `state_transport = "encrypted"`.
+
 - [`oauth_provider_oauth_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oauth_discover.md)
   reads RFC 8414 authorization-server metadata for OAuth-only code
   flows, with exact issuer matching and the existing transport, endpoint

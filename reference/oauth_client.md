@@ -70,8 +70,13 @@ oauth_client(
   ...,
   introspect_elements = NULL,
   token_targets = list(),
-  token_target_default = if (length(token_targets) == 1L) names(token_targets) else
-    character()
+  token_target_default = if (length(token_targets) == 1L) {
+     names(token_targets)
+ }
+    else {
+     character()
+ },
+  state_transport = c("encrypted", "reference")
 )
 ```
 
@@ -749,6 +754,15 @@ oauth_client(
   Name of the API to use when a connection method omits `target`.
   Required with several targets; the sole target is selected
   automatically.
+
+- state_transport:
+
+  How pending-login state travels through the provider. `"encrypted"`
+  (default) sends the encrypted payload. `"reference"` sends only the
+  opaque identifier (22-128 characters) and retains the encrypted
+  payload in `state_store`. Both modes enforce the same bindings and
+  single-use consumption. Reference mode requires atomic `take()` for
+  shared stores.
 
 ## Value
 

@@ -780,20 +780,66 @@ unchanged locked digests. Libraries and raw diagnostics stay private; no
 owned Docker containers remain. Earlier setup and strict-warning
 failures retain failed reports and receive no validation credit.
 
-C10 follow-up, `feat(oauth): support compact state references`:
-implement an opaque state reference of at most 128 characters while
-retaining an encrypted pending-login record. Preserve
-client/provider/policy, redirect, scope, PKCE, DPoP-key, browser and
-freshness bindings. Use the state store’s atomic single-use consumption;
-keep unknown, tampered, expired, wrong-client and replayed references
-closed. Validate shared-store and async behavior alongside the existing
-encrypted format. Then rerun all eleven OAuth-only modules and require
-`PASSED` for the three advisory cases before removing this coverage
-limit. Further refresh scenarios remain separate provider
-interoperability work. C11-C12 retain mTLS and message signing. The C09
-public-client and C06 warm-cache gaps remain open. Fresh hosted CI still
-needs an available verified copy of the locked server image, and C15
-retains callback error-page query cleanup.
+C10 compact state references are implemented in product commit
+`0f8c2f8e` as the opt-in `oauth_client(state_transport = "reference")`;
+encrypted wire state remains the default. The opaque logical state
+resolves the existing pending record’s encrypted payload, with exact
+ciphertext binding across cached callbacks and atomic consumption.
+Client/provider/policy, redirect, scope, PKCE, DPoP-key, browser and
+freshness checks remain enforced. Shared stores require `take()` even
+under the legacy non-atomic opt-in.
+
+Validation on 2026-11-16 passed 2,774 state, callback, bridge and
+constructor assertions, with no test warnings or skips, including real
+browser GET cleanup. Tests cover malformed, missing, expired, swapped
+and replayed references, policy/key changes, JSON-cached callbacks,
+browser-bound POST success/errors in both store types, and simultaneous
+callbacks in two R processes. The race test sets its private library
+before deserializing package closures and verifies exactly one token
+exchange for each state transport. Jarl checks passed.
+
+The new `fapi-oauth-dpop-reference` profile requires all eleven modules
+to finish `PASSED`, with the actual client mode and independently
+measured compact PAR state. Mutation checks reject
+missing/oversized/inconsistent state evidence, an encrypted client, any
+warning/skip and incomplete selections. All 1,328 evidence assertions
+passed. The original `fapi-oauth-dpop` profile retains its
+encrypted-state advisories and incomplete coverage status.
+
+All four reference-profile runs passed all eleven modules: **44
+`PASSED`, zero suite warnings**, four complete scoped gates and verified
+cleanup. All forty non-discovery results measured 64-character opaque
+state; reports contain the length and validity result without the
+reference value.
+
+| Environment / transport | Eleven-module loop (s) | Private artifact directory |
+|----|---:|----|
+| Windows / sync | 119.76 | `fapi-oauth-dpop-reference-20261116-230216-7f0981a8911f` |
+| Windows / mirai | 136.34 | `fapi-oauth-dpop-reference-20261116-230535-27d3e29efff0` |
+| Linux / sync | 71.55 | `fapi-oauth-dpop-reference-20261116-220216-3837be342fcd` |
+| Linux / mirai | 81.07 | `fapi-oauth-dpop-reference-20261116-220514-3f082a41cdde` |
+
+Windows used R 4.5.1 and Linux used R 4.5.0. Timings exclude
+installation, suite setup, the app-stop control and teardown; concurrent
+runs share host resources. Reports bind product commit `0f8c2f8e` and
+the dirty harness checkout to the unchanged suite lock and cached
+images. No owned Docker containers remain.
+
+A separate local fixture probe passed eight OIDC exchanges: valid and
+invalid nonce responses over query/form_post in sync/mirai, using
+reference state. It checks real POST/303 navigation, browser binding,
+worker execution, callback cleanup and the actual 64-character
+authorization state. Its private report is
+`state-reference-oidc-probe-20261116-230639-cbe7654ecc60`; it explicitly
+keeps `gate_passed = false` and `coverage_complete = false` because this
+targeted probe is not a complete OIDC profile selection.
+
+This closes the state-length gap for the reference OAuth variant.
+Refresh scenarios remain separate provider interoperability work.
+C11-C12 retain mTLS and message signing. The C09 public-client and C06
+warm-cache gaps remain open. Fresh hosted CI still needs an available
+verified copy of the locked server image, and C15 retains callback
+error-page query cleanup.
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for

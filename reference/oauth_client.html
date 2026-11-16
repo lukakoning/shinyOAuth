@@ -119,8 +119,13 @@ to <code><a href="oauth_module_server.html">oauth_module_server()</a></code>.</p
 <span>  <span class="va">...</span>,</span>
 <span>  introspect_elements <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  token_targets <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  token_target_default <span class="op">=</span> <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">token_targets</span><span class="op">)</span> <span class="op">==</span> <span class="fl">1L</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">token_targets</span><span class="op">)</span> <span class="kw">else</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>  token_target_default <span class="op">=</span> <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">token_targets</span><span class="op">)</span> <span class="op">==</span> <span class="fl">1L</span><span class="op">)</span> <span class="op">{</span></span>
+<span>     <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">token_targets</span><span class="op">)</span></span>
+<span> <span class="op">}</span></span>
+<span>    <span class="kw">else</span> <span class="op">{</span></span>
+<span>     <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span></span>
+<span> <span class="op">}</span>,</span>
+<span>  state_transport <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"encrypted"</span>, <span class="st">"reference"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -747,6 +752,14 @@ for examples, provider-specific permission rules and declaration limits.</p></dd
 <dd><p>Name of the API to use when a connection method
 omits <code>target</code>. Required with several targets; the sole target is selected
 automatically.</p></dd>
+
+
+<dt id="arg-state-transport">state_transport<a class="anchor" aria-label="anchor" href="#arg-state-transport"></a></dt>
+<dd><p>How pending-login state travels through the provider.
+<code>"encrypted"</code> (default) sends the encrypted payload. <code>"reference"</code> sends only
+the opaque identifier (22-128 characters) and retains the encrypted payload
+in <code>state_store</code>. Both modes enforce the same bindings and single-use
+consumption. Reference mode requires atomic <code>take()</code> for shared stores.</p></dd>
 
 </dl></div>
     <div class="section level2">
