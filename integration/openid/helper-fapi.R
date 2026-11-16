@@ -385,6 +385,9 @@ openid_fapi_evidence <- function(logs, module, plan, expectation) {
 }
 
 openid_fapi_matches <- function(result, expectation) {
+  if (identical(result[["variant"]][["sender_constrain"]], "mtls")) {
+    return(openid_mtls_matches(result, expectation))
+  }
   if (
     expectation[["outcome"]] %in% c("discovery_rejected", "callback_rejected")
   ) {

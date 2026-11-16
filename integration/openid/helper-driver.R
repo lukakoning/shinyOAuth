@@ -163,7 +163,8 @@ openid_run_case <- function(
   .after_login = NULL,
   .start_app = openid_app_start,
   .stop_app = openid_stop_app,
-  .shared_pool = FALSE
+  .shared_pool = FALSE,
+  .resource_control = NULL
 ) {
   module <- openid_suite_module(stack, plan, expectation[["module"]])
   form_post <- identical(
@@ -172,6 +173,9 @@ openid_run_case <- function(
   )
   config <- list(
     state_transport = plan[["state_transport"]],
+    sender_constraint = plan[["spec"]][["plan_variant"]][["sender_constrain"]],
+    mtls = plan[["credentials"]][["mtls"]],
+    resource_control = .resource_control,
     issuer = module[["issuer"]],
     client_id = plan[["registration"]][["client_id"]],
     client_secret = plan[["credentials"]][["client_secret"]],
@@ -355,7 +359,16 @@ openid_run_case <- function(
       30
     )
   }
-  info <- openid_suite_wait(stack, module, "FINISHED", timeout = 45)
+  info <- openid_suite_wait(
+    stack,
+    module,
+    if (is.null(.resource_control)) {
+      "FINISHED"
+    } else {
+      c("FINISHED", "INTERRUPTED")
+    },
+    timeout = 45
+  )
   runtime <- openid_api(stack, paste0("/api/runner/", module[["id"]]))
   if (!identical(runtime[["id"]], module[["id"]])) {
     stop("OpenID runner instance changed during the flow")
@@ -394,12 +407,21 @@ openid_run_case <- function(
   }
   row[["browser_version"]] <- chrome
   if (isTRUE(config[["fapi"]])) {
-    row[["fapi"]] <- openid_fapi_evidence(
-      openid_api(stack, paste0("/api/log/", module[["id"]])),
-      module,
-      plan,
-      expectation
-    )
+    row[["fapi"]] <- if (identical(config[["sender_constraint"]], "mtls")) {
+      openid_mtls_evidence(
+        openid_api(stack, paste0("/api/log/", module[["id"]])),
+        module,
+        plan,
+        openid_mtls_peers(stack)
+      )
+    } else {
+      openid_fapi_evidence(
+        openid_api(stack, paste0("/api/log/", module[["id"]])),
+        module,
+        plan,
+        expectation
+      )
+    }
   }
   row[["action"]] <- if (discovery) {
     "discovery"

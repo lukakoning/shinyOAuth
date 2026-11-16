@@ -87,7 +87,14 @@ openid_fixture_app <- function(config) {
   discovery_args <- list(
     issuer = config[["issuer"]],
     token_auth_style = style,
-    allowed_token_types = if (isTRUE(config[["fapi"]])) "DPoP" else "Bearer",
+    allowed_token_types = if (
+      isTRUE(config[["fapi"]]) &&
+        !identical(config[["sender_constraint"]], "mtls")
+    ) {
+      "DPoP"
+    } else {
+      "Bearer"
+    },
     authorization_request_front_channel_mode = if (isTRUE(config[["fapi"]])) {
       "minimal"
     } else {
@@ -158,6 +165,21 @@ openid_fixture_app <- function(config) {
         run_id = config[["run_id"]],
         transport = observed[["transport"]],
         ready = !is.null(provider),
+        mtls_configured = !is.null(provider) &&
+          identical(config[["sender_constraint"]], "mtls") &&
+          identical(provider@token_auth_style, "private_key_jwt") &&
+          provider@mtls_client_certificate_bound_access_tokens &&
+          client@mtls_certificate_bound_access_tokens &&
+          !client@mtls_require_observed_cnf &&
+          identical(
+            client@mtls_client_cert_file,
+            config[["mtls"]][["cert_file"]]
+          ) &&
+          identical(
+            client@mtls_client_key_file,
+            config[["mtls"]][["key_file"]]
+          ) &&
+          is.null(client@dpop_private_key),
         state_transport = if (is.null(provider)) {
           NULL
         } else {
@@ -273,12 +295,39 @@ openid_fixture_app <- function(config) {
     } else {
       NULL
     },
-    dpop_private_key = if (isTRUE(config[["fapi"]])) {
+    mtls_client_cert_file = config[["mtls"]][["cert_file"]],
+    mtls_client_key_file = config[["mtls"]][["key_file"]],
+    mtls_client_ca_file = if (
+      identical(config[["sender_constraint"]], "mtls")
+    ) {
+      config[["ca"]]
+    } else {
+      NULL
+    },
+    mtls_certificate_bound_access_tokens = identical(
+      config[["sender_constraint"]],
+      "mtls"
+    ),
+    mtls_require_observed_cnf = !identical(
+      config[["sender_constraint"]],
+      "mtls"
+    ),
+    dpop_private_key = if (
+      isTRUE(config[["fapi"]]) &&
+        !identical(config[["sender_constraint"]], "mtls")
+    ) {
       openssl::write_pem(openssl::ec_keygen("P-256"))
     } else {
       NULL
     },
-    dpop_signing_alg = if (isTRUE(config[["fapi"]])) "ES256" else NULL,
+    dpop_signing_alg = if (
+      isTRUE(config[["fapi"]]) &&
+        !identical(config[["sender_constraint"]], "mtls")
+    ) {
+      "ES256"
+    } else {
+      NULL
+    },
     resource_bases = if (isTRUE(config[["fapi"]])) {
       c(suite = sub("accounts$", "", config[["resource_endpoint"]]))
     } else {
@@ -454,8 +503,42 @@ openid_fixture_app <- function(config) {
             connection_unusable <- !isTRUE(connection[["is_usable"]]())
             expiry_unknown <- is.null(token) ||
               !is.finite(as.numeric(token@expires_at))
-            response <- connection[["request"]]("suite", "accounts")
-            body <- httr2::resp_body_json(response)
+            control <- config[["resource_control"]]
+            response <- if (is.null(control)) {
+              connection[["request"]]("suite", "accounts")
+            } else {
+              request <- httr2::request(config[["resource_endpoint"]]) |>
+                httr2::req_headers(
+                  Authorization = paste("Bearer", token@access_token)
+                ) |>
+                httr2::req_options(
+                  cainfo = config[["ca"]],
+                  followlocation = FALSE
+                ) |>
+                httr2::req_error(is_error = function(...) FALSE) |>
+                httr2::req_timeout(10)
+              if (!identical(control[["kind"]], "missing")) {
+                request <- request |>
+                  httr2::req_options(
+                    sslcert = control[["cert_file"]],
+                    sslkey = control[["key_file"]]
+                  )
+              }
+              if (identical(control[["kind"]], "forged_header")) {
+                request <- request |>
+                  httr2::req_headers(
+                    `X-Ssl-Cert` = paste(
+                      readLines(config[["mtls"]][["cert_file"]]),
+                      collapse = "\t"
+                    )
+                  )
+              }
+              httr2::req_perform(request)
+            }
+            body <- tryCatch(
+              httr2::resp_body_json(response),
+              error = function(...) list()
+            )
             list(
               done = TRUE,
               succeeded = identical(httr2::resp_status(response), 200L),
@@ -463,9 +546,15 @@ openid_fixture_app <- function(config) {
                 body[["conformance-test-finished"]],
                 "true"
               ),
+              http_status = httr2::resp_status(response),
+              control_kind = control[["kind"]],
               pid = Sys.getpid(),
               transport = "main_process",
-              api = "connection",
+              api = if (is.null(control)) {
+                "connection"
+              } else {
+                "raw_attacker_request"
+              },
               expiry_unknown = expiry_unknown,
               connection_unusable = connection_unusable
             )

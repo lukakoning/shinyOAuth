@@ -1,0 +1,605 @@
+openid_mtls_credentials <- function(stack) {
+  directory <- tempfile("client-tls-", tmpdir = stack[["output"]])
+  dir.create(directory)
+  directory <- normalizePath(directory, winslash = "/")
+  user <- if (.Platform[["OS.type"]] == "windows") {
+    character()
+  } else {
+    identity <- vapply(
+      c("-u", "-g"),
+      function(arg) {
+        trimws(processx::run("id", arg)[["stdout"]])
+      },
+      character(1)
+    )
+    if (!all(grepl("^[0-9]+$", identity))) {
+      stop("Invalid TLS file owner")
+    }
+    c("--user", paste(identity, collapse = ":"))
+  }
+  openid_docker(
+    c(
+      "run",
+      "--rm",
+      user,
+      "--network",
+      "none",
+      "--entrypoint",
+      "openssl",
+      "--mount",
+      paste0("type=bind,source=", directory, ",target=/output"),
+      stack[["lock"]][["images"]][["proxy"]],
+      "req",
+      "-x509",
+      "-nodes",
+      "-days",
+      "2",
+      "-newkey",
+      "rsa:2048",
+      "-keyout",
+      "/output/key.pem",
+      "-out",
+      "/output/cert.pem",
+      "-subj",
+      "/CN=shinyOAuth-local-client",
+      "-addext",
+      "extendedKeyUsage=clientAuth"
+    ),
+    file.path(directory, "generate.log")
+  )
+  certificate <- file.path(directory, "cert.pem")
+  list(
+    cert_file = certificate,
+    key_file = file.path(directory, "key.pem"),
+    certificate = paste(readLines(certificate), collapse = "\n"),
+    fingerprint = paste(
+      openssl::sha1(openssl::write_der(openssl::read_cert(certificate))),
+      collapse = ""
+    )
+  )
+}
+
+openid_mtls_peers <- function(stack) {
+  lines <- strsplit(
+    openid_compose(stack, c("logs", "--no-color", "proxy")),
+    "\n",
+    fixed = TRUE
+  )[[1L]]
+  lines <- lines[grepl('\\{"tls_peer":', lines)]
+  lapply(lines, function(line) {
+    jsonlite::fromJSON(
+      sub('^.*?(\\{"tls_peer":.*)$', "\\1", line),
+      simplifyVector = FALSE
+    )[["tls_peer"]]
+  })
+}
+
+openid_mtls_controls <- function(
+  root,
+  stack,
+  plan,
+  expectation,
+  context,
+  transport,
+  library
+) {
+  alternate <- openid_mtls_credentials(stack)
+  lapply(c("wrong", "forged_header", "missing"), function(kind) {
+    row <- openid_run_case(
+      root,
+      stack,
+      plan,
+      expectation,
+      context,
+      transport,
+      library,
+      .resource_control = c(
+        list(kind = kind),
+        alternate[c("cert_file", "key_file")]
+      )
+    )
+    logs <- openid_api(stack, paste0("/api/log/", row[["suite_id"]]))
+    incoming <- Filter(
+      function(e) {
+        identical(e[["http"]], "incoming") &&
+          endsWith(e[["incoming_path"]], "/open-banking/v1.1/accounts")
+      },
+      logs
+    )
+    peers <- openid_mtls_peers(stack)
+    matched <- if (length(incoming) == 1L) {
+      Filter(
+        function(p) {
+          identical(
+            p[["request_id"]],
+            incoming[[1L]][["incoming_headers"]][["x-openid-request-id"]]
+          ) &&
+            identical(p[["path"]], incoming[[1L]][["incoming_path"]]) &&
+            identical(p[["method"]], "GET") &&
+            identical(p[["listener"]], 8444L)
+        },
+        peers
+      )
+    } else {
+      list()
+    }
+    observed <- if (length(matched) == 1L) {
+      matched[[1L]][["fingerprint"]]
+    } else {
+      NULL
+    }
+    row[["mtls_control"]] <- list(
+      kind = kind,
+      actual_peer_verified = identical(
+        observed,
+        if (kind == "missing") "" else alternate[["fingerprint"]]
+      ) &&
+        !identical(observed, plan[["credentials"]][["mtls"]][["fingerprint"]]),
+      suite_detected = any(vapply(
+        logs,
+        function(e) {
+          identical(
+            e[["src"]],
+            if (kind == "missing") {
+              "CheckForClientCertificate"
+            } else {
+              "EnsureClientCertificateMatches"
+            }
+          ) &&
+            identical(e[["result"]], "FAILURE")
+        },
+        logical(1)
+      ))
+    )
+    row
+  })
+}
+
+openid_mtls_controls_match <- function(rows, context, regular_ids) {
+  if (length(rows) != 3L) {
+    return(FALSE)
+  }
+  kinds <- vapply(
+    rows,
+    function(row) row[["mtls_control"]][["kind"]],
+    character(1)
+  )
+  ids <- vapply(rows, function(row) row[["suite_id"]], character(1))
+  if (
+    anyDuplicated(ids) ||
+      any(ids %in% regular_ids) ||
+      anyDuplicated(kinds) ||
+      !setequal(kinds, c("wrong", "forged_header", "missing"))
+  ) {
+    return(FALSE)
+  }
+  all(vapply(
+    rows,
+    function(row) {
+      kind <- row[["mtls_control"]][["kind"]]
+      resource <- row[["app"]][["resource"]]
+      identity <- c(
+        "run_id",
+        "attempt_id",
+        "checkout_revision",
+        "source_revision",
+        "plan_id"
+      )
+      all(vapply(
+        identity,
+        function(name) identical(row[[name]], context[[name]]),
+        logical(1)
+      )) &&
+        identical(
+          row[["module"]],
+          "fapi2-security-profile-final-client-test-happy-path"
+        ) &&
+        identical(row[["variant"]][["client_auth_type"]], "private_key_jwt") &&
+        identical(row[["variant"]][["sender_constrain"]], "mtls") &&
+        identical(row[["suite_result"]], "FAILED") &&
+        identical(
+          row[["suite_status"]],
+          if (kind == "missing") "INTERRUPTED" else "FINISHED"
+        ) &&
+        isTRUE(row[["mtls_control"]][["actual_peer_verified"]]) &&
+        isTRUE(row[["mtls_control"]][["suite_detected"]]) &&
+        isTRUE(row[["app"]][["mtls_configured"]]) &&
+        openid_app_matches(
+          row[["app"]],
+          list(outcome = "authorized"),
+          paste0(context[["run_id"]], "-", row[["suite_id"]]),
+          context[["package_version"]]
+        ) &&
+        openid_transport_matches(row, list(outcome = "authorized"), context) &&
+        identical(resource[["api"]], "raw_attacker_request") &&
+        identical(resource[["control_kind"]], kind) &&
+        isTRUE(resource[["done"]]) &&
+        identical(
+          resource[["http_status"]],
+          if (kind == "missing") 400L else 200L
+        ) &&
+        identical(resource[["response_marker_valid"]], kind != "missing")
+    },
+    logical(1)
+  ))
+}
+
+openid_mtls_checks <- function(
+  discovery = FALSE,
+  callback = FALSE,
+  fallback = FALSE
+) {
+  if (discovery) {
+    return(openid_fapi_pre_token_checks(TRUE))
+  }
+  c(
+    if (callback) {
+      openid_fapi_pre_token_checks(FALSE)
+    } else {
+      c(
+        openid_auth_checks("private_key_jwt"),
+        "ValidateClientAssertionClaimsForPAREndpoint",
+        "ValidateClientAssertionAudClaimIsIssuerAsString",
+        "EnsureAuthorizationRequestContainsOnlyExpectedParamsWhenUsingPAR",
+        "ValidateCodeVerifierWithS256"
+      )
+    },
+    "CheckForClientCertificate",
+    "EnsureClientCertificateMatches",
+    if (fallback) {
+      c(
+        "RemoveMtlsEndpointAliasesFromServerConfiguration",
+        "SetTokenEndpointToMtlsTokenEndpoint"
+      )
+    },
+    if (!callback) {
+      c(
+        "EnsureBearerAccessTokenNotInParams",
+        "ExtractBearerAccessTokenFromHeader",
+        "RequireBearerAccessToken"
+      )
+    }
+  )
+}
+
+openid_mtls_evidence <- function(logs, module, plan, peers) {
+  if (
+    !length(logs) ||
+      !all(vapply(
+        logs,
+        function(e) identical(e[["testId"]], module[["id"]]),
+        logical(1)
+      ))
+  ) {
+    stop("mTLS logs do not belong to this suite instance")
+  }
+  discovery <- endsWith(module[["name"]], "discovery-issuer-mismatch")
+  callback <- grepl(
+    "authorization-response|invalid-state|missing-state",
+    module[["name"]]
+  )
+  fallback <- endsWith(module[["name"]], "happy-path-no-mtls-endpoint-aliases")
+  path <- sub("^https://[^/]+", "", module[["issuer"]])
+  mtls_path <- sub("^/test/", "/test-mtls/", path)
+  requests <- function(endpoint) {
+    Filter(
+      function(e) {
+        identical(e[["http"]], "incoming") &&
+          e[["incoming_path"]] %in% paste0(c(path, mtls_path), endpoint)
+      },
+      logs
+    )
+  }
+  par <- requests("par")
+  token <- requests("token")
+  resource <- requests("open-banking/v1.1/accounts")
+  authorization <- requests("authorize")
+  forms <- c(par, token)
+  client_id <- plan[["registration"]][["client_id"]]
+  assertions <- lapply(forms, function(e) {
+    openid_fapi_decode(e[["incoming_body_form_params"]][["client_assertion"]])
+  })
+  checks <- openid_mtls_checks(discovery, callback, fallback)
+  peer_valid <- function(
+    requests,
+    listener = 8444L,
+    fingerprint = plan[["credentials"]][["mtls"]][["fingerprint"]]
+  ) {
+    length(requests) > 0L &&
+      all(vapply(
+        requests,
+        function(e) {
+          matches <- Filter(
+            function(p) {
+              identical(
+                p[["request_id"]],
+                e[["incoming_headers"]][["x-openid-request-id"]]
+              )
+            },
+            peers
+          )
+          length(matches) == 1L &&
+            identical(matches[[1L]][["path"]], e[["incoming_path"]]) &&
+            identical(matches[[1L]][["method"]], e[["incoming_method"]]) &&
+            identical(matches[[1L]][["listener"]], listener) &&
+            identical(
+              matches[[1L]][["fingerprint"]],
+              fingerprint
+            )
+        },
+        logical(1)
+      ))
+  }
+  same <- function(values, f) {
+    length(values) > 0L && all(vapply(values, f, logical(1)))
+  }
+  par_form <- if (length(par)) {
+    par[[1L]][["incoming_body_form_params"]]
+  } else {
+    list()
+  }
+  scope <- openid_fapi_oauth_scope(par)
+  proof <- list(
+    suite_id = module[["id"]],
+    client_authentication = "private_key_jwt",
+    sender_constraint = "mtls",
+    stage = if (discovery) {
+      "discovery"
+    } else if (callback) {
+      "callback"
+    } else {
+      "resource"
+    },
+    discovery_request_count = sum(vapply(
+      logs,
+      function(e) {
+        identical(e[["http"]], "incoming") &&
+          identical(
+            e[["incoming_path"]],
+            paste0(
+              "/.well-known/oauth-authorization-server",
+              sub("/+$", "", path)
+            )
+          )
+      },
+      logical(1)
+    )),
+    par_request_count = length(par),
+    token_request_count = length(token),
+    authorization_request_count = length(authorization),
+    userinfo_request_count = length(requests("userinfo")),
+    resource_request_count = length(resource),
+    oauth_scope_valid = scope,
+    request_credentials_valid = same(forms, function(e) {
+      form <- e[["incoming_body_form_params"]]
+      identical(e[["incoming_method"]], "POST") &&
+        identical(form[["client_id"]], client_id) &&
+        identical(
+          form[["client_assertion_type"]],
+          "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+        ) &&
+        !"client_secret" %in% names(form) &&
+        !"authorization" %in% names(e[["incoming_headers"]])
+    }),
+    assertion_metadata_valid = same(assertions, function(jwt) {
+      h <- jwt[[1L]]
+      c <- jwt[[2L]]
+      identical(h[["alg"]], "ES256") &&
+        identical(h[["kid"]], plan[["credentials"]][["key_id"]]) &&
+        identical(c[["iss"]], client_id) &&
+        identical(c[["sub"]], client_id) &&
+        identical(c[["aud"]], module[["issuer"]]) &&
+        openid_string(c[["jti"]]) &&
+        is.numeric(c[["iat"]]) &&
+        is.numeric(c[["exp"]]) &&
+        length(c[["iat"]]) == 1L &&
+        length(c[["exp"]]) == 1L &&
+        is.finite(c[["iat"]]) &&
+        is.finite(c[["exp"]]) &&
+        c[["exp"]] > c[["iat"]] &&
+        c[["exp"]] - c[["iat"]] <= 300
+    }),
+    assertion_jtis_distinct = !anyDuplicated(vapply(
+      assertions,
+      function(jwt) jwt[[2L]][["jti"]],
+      character(1)
+    )),
+    authorization_par_only = length(authorization) == 1L &&
+      {
+        query <- authorization[[1L]][["incoming_query_string_params"]]
+        identical(authorization[[1L]][["incoming_method"]], "GET") &&
+          setequal(names(query), c("client_id", "request_uri")) &&
+          identical(query[["client_id"]], client_id) &&
+          openid_string(query[["request_uri"]])
+      },
+    pkce_s256_verified = identical(
+      par_form[["code_challenge_method"]],
+      "S256"
+    ) &&
+      identical(par_form[["response_type"]], "code") &&
+      openid_string(par_form[["code_challenge"]]) &&
+      (callback ||
+        same(token, function(e) {
+          identical(
+            openid_fapi_hash(e[["incoming_body_form_params"]][[
+              "code_verifier"
+            ]]),
+            par_form[["code_challenge"]]
+          )
+        })),
+    endpoint_selection_valid = same(par, function(e) {
+      identical(
+        e[["incoming_path"]],
+        paste0(if (fallback) path else mtls_path, "par")
+      )
+    }) &&
+      (callback ||
+        same(token, function(e) {
+          identical(e[["incoming_path"]], paste0(mtls_path, "token"))
+        })),
+    par_peer_valid = if (fallback) {
+      peer_valid(par, 8443L, "")
+    } else {
+      peer_valid(par)
+    },
+    token_peer_valid = peer_valid(token),
+    resource_peer_valid = peer_valid(resource),
+    no_dpop = all(vapply(
+      c(par, token, resource),
+      function(e) !"dpop" %in% names(e[["incoming_headers"]]),
+      logical(1)
+    )),
+    token_response_oauth_only = same(
+      Filter(
+        function(e) {
+          identical(e[["src"]], "CreateTokenEndpointResponse") &&
+            identical(e[["result"]], "SUCCESS")
+        },
+        logs
+      ),
+      function(e) {
+        body <- e[["Created token endpoint response"]]
+        openid_string(body[["access_token"]]) &&
+          !"id_token" %in% names(body) &&
+          identical(tolower(body[["token_type"]]), "bearer")
+      }
+    ),
+    resource_bearer_valid = same(resource, function(e) {
+      identical(e[["incoming_method"]], "GET") &&
+        openid_string(e[["incoming_headers"]][["authorization"]]) &&
+        startsWith(e[["incoming_headers"]][["authorization"]], "Bearer ")
+    }),
+    suite_checks = setNames(
+      lapply(checks, function(src) {
+        any(vapply(
+          logs,
+          function(e) {
+            identical(e[["src"]], src) &&
+              (identical(e[["result"]], "SUCCESS") ||
+                (discovery &&
+                  identical(
+                    e[["issuer"]],
+                    paste0(module[["issuer"]], "INVALID")
+                  ) &&
+                  identical(
+                    e[["msg"]],
+                    "Added invalid issuer to server configuration"
+                  )))
+          },
+          logical(1)
+        ))
+      }),
+      checks
+    )
+  )
+  if (!discovery) {
+    proof <- c(proof, openid_mtls_state_evidence(par))
+  }
+  proof
+}
+
+openid_mtls_state_evidence <- function(par) {
+  states <- lapply(par, function(e) e[["incoming_body_form_params"]][["state"]])
+  state <- if (length(states)) states[[1L]] else NULL
+  list(
+    state_characters = if (openid_string(state)) nchar(state) else 0L,
+    state_reference_valid = openid_string(state) &&
+      grepl("^[A-Za-z0-9_-]{22,128}$", state) &&
+      all(vapply(states, identical, logical(1), state))
+  )
+}
+
+openid_mtls_matches <- function(result, expectation) {
+  p <- result[["fapi"]]
+  discovery <- identical(expectation[["outcome"]], "discovery_rejected")
+  callback <- identical(expectation[["outcome"]], "callback_rejected")
+  if (
+    !identical(p[["suite_id"]], result[["suite_id"]]) ||
+      !identical(p[["client_authentication"]], "private_key_jwt") ||
+      !identical(p[["sender_constraint"]], "mtls") ||
+      !identical(
+        p[["stage"]],
+        if (discovery) {
+          "discovery"
+        } else if (callback) {
+          "callback"
+        } else {
+          "resource"
+        }
+      )
+  ) {
+    return(FALSE)
+  }
+  counts <- c(
+    par_request_count = if (discovery) 0L else 1L,
+    authorization_request_count = if (discovery) 0L else 1L,
+    token_request_count = if (discovery || callback) 0L else 1L,
+    userinfo_request_count = 0L,
+    discovery_request_count = 1L,
+    resource_request_count = if (discovery || callback) 0L else 1L
+  )
+  if (
+    !all(vapply(
+      names(counts),
+      function(name) identical(p[[name]], counts[[name]]),
+      logical(1)
+    ))
+  ) {
+    return(FALSE)
+  }
+  flags <- if (discovery) {
+    character()
+  } else {
+    c(
+      "oauth_scope_valid",
+      "request_credentials_valid",
+      "assertion_metadata_valid",
+      "assertion_jtis_distinct",
+      "authorization_par_only",
+      "endpoint_selection_valid",
+      "pkce_s256_verified",
+      "par_peer_valid",
+      "no_dpop",
+      if (!callback) {
+        c(
+          "token_peer_valid",
+          "resource_peer_valid",
+          "token_response_oauth_only",
+          "resource_bearer_valid"
+        )
+      }
+    )
+  }
+  if (!all(vapply(flags, function(name) isTRUE(p[[name]]), logical(1)))) {
+    return(FALSE)
+  }
+  checks <- openid_mtls_checks(
+    discovery,
+    callback,
+    endsWith(result[["module"]], "happy-path-no-mtls-endpoint-aliases")
+  )
+  if (
+    !setequal(names(p[["suite_checks"]]), checks) ||
+      anyDuplicated(names(p[["suite_checks"]])) ||
+      !all(vapply(p[["suite_checks"]], isTRUE, logical(1)))
+  ) {
+    return(FALSE)
+  }
+  if (callback && !openid_http_callback_matches(result, expectation)) {
+    return(FALSE)
+  }
+  resource <- result[["app"]][["resource"]]
+  if (discovery || callback) {
+    return(is.null(resource))
+  }
+  all(vapply(
+    c("done", "succeeded", "response_marker_valid"),
+    function(name) isTRUE(resource[[name]]),
+    logical(1)
+  )) &&
+    identical(resource[["api"]], "connection") &&
+    identical(resource[["transport"]], "main_process") &&
+    identical(resource[["pid"]], result[["app"]][["transport"]][["app_pid"]]) &&
+    identical(resource[["expiry_unknown"]], FALSE) &&
+    identical(resource[["connection_unusable"]], FALSE)
+}

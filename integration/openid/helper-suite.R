@@ -77,6 +77,12 @@ openid_suite_plan <- function(
     as.list(spec[["module_variant"]])
   )[["client_auth_type"]]
   credentials <- list(client_secret = registration[["client_secret"]])
+  if (identical(spec[["plan_variant"]][["sender_constrain"]], "mtls")) {
+    credentials[["mtls"]] <- openid_mtls_credentials(stack)
+    registration[["certificate"]] <- credentials[["mtls"]][["certificate"]]
+    registration[["use_mtls_endpoint_aliases"]] <- TRUE
+    registration[["tls_client_certificate_bound_access_tokens"]] <- TRUE
+  }
   if (
     spec[["plan"]] %in%
       c(
@@ -315,7 +321,19 @@ openid_suite_module <- function(stack, plan, name, .env = parent.frame()) {
     )
   ) {
     resource <- runtime[["exposed"]][["accounts_endpoint"]]
-    if (!identical(resource, paste0(issuer, "open-banking/v1.1/accounts"))) {
+    resource_base <- if (
+      identical(plan[["spec"]][["plan_variant"]][["sender_constrain"]], "mtls")
+    ) {
+      paste0(
+        stack[["env"]][["OPENID_MTLS_ORIGIN"]],
+        sub("^/test/", "/test-mtls/", sub("^https://[^/]+", "", issuer))
+      )
+    } else {
+      issuer
+    }
+    if (
+      !identical(resource, paste0(resource_base, "open-banking/v1.1/accounts"))
+    ) {
       stop("FAPI resource endpoint is missing or outside this local issuer")
     }
     module[["resource_endpoint"]] <- resource

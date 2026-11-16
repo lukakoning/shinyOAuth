@@ -700,7 +700,7 @@ openid_check_report <- function(report, context, manifest) {
             )
         ) {
           stop(
-            "Missing FAPI PAR, client authentication, DPoP or resource evidence"
+            "Missing FAPI PAR, client authentication, sender constraint or resource evidence"
           )
         }
         if (
@@ -714,6 +714,13 @@ openid_check_report <- function(report, context, manifest) {
           stop("Missing actual client-authentication or S256 request evidence")
         }
         expectation <- expected[[match(result[["module"]], names_expected)]]
+        if (
+          identical(spec[["plan_variant"]][["sender_constrain"]], "mtls") &&
+            !identical(expectation[["action"]], "discovery") &&
+            !isTRUE(result[["app"]][["mtls_configured"]])
+        ) {
+          stop("Missing actual mTLS client configuration evidence")
+        }
         if (
           !identical(result[["run_id"]], context[["run_id"]]) ||
             !identical(result[["attempt_id"]], context[["attempt_id"]]) ||
@@ -851,6 +858,16 @@ openid_check_report <- function(report, context, manifest) {
       }
       cache_limited <- identical(context[["profile"]], "config") &&
         isTRUE(report[["jwks_cache_policy"]][["no_store"]])
+      mtls_limited <- identical(
+        spec[["plan_variant"]][["sender_constrain"]],
+        "mtls"
+      )
+      if (
+        mtls_limited &&
+          !openid_mtls_controls_match(report[["mtls_controls"]], context, ids)
+      ) {
+        stop("Missing isolated mTLS certificate controls")
+      }
       advisory_limited <- any(vapply(
         expected,
         function(e) identical(e[["advisory_policy"]], "state_length_over_128"),
@@ -861,10 +878,12 @@ openid_check_report <- function(report, context, manifest) {
         selection_complete = TRUE,
         coverage_complete = isTRUE(profile[["complete_profile"]]) &&
           !cache_limited &&
+          !mtls_limited &&
           !advisory_limited,
         coverage_limitations = as.list(unique(c(
           unlist(profile[["coverage_limitations"]]),
           if (advisory_limited) "oauth_state_length_over_128_warning",
+          if (mtls_limited) "mtls_resource_denial_not_established",
           if (cache_limited) {
             "suite_jwks_no_store_prevents_cached_key_refresh_test"
           }

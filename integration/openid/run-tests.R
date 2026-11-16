@@ -6,7 +6,7 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
       setequal(args[c(1L, 3L)], c("--profile", "--transport"))
     if (!valid) {
       stop(
-        "Usage: Rscript integration/openid/run-tests.R --check-api | --profile smoke|basic|config|form-post|refresh|auth-post|auth-secret-jwt|auth-private-jwt|fapi-dpop|fapi-dpop-full|fapi-oauth-dpop|fapi-oauth-dpop-reference --transport sync|mirai|future"
+        "Usage: Rscript integration/openid/run-tests.R --check-api | --profile smoke|basic|config|form-post|refresh|auth-post|auth-secret-jwt|auth-private-jwt|fapi-dpop|fapi-dpop-full|fapi-oauth-dpop|fapi-oauth-dpop-reference|fapi-oauth-mtls --transport sync|mirai|future"
       )
     }
     options <- setNames(args[c(2L, 4L)], args[c(1L, 3L)])
@@ -24,7 +24,8 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
           "fapi-dpop",
           "fapi-dpop-full",
           "fapi-oauth-dpop",
-          "fapi-oauth-dpop-reference"
+          "fapi-oauth-dpop-reference",
+          "fapi-oauth-mtls"
         ) ||
         !options[["--transport"]] %in% c("sync", "mirai", "future") ||
         (identical(options[["--transport"]], "future") &&
@@ -41,6 +42,7 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
   source("integration/openid/helper-evidence.R", local = TRUE)
   source("integration/openid/helper-auth.R", local = TRUE)
   source("integration/openid/helper-fapi.R", local = TRUE)
+  source("integration/openid/helper-mtls.R", local = TRUE)
   source("integration/openid/helper-app.R", local = TRUE)
   source("integration/openid/helper-driver.R", local = TRUE)
   openid_require(c(
@@ -185,6 +187,19 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
       as.numeric(difftime(Sys.time(), started, units = "secs")),
       2
     )
+    if (
+      identical(plan[["spec"]][["plan_variant"]][["sender_constrain"]], "mtls")
+    ) {
+      report[["mtls_controls"]] <- openid_mtls_controls(
+        ".",
+        stack,
+        plan,
+        manifest[["profiles"]][[profile]][["modules"]][[1L]],
+        context,
+        transport,
+        library
+      )
+    }
     openid_stop_app(transport)
     openid_stop(stack)
     report[["cleanup_verified"]] <- TRUE
