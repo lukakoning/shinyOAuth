@@ -224,6 +224,13 @@ openid_mtls_controls_match <- function(rows, context, regular_ids) {
   ))
 }
 
+openid_mtls_info_checks <- function() {
+  c(
+    RemoveMtlsEndpointAliasesFromServerConfiguration = "Removed mtls_endpoint_aliases from server configuration",
+    SetTokenEndpointToMtlsTokenEndpoint = "Set token endpoint to be the MTLS token endpoint"
+  )
+}
+
 openid_mtls_checks <- function(
   discovery = FALSE,
   callback = FALSE,
@@ -474,9 +481,18 @@ openid_mtls_evidence <- function(logs, module, plan, peers) {
         any(vapply(
           logs,
           function(e) {
+            info <- openid_mtls_info_checks()
+            if (src %in% names(info)) {
+              return(
+                identical(e[["src"]], src) &&
+                  is.null(e[["result"]]) &&
+                  identical(e[["msg"]], unname(info[[src]]))
+              )
+            }
             identical(e[["src"]], src) &&
               (identical(e[["result"]], "SUCCESS") ||
                 (discovery &&
+                  is.null(e[["result"]]) &&
                   identical(
                     e[["issuer"]],
                     paste0(module[["issuer"]], "INVALID")

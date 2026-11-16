@@ -68,6 +68,13 @@ mtls_logs_fixture <- function(module, suite_id, expectation) {
   f[["logs"]] <- c(
     f[["logs"]],
     lapply(setdiff(checks, openid_fapi_pre_token_checks(TRUE)), function(src) {
+      if (src %in% names(openid_mtls_info_checks())) {
+        return(list(
+          testId = suite_id,
+          src = src,
+          msg = unname(openid_mtls_info_checks()[[src]])
+        ))
+      }
       list(testId = suite_id, src = src, result = "SUCCESS")
     })
   )
@@ -312,4 +319,30 @@ testthat::test_that("mTLS controls retain separate failed instances and cannot c
     unlist(result[["coverage_limitations"]]),
     "mtls_resource_denial_not_established"
   )
+})
+
+testthat::test_that("alias fallback requires the pinned informational setup events", {
+  f <- mtls_evidence_fixture()
+  e <- f[["manifest"]][["profiles"]][["fapi-oauth-mtls"]][["modules"]][[9L]]
+  row <- f[["report"]][["results"]][[9L]]
+  fixture <- mtls_logs_fixture(row[["module"]], row[["suite_id"]], e)
+  for (src in names(openid_mtls_info_checks())) {
+    index <- which(vapply(
+      fixture[["logs"]],
+      function(event) identical(event[["src"]], src),
+      logical(1)
+    ))
+    for (field in c("src", "msg", "result")) {
+      logs <- fixture[["logs"]]
+      logs[[index]][[field]] <- "wrong"
+      result <- row
+      result[["fapi"]] <- openid_mtls_evidence(
+        logs,
+        fixture[["module"]],
+        fixture[["plan"]],
+        fixture[["peers"]]
+      )
+      testthat::expect_false(openid_mtls_matches(result, e), info = field)
+    }
+  }
 })
