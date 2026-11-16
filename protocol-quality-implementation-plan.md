@@ -20,9 +20,9 @@ for the core selections, future multisession smoke/refresh parity,
 confidential-client authentication selections and sequential shared-pool
 issuer isolation. Public-client discovery coverage remains outstanding,
 so C09 is not complete. C10 includes the complete twenty-three-module
-OIDC/private-key-JWT/DPoP variant. OAuth-only coverage and further
-refresh/resource scenarios remain pending, so the broader milestone is
-still open.
+OIDC/private-key-JWT/DPoP variant and an eleven-module OAuth-only
+selection. The OAuth-only state-length advisory keeps that selection’s
+coverage incomplete and C10 open.
 
 Execution record (2026-11-12): C00 is `d0b62ff`; C01 is `4dee03d`. C01
 validated the exact server image/source correspondence, required plans,
@@ -698,10 +698,102 @@ Test libraries stay private, and no owned Docker containers remain after
 cleanup. Earlier failed reports remain failed and receive no validation
 credit.
 
-C10 follow-up: add separately resolved OAuth-only coverage and remaining
-refresh/resource scenarios. C11-C12 retain mTLS and message signing. The
-C09 public-client and C06 warm-cache gaps remain open. Fresh hosted CI
-still needs an available verified copy of the locked server image.
+C10, OAuth-only slice (2026-11-16): `fapi-oauth-dpop` freezes the
+separately resolved `plain_oauth` variant: eleven modules using ES256
+private-key JWT, DPoP, unsigned PAR and plain query responses. Six flows
+exercise resource use; the remaining modules reject discovery issuer
+mismatch and four malformed issuer/state callbacks. The twelve
+ID-token-specific modules are inapplicable.
+
+The first setup attempt exposed a missing package feature: the suite
+publishes RFC 8414 metadata for OAuth-only clients. Commit `8a8882cf`
+adds the public
+[`oauth_provider_oauth_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oauth_discover.md)
+helper. It inserts the well-known component before the issuer path,
+removes terminal slashes for the metadata request and retains the exact
+issuer for comparison and subsequent requests. It shares the existing
+transport, endpoint, host, auth, PAR, DPoP and mTLS metadata checks.
+OAuth-only mode adds no `openid` scope and enables no OIDC nonce,
+ID-token or UserInfo processing. The OIDC helper retains its existing
+defaults and rules. All 773 discovery assertions pass with zero test
+failures, warnings or skips, including OIDC, FAPI, SMART and
+runtime-JWKS regressions. NEWS and generated reference documentation
+describe the API and its unsigned-JSON/code-flow scope.
+
+The fixture requests only `accounts`. Positive evidence uses an
+`authorized` outcome: actual access token, no ID token in the suite
+response or app, zero UserInfo traffic and a successful public
+connection request. The module’s `authenticated` signal indicates
+accepted credentials here and earns no OIDC identity credit. Independent
+comparisons check PAR scope and absent OIDC nonce, PKCE, assertions,
+DPoP proofs/retries and resource completion. Mirai must perform the code
+exchange in a verified worker; resource requests stay in the Shiny
+process. Pre-token rejection stages retain their existing strict checks.
+
+The first complete OAuth-only run exposed a separate interoperability
+advisory. The happy-path, happy-path-no-dpop-nonce and
+happy-path-no-mtls-endpoint-aliases modules report `WARNING` from the
+pinned `CheckStateLength` condition because the encrypted state exceeds
+128 characters. Their exchanges succeed; eight other modules report
+`PASSED`. The original run’s gate failed and receives no validation
+credit. The current explicit policy accepts only this fixed warning in
+these three modules, with measured state length above 128 and no other
+warning/failure/review events. Verdicts remain unchanged. All eleven
+modules remain mandatory, and coverage stays false even if the manifest
+is incorrectly marked complete. This records the finding without
+weakening state protection or claiming warning-free OAuth-only
+conformance.
+
+Final validation ran all eleven modules in sync and mirai on Windows (R
+4.5.1, Chrome 157) and Linux (R 4.5.0, Chromium 156). Each command
+exited zero with eight `PASSED` verdicts and the three verified
+`WARNING` verdicts above. All four selection gates and cleanup checks
+pass; all four coverage flags remain false. Independent report
+revalidation confirmed 32 passes and 12 exact state-length advisories,
+with measured state lengths of 831-832 characters. The suite source and
+assertions remain unchanged.
+
+All 1,045 evidence assertions pass with zero test failures, warnings or
+skips. They reject missing modules, substituted OIDC identity evidence,
+unexpected UserInfo or ID-token traffic, wrong scopes/nonces and missing
+or altered advisory evidence. They also keep coverage incomplete if the
+manifest’s complete flag is incorrectly enabled. The existing
+three-module OIDC FAPI selection passed in Windows mirai, validating the
+shared discovery path and token/resource behavior. R lint, formatting,
+actionlint and patch whitespace checks pass.
+
+Sanitized reports under `integration/openid/.artifacts/`:
+
+| Environment / transport | Module-loop seconds | Report directory (`evidence.json`) |
+|----|---:|----|
+| Windows / sync | 153.62 | `fapi-oauth-dpop-20261116-222647-30190e0df1c5` |
+| Windows / mirai | 168.30 | `fapi-oauth-dpop-20261116-222647-7e3c3bf5f9b8` |
+| Linux / sync | 82.82 | `fapi-oauth-dpop-20261116-212648-b9d544031022` |
+| Linux / mirai | 95.30 | `fapi-oauth-dpop-20261116-212648-af684d5efe57` |
+| Windows / mirai OIDC regression | 43.72 | `fapi-dpop-20261116-221710-d5578745eb01` |
+
+The final OAuth-only selections ran concurrently. Timings exclude
+package and suite setup, the app-stop control and final teardown.
+Reports identify product commit `8a8882cf` and the dirty checkout
+containing this harness slice. Images came from the verified cache at
+unchanged locked digests. Libraries and raw diagnostics stay private; no
+owned Docker containers remain. Earlier setup and strict-warning
+failures retain failed reports and receive no validation credit.
+
+C10 follow-up, `feat(oauth): support compact state references`:
+implement an opaque state reference of at most 128 characters while
+retaining an encrypted pending-login record. Preserve
+client/provider/policy, redirect, scope, PKCE, DPoP-key, browser and
+freshness bindings. Use the state store’s atomic single-use consumption;
+keep unknown, tampered, expired, wrong-client and replayed references
+closed. Validate shared-store and async behavior alongside the existing
+encrypted format. Then rerun all eleven OAuth-only modules and require
+`PASSED` for the three advisory cases before removing this coverage
+limit. Further refresh scenarios remain separate provider
+interoperability work. C11-C12 retain mTLS and message signing. The C09
+public-client and C06 warm-cache gaps remain open. Fresh hosted CI still
+needs an available verified copy of the locked server image, and C15
+retains callback error-page query cleanup.
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
