@@ -404,11 +404,14 @@ validate_id_token <- function(
     )
   }
   if (is.null(payload[["exp"]])) {
-    err_id_token("ID token missing exp claim")
+    err_id_token("ID token missing exp claim", context = list(claim = "exp"))
   }
   # Validate temporal claims are single, finite numerics before arithmetic
   if (!jwt_is_single_finite_number(payload[["exp"]])) {
-    err_id_token("exp claim must be a single finite number")
+    err_id_token(
+      "exp claim must be a single finite number",
+      context = list(claim = "exp")
+    )
   }
   exp_val <- as.numeric(payload[["exp"]])
 
@@ -419,7 +422,7 @@ validate_id_token <- function(
     lwe <- 0
   }
   if (exp_val <= (now - lwe)) {
-    err_id_token("ID token expired")
+    err_id_token("ID token expired", context = list(claim = "exp"))
   }
   # OIDC Core requires iat to be present on ID Tokens
   if (is.null(payload[["iat"]])) {

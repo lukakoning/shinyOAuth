@@ -75,6 +75,15 @@ test_that("ID-token rejection events name the claim without disclosing values", 
       claim = "iat",
       payload = utils::modifyList(claims, list(iat = "private-wrong-time"))
     ),
+    list(claim = "exp", payload = utils::modifyList(claims, list(exp = NULL))),
+    list(
+      claim = "exp",
+      payload = utils::modifyList(claims, list(exp = "private-wrong-time"))
+    ),
+    list(
+      claim = "exp",
+      payload = utils::modifyList(claims, list(exp = now - 300))
+    ),
     list(claim = "iss", payload = utils::modifyList(claims, list(iss = NULL))),
     list(
       claim = "iss",
