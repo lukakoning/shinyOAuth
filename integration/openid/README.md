@@ -434,8 +434,10 @@ their module verdict is `FAILED`: its
 continues after a certificate mismatch. These failed instances remain separate
 from the nine normal outcomes. The report always keeps
 `coverage_complete = false` and `mtls_resource_denial_not_established` visible.
-An independent resource-denial check and mTLS client authentication remain
-unfinished C11 work; the upstream suite is unchanged.
+The [independent Python resource check](../conformance/README.md) separately
+requires per-token certificate matching and real HTTP 401 denial. It leaves
+this suite's outcomes and incomplete coverage status intact. mTLS client
+authentication remains unfinished C11 work.
 
 The discovery helper reads unsigned JSON metadata over verified TLS. Signed
 metadata, refresh, other FAPI variants and certification remain separate. Resource

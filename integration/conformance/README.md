@@ -7,6 +7,20 @@ python -m pip install -r integration/conformance/requirements.txt
 Rscript integration/conformance/run-tests.R
 ```
 
+Install the package's R dependencies and test dependencies first. The current
+OpenSSL requirement is available from the
+[maintainer's R-universe repository](https://jeroen.r-universe.dev/openssl),
+which CI already uses. The runner installs this checkout in a private library
+under `.artifacts/` and uses that installation in the main process and mirai
+workers. It requires zero test failures, errors, warnings or skips.
+
+Each run writes a sanitized `evidence.json` with its checkout revision, dirty
+flag, dependency versions, package-installation check and assertion counts.
+CI uploads only those JSON files. Libraries and installation logs stay private.
+Set `SHINYOAUTH_CONFORMANCE_ARTIFACTS` to move local artifacts, for example when
+a deeply nested Windows checkout would exceed path limits. Reports keep
+`coverage_complete = false`: these fixtures do not establish OpenID certification.
+
 The fixture uses Python cryptography, independent of shinyOAuth and R's jose,
 to enforce RS256 and RS384 Request Object signatures, issuer, audience, expiry, replay,
 and mandatory signing. It completes JAR+DPoP (with and without PAR), JAR+mTLS
@@ -32,6 +46,38 @@ identifiers, with no competing client authentication. The newer configuration
 passes `check_oauth21()`'s mandatory configuration checks before exchange; the
 legacy profile remains usable while its audience receives a draft finding.
 Requests explicitly select the default TLS 1.2 minimum and use a local custom CA.
+
+`test-mtls-resource.R` adds a protected resource that binds each opaque token
+to the actual TLS certificate observed at issuance. Two certificates have valid
+chains and identical subject names, and both may obtain their own tokens. Each
+token still requires its particular certificate at the resource, independent
+of forwarded certificate headers and any client-visible `cnf` field.
+
+The resource tests complete 32 bound grants across RS256/RS384, direct JAR/PAR,
+sync/mirai callbacks, returned/omitted `cnf` confirmation, and both certificates.
+They use private-key-JWT client authentication, reference state and the public
+module and connection APIs. Audit checks require exactly one token exchange
+in the expected process, loaded from the same private package installation.
+Authorization/PAR setup and resource requests run in the main process; mirai
+coverage here applies to the token callback. Shiny sessions are driven in
+process, without a browser or an interactive provider login.
+
+Attacker requests bypass the client's local binding checks and reach the actual
+TLS server. Wrong certificates, missing certificates, forged certificate
+headers, unknown tokens and unbound tokens must receive HTTP 401 with
+`invalid_token`, a Bearer challenge and no resource content. This follows
+[RFC 8705 section 3](https://www.rfc-editor.org/rfc/rfc8705.html#section-3).
+The tests require 162 denial responses and verify that the rightful holder can
+still use the public connection afterward. They also confirm that a misleading
+certificate header cannot prevent access by the matching TLS peer. The bound
+resource profile does not implement refresh.
+
+For omitted confirmation, the client explicitly selects
+`mtls_require_observed_cnf = FALSE`; the resource still checks its server-side
+issuance record. This complements the
+[OIDF mTLS selection](../openid/README.md), whose pinned provider detects a
+certificate mismatch but continues to return its resource body. The independent
+check does not alter that provider or its incomplete coverage status.
 
 Each algorithm runs the full flow matrix with a separately pinned server
 registration. JARM responses and the server's public JWKS use the selected
@@ -65,7 +111,8 @@ directory. Set `SHINYOAUTH_TEST_PYTHON` to a Python executable if it is not on `
 
 These are focused protocol tests, not OpenID certification or evidence that a
 third-party server enforces these policies. The live AS fixture omits user login, ID
-tokens, consent, discovery and resource endpoints. Keycloak's separate tests
+tokens, consent and discovery; its resource endpoint covers only the mTLS token
+binding profile above. Keycloak's separate tests
 record its actual capabilities and known claim-validation gaps. Its rejection
 canaries must not be counted as successful combination interoperability.
 

@@ -372,8 +372,10 @@ produce HTTP 400. The pinned suite detects wrong certificates but continues to
 return HTTP 200 with its resource marker. Those controls establish detection
 and header replacement, while resource denial remains unproven. The gate forces
 `coverage_complete = false` and the resource-denial coverage limit even if the
-manifest's complete flag is changed. Other C11 work includes mTLS client
-authentication and an independent resource-denial check. No suite condition or
+manifest's complete flag is changed. The
+[independent Python fixture](../conformance/README.md) now separately checks
+actual resource denial with per-token TLS bindings. Other C11 work includes
+mTLS client authentication. No suite condition or
 production library default is changed by this fixture.
 
 Baseline references: [OIDC Core](https://openid.net/specs/openid-connect-core-1_0.html),
