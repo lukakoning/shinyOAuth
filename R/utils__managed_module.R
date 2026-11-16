@@ -45,6 +45,7 @@ oauth_module_managed_context <- function(
     state_payload_revalidate(client, payload, audit_success = FALSE)
   }
   record <- record %||% state_store_get(client, payload[["state"]])
+  state_reference_verify_record(client, payload, record)
   validate_browser_token(browser_token)
   if (!constant_time_compare(record[["browser_token"]], browser_token)) {
     err_invalid_state("Browser token mismatch")

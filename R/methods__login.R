@@ -244,6 +244,11 @@ prepare_call_internal <- function(
         )) |>
           state_encrypt_gcm(key = oauth_client@state_key)
 
+        encrypted_state_payload <- payload
+        if (identical(oauth_client@state_transport, "reference")) {
+          payload <- state
+        }
+
         # Apply both callback and envelope budgets before persisting the login
         # or sending a PAR/Request Object. The finalizer rechecks freshness.
         if (
@@ -254,7 +259,7 @@ prepare_call_internal <- function(
             context = list(phase = "prepare_call::state_size")
           )
         }
-        state_decrypt_gcm(payload, key = oauth_client@state_key)
+        state_decrypt_gcm(encrypted_state_payload, key = oauth_client@state_key)
 
         # Replacement preflight uses the exact state encoder and both size
         # policies, but creates no pending login and performs no provider work.
@@ -285,6 +290,9 @@ prepare_call_internal <- function(
                     pkce_code_verifier = pkce_code_verifier,
                     nonce = nonce
                   ),
+                  if (identical(oauth_client@state_transport, "reference")) {
+                    list(state_payload = encrypted_state_payload)
+                  },
                   if (!is.null(transaction_context)) {
                     list(
                       transaction_context = transaction_context
@@ -1229,7 +1237,11 @@ otel_callback_parent_hint <- function(oauth_client, encrypted_payload) {
 
   payload <- tryCatch(
     {
-      pld <- state_decrypt_gcm(encrypted_payload, key = oauth_client@state_key)
+      pld <- if (identical(oauth_client@state_transport, "reference")) {
+        state_payload_decrypt_validate(oauth_client, encrypted_payload)
+      } else {
+        state_decrypt_gcm(encrypted_payload, key = oauth_client@state_key)
+      }
       payload_verify_issued_at(oauth_client, pld)
       if (
         !is_valid_string(pld[["client_id"]] %||% NULL) ||
@@ -1641,6 +1653,7 @@ handle_callback_internal <- function(
         )
       }
 
+      state_reference_verify_record(oauth_client, payload, state_store_values)
       state_record_verify_authorization_context(
         state_store_values,
         payload[["transaction_context_digest"]]
@@ -1733,7 +1746,8 @@ handle_callback_internal <- function(
               .transaction_context = .transaction_context,
               .transaction_context_digest = payload[[
                 "transaction_context_digest"
-              ]]
+              ]],
+              .state_payload = payload
             )
           },
           attributes = otel_client_attributes(
@@ -3681,7 +3695,8 @@ finish_prepared_authorization <- function(
       oauth_client,
       prepared[["build_args"]][["payload"]]
     )
-    state_store_get(oauth_client, payload[["state"]])
+    record <- state_store_get(oauth_client, payload[["state"]])
+    state_reference_verify_record(oauth_client, payload, record)
     if (is.list(result) && !is.null(result[["request_object"]])) {
       if (Sys.time() >= result[["expires_at"]]) {
         err_invalid_state("Prepared Request Object expired")

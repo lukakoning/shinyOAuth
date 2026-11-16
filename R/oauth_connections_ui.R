@@ -451,6 +451,7 @@ connection_ordinary_continuation <- function(query, uri, clients) {
         return(FALSE)
       }
       record <- state_store_get(client, validated[["state"]])
+      state_reference_verify_record(client, validated, record)
       state_record_verify_authorization_context(record, NULL)
       TRUE
     },

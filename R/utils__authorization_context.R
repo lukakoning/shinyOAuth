@@ -169,8 +169,10 @@ prepare_authorization <- function(
         client,
         prepared[["build_args"]][["payload"]]
       )
+      record <- state_store_get(client, payload[["state"]])
+      state_reference_verify_record(client, payload, record)
       state_record_verify_authorization_context(
-        state_store_get(client, payload[["state"]]),
+        record,
         payload[["transaction_context_digest"]]
       )
       expires_at <- as.POSIXct(

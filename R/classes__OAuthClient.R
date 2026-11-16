@@ -265,6 +265,11 @@
 #'
 #' @param state_entropy Length in characters of the random state identifier, from
 #'   22 to 128. Default 64.
+#' @param state_transport How pending-login state travels through the provider.
+#'   `"encrypted"` (default) sends the encrypted payload. `"reference"` sends only
+#'   the opaque identifier (22-128 characters) and retains the encrypted payload
+#'   in `state_store`. Both modes enforce the same bindings and single-use
+#'   consumption. Reference mode requires atomic `take()` for shared stores.
 #'
 #' @param state_key Secret used to encrypt and protect pending login details.
 #'   A random key is generated when omitted. This is separate from
@@ -636,6 +641,10 @@ OAuthClient <- S7::new_class(
     ),
     state_payload_max_age = S7::new_property(S7::class_numeric, default = 300),
     state_entropy = S7::new_property(S7::class_numeric, default = 64),
+    state_transport = S7::new_property(
+      S7::class_character,
+      default = "encrypted"
+    ),
     state_key = S7::new_property(
       S7::class_any,
       default = quote(random_urlsafe(n = 128))
@@ -883,7 +892,7 @@ OAuthClient <- api_preserve_constructor(
     authorization_request_nbf_skew = "request_object_nbf_skew",
     introspect_elements = "introspection_checks"
   ),
-  append = c("token_targets", "token_target_default")
+  append = c("token_targets", "token_target_default", "state_transport")
 )
 
 
@@ -982,7 +991,12 @@ oauth_client <- function(
   ...,
   introspect_elements = NULL,
   token_targets = list(),
-  token_target_default = if (length(token_targets) == 1L) names(token_targets) else character()
+  token_target_default = if (length(token_targets) == 1L) {
+    names(token_targets)
+  } else {
+    character()
+  },
+  state_transport = c("encrypted", "reference")
 ) {
   introspect_elements <- resolve_argument_alias(
     introspection_checks,
@@ -1063,6 +1077,7 @@ oauth_client <- function(
   )
 
   authorization_server_mode <- match.arg(authorization_server_mode)
+  state_transport <- match.arg(state_transport)
   response_mode_info <- resolve_auth_response_mode(
     response_mode,
     arg = "response_mode",
@@ -1074,7 +1089,9 @@ oauth_client <- function(
   response_mode <- response_mode_info[["mode"]] %||%
     NA_character_
   response_mode_policy <- resolve_oauth_response_mode(
-    response_mode, provider@extra_auth_params, provider@response_modes_supported
+    response_mode,
+    provider@extra_auth_params,
+    provider@response_modes_supported
   )
   if (!is.null(response_mode_policy[["error"]])) {
     err_config(response_mode_policy[["error"]])
@@ -1299,6 +1316,7 @@ oauth_client <- function(
     state_store = state_store,
     state_payload_max_age = state_payload_max_age,
     state_entropy = state_entropy,
+    state_transport = state_transport,
     state_key = state_key,
     client_assertion_private_key = client_assertion_private_key,
     client_assertion_private_key_kid = client_assertion_private_key_kid %||%
@@ -1644,6 +1662,21 @@ oauth_client_validate <- function(self) {
   }
 
   # State payload freshness window (issued_at)
+  if (
+    !is_valid_string(self@state_transport) ||
+      !self@state_transport %in% c("encrypted", "reference")
+  ) {
+    return("OAuthClient: state_transport must be encrypted or reference")
+  }
+  if (
+    identical(self@state_transport, "reference") &&
+      !inherits(self@state_store, "cache_mem") &&
+      !is.function(self@state_store[["take"]])
+  ) {
+    return(
+      "OAuthClient: reference state transport requires atomic take() for shared stores"
+    )
+  }
   spma <- suppressWarnings(as.numeric(self@state_payload_max_age))
   if (length(spma) != 1L || !is.finite(spma) || spma <= 0) {
     return(

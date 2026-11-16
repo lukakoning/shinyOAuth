@@ -1,7 +1,14 @@
 test_that("plain form_post rejects direct success and error queries but accepts the bridge", {
   local_options(shinyOAuth.skip_browser_token = FALSE)
-  for (kind in c("code", "error")) {
+  for (case in expand.grid(
+    kind = c("code", "error"),
+    state_transport = c("encrypted", "reference"),
+    stringsAsFactors = FALSE
+  ) |>
+    split(seq_len(4L))) {
+    kind <- case[["kind"]]
     client <- make_test_client(response_mode = "form_post")
+    client@state_transport <- case[["state_transport"]]
     browser <- valid_browser_token()
     state <- parse_query_param(
       prepare_call(client, browser),
@@ -54,7 +61,11 @@ test_that("plain form_post rejects direct success and error queries but accepts 
           "rook.input" = list(read = function(n) charToRaw(body))
         )
         response <- oauth_form_post_handle_request(req, "auth", client)
-        expect_identical(response[["status"]], 303L)
+        expect_identical(
+          response[["status"]],
+          303L,
+          info = response[["content"]]
+        )
         values[[".process_query"]](
           response[["headers"]][["Location"]],
           current_uri = client@redirect_uri

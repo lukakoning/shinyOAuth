@@ -3532,7 +3532,8 @@ oauth_module_server_impl <- function(
               strict = TRUE,
               decrypted_payload = consumed_state[["payload"]],
               consume = TRUE,
-              managed_context = managed_context
+              managed_context = managed_context,
+              expected_record = consumed_state[["state_store_values"]]
             )
           }
           if (!is.null(.managed)) {
@@ -3589,7 +3590,8 @@ oauth_module_server_impl <- function(
       strict = FALSE,
       decrypted_payload = NULL,
       consume = TRUE,
-      managed_context = NULL
+      managed_context = NULL,
+      expected_record = NULL
     ) {
       payload <- NULL
       state_store_values <- NULL
@@ -3614,20 +3616,25 @@ oauth_module_server_impl <- function(
             {
               if (isTRUE(consume)) {
                 # Consume the state store entry (single-use enforcement)
-                state_store_values <- if (is.null(.managed)) {
+                state_store_values <- if (
+                  is.null(.managed) &&
+                    !identical(client@state_transport, "reference")
+                ) {
                   state_store_get_remove(client, payload[["state"]])
                 } else {
                   state_store_consume_checked(
                     client,
                     payload[["state"]],
-                    expected_record = state_store_get(
-                      client,
-                      payload[["state"]]
-                    ),
+                    expected_record = expected_record %||%
+                      state_store_get(
+                        client,
+                        payload[["state"]]
+                      ),
                     .transaction_context = managed_context[["json"]],
                     .transaction_context_digest = payload[[
                       "transaction_context_digest"
-                    ]]
+                    ]],
+                    .state_payload = payload
                   )
                 }
 
@@ -3651,6 +3658,11 @@ oauth_module_server_impl <- function(
                 state_store_values <- state_store_get(
                   client,
                   payload[["state"]]
+                )
+                state_reference_verify_record(
+                  client,
+                  payload,
+                  state_store_values
                 )
               }
             }
@@ -3719,6 +3731,7 @@ oauth_module_server_impl <- function(
     .validate_error_response_browser_token <- function(consumed_state) {
       payload <- consumed_state[["payload"]]
       state_store_values <- consumed_state[["state_store_values"]]
+      state_reference_verify_record(client, payload, state_store_values)
 
       validated <- tryCatch(
         {
@@ -4158,7 +4171,8 @@ oauth_module_server_impl <- function(
                                   ]],
                                   .transaction_context_digest = pre_payload[[
                                     "transaction_context_digest"
-                                  ]]
+                                  ]],
+                                  .state_payload = pre_payload
                                 )
                               },
                               attributes = otel_client_attributes(

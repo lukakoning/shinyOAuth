@@ -41,6 +41,16 @@ make_shared_atomic_store <- function(dir) {
     },
     take = function(key, missing = NULL) {
       f <- key_path(key)
+      if (file.exists(file.path(dir, "barrier"))) {
+        file.create(file.path(dir, paste0("taking.", Sys.getpid())))
+        deadline <- Sys.time() + 15
+        while (length(list.files(dir, pattern = "^taking\\.")) < 2L) {
+          if (Sys.time() > deadline) {
+            stop("Atomic take race barrier timed out")
+          }
+          Sys.sleep(0.01)
+        }
+      }
       if (dir.create(paste0(f, ".claimed"), showWarnings = FALSE)) {
         on.exit(unlink(f), add = TRUE)
         if (file.exists(f)) readRDS(f) else missing
@@ -55,110 +65,147 @@ make_shared_atomic_store <- function(dir) {
 
 # -- Test: real concurrent callbacks across parallel workers --------------------
 
-test_that("concurrent callbacks consume shared state and exchange the code once", {
-  skip_on_cran()
-  app <- webfakes::new_app()
-  app[["locals"]][["exchanges"]] <- 0L
-  app[["post"]]("/token", function(req, res) {
-    app[["locals"]][["exchanges"]] <- app[["locals"]][["exchanges"]] + 1L
-    res[["send_json"]](
-      list(
-        access_token = "access",
-        token_type = "Bearer",
-        expires_in = 300
-      ),
-      auto_unbox = TRUE
-    )
-  })
-  app[["get"]]("/count", function(req, res) {
-    res[["send_json"]](app[["locals"]][["exchanges"]], auto_unbox = TRUE)
-  })
-  server <- webfakes::new_app_process(app)
-  on.exit(server[["stop"]](), add = TRUE)
-  tmp <- withr::local_tempdir()
-  store <- make_shared_atomic_store(tmp)
-  make_client <- function(store, url) {
-    shinyOAuth::oauth_client(
-      shinyOAuth::oauth_provider(
-        name = "callback-race",
-        auth_url = paste0(url, "/auth"),
-        token_url = paste0(url, "/token")
-      ),
-      client_id = "client",
-      client_secret = "secret",
-      redirect_uri = "http://localhost:8100",
-      state_store = store,
-      state_key = paste(rep("test-state-key", 5), collapse = "")
-    )
-  }
-  url <- sub("/$", "", server[["url"]]())
-  client <- make_client(store, url)
-  browser_token <- paste(rep("ab", 64), collapse = "")
-  auth_url <- shinyOAuth:::prepare_call(client, browser_token = browser_token)
-  payload <- shiny::parseQueryString(sub("^[^?]*\\?", "", auth_url))[["state"]]
-  state <- shinyOAuth:::state_decrypt_gcm(payload, key = client@state_key)[[
-    "state"
-  ]]
-  key <- shinyOAuth:::state_cache_key(state)
-  expect_type(store[["get"]](key), "list")
-  cl <- parallel::makePSOCKcluster(2)
-  on.exit(parallel::stopCluster(cl), add = TRUE)
-  parallel::clusterCall(cl, function(lib) .libPaths(lib), .libPaths())
-  file.create(file.path(tmp, "barrier"))
-  results <- parallel::parLapply(
-    cl,
-    seq_len(2),
-    function(i, dir, url, make_store, make_client, payload, browser_token) {
-      options(
-        shinyOAuth.skip_browser_token = FALSE,
-        shinyOAuth.allow_non_atomic_state_store = FALSE
+for (state_transport in c("encrypted", "reference")) {
+  test_that(
+    paste(
+      "concurrent callbacks consume shared state and exchange the code once with",
+      state_transport
+    ),
+    {
+      skip_on_cran()
+      app <- webfakes::new_app()
+      app[["locals"]][["exchanges"]] <- 0L
+      app[["post"]]("/token", function(req, res) {
+        app[["locals"]][["exchanges"]] <- app[["locals"]][["exchanges"]] + 1L
+        res[["send_json"]](
+          list(
+            access_token = "access",
+            token_type = "Bearer",
+            expires_in = 300
+          ),
+          auto_unbox = TRUE
+        )
+      })
+      app[["get"]]("/count", function(req, res) {
+        res[["send_json"]](app[["locals"]][["exchanges"]], auto_unbox = TRUE)
+      })
+      server <- webfakes::new_app_process(app)
+      on.exit(server[["stop"]](), add = TRUE)
+      tmp <- withr::local_tempdir()
+      store <- make_shared_atomic_store(tmp)
+      make_client <- function(store, url, state_transport) {
+        shinyOAuth::oauth_client(
+          shinyOAuth::oauth_provider(
+            name = "callback-race",
+            auth_url = paste0(url, "/auth"),
+            token_url = paste0(url, "/token")
+          ),
+          client_id = "client",
+          client_secret = "secret",
+          redirect_uri = "http://localhost:8100",
+          state_store = store,
+          state_transport = state_transport,
+          state_key = paste(rep("test-state-key", 5), collapse = "")
+        )
+      }
+      url <- sub("/$", "", server[["url"]]())
+      client <- make_client(store, url, state_transport)
+      browser_token <- paste(rep("ab", 64), collapse = "")
+      auth_url <- shinyOAuth:::prepare_call(
+        client,
+        browser_token = browser_token
       )
-      tryCatch(
-        {
-          token <- shinyOAuth::handle_callback(
-            make_client(make_store(dir), url),
-            code = "authorization-code",
-            state = payload,
-            browser_token = browser_token
+      payload <- shiny::parseQueryString(sub("^[^?]*\\?", "", auth_url))[[
+        "state"
+      ]]
+      state <- shinyOAuth:::state_payload_decrypt_validate(client, payload)[[
+        "state"
+      ]]
+      key <- shinyOAuth:::state_cache_key(state)
+      expect_type(store[["get"]](key), "list")
+      cl <- parallel::makePSOCKcluster(2)
+      on.exit(parallel::stopCluster(cl), add = TRUE)
+      set_library <- function(lib) .libPaths(lib)
+      environment(set_library) <- baseenv()
+      parallel::clusterCall(cl, set_library, .libPaths())
+      file.create(file.path(tmp, "barrier"))
+      results <- parallel::parLapply(
+        cl,
+        seq_len(2),
+        function(
+          i,
+          dir,
+          url,
+          make_store,
+          make_client,
+          payload,
+          browser_token,
+          state_transport
+        ) {
+          options(
+            shinyOAuth.skip_browser_token = FALSE,
+            shinyOAuth.allow_non_atomic_state_store = FALSE
           )
-          list(success = TRUE, access_token = token@access_token)
+          tryCatch(
+            {
+              token <- shinyOAuth::handle_callback(
+                make_client(make_store(dir), url, state_transport),
+                code = "authorization-code",
+                state = payload,
+                browser_token = browser_token
+              )
+              list(success = TRUE, access_token = token@access_token)
+            },
+            error = function(e) {
+              list(
+                success = FALSE,
+                class = class(e),
+                message = conditionMessage(e)
+              )
+            }
+          )
         },
-        error = function(e) {
-          list(success = FALSE, class = class(e), message = conditionMessage(e))
-        }
+        dir = tmp,
+        url = url,
+        make_store = make_shared_atomic_store,
+        make_client = make_client,
+        payload = payload,
+        browser_token = browser_token,
+        state_transport = state_transport
       )
-    },
-    dir = tmp,
-    url = url,
-    make_store = make_shared_atomic_store,
-    make_client = make_client,
-    payload = payload,
-    browser_token = browser_token
+      successes <- vapply(
+        results,
+        function(r) isTRUE(r[["success"]]),
+        logical(1)
+      )
+      expect_equal(
+        sum(successes),
+        1L,
+        info = paste(capture.output(str(results)), collapse = "\n")
+      )
+      expect_length(list.files(tmp, pattern = "^ready\\."), 2L)
+      if (sum(successes) == 1L) {
+        expect_identical(
+          results[[which(successes)]][["access_token"]],
+          "access"
+        )
+        expect_contains(
+          results[[which(!successes)]][["class"]],
+          "shinyOAuth_state_error"
+        )
+      }
+      expect_equal(
+        httr2::resp_body_json(httr2::req_perform(httr2::request(paste0(
+          url,
+          "/count"
+        )))),
+        1L
+      )
+      unlink(file.path(tmp, "barrier"))
+      expect_null(store[["get"]](key))
+    }
   )
-  successes <- vapply(results, function(r) isTRUE(r[["success"]]), logical(1))
-  expect_equal(
-    sum(successes),
-    1L,
-    info = paste(capture.output(str(results)), collapse = "\n")
-  )
-  expect_length(list.files(tmp, pattern = "^ready\\."), 2L)
-  if (sum(successes) == 1L) {
-    expect_identical(results[[which(successes)]][["access_token"]], "access")
-    expect_contains(
-      results[[which(!successes)]][["class"]],
-      "shinyOAuth_state_error"
-    )
-  }
-  expect_equal(
-    httr2::resp_body_json(httr2::req_perform(httr2::request(paste0(
-      url,
-      "/count"
-    )))),
-    1L
-  )
-  unlink(file.path(tmp, "barrier"))
-  expect_null(store[["get"]](key))
-})
+}
 
 
 # -- Test: non-atomic shared store errors (fail closed) ---------------------

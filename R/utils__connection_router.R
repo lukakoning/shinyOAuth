@@ -57,6 +57,7 @@ connection_router_register <- function(
     audit_success = FALSE
   )
   record <- state_store_get(client, payload[["state"]])
+  state_reference_verify_record(client, payload, record)
   state_record_verify_authorization_context(
     record,
     payload[["transaction_context_digest"]]

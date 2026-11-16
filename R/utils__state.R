@@ -46,12 +46,17 @@ state_payload_decrypt_validate <- function(
       if (!is_valid_string(encrypted_payload)) {
         err_invalid_state("Invalid or missing state payload")
       }
-      pld <- state_decrypt_gcm(encrypted_payload, key = client@state_key)
+      pld <- if (identical(client@state_transport, "reference")) {
+        state_reference_resolve(client, encrypted_payload, shiny_session)
+      } else {
+        state_decrypt_gcm(encrypted_payload, key = client@state_key)
+      }
       # Verify freshness and client/provider binding
       payload_verify_issued_at(client, pld)
       payload_verify_client_binding(client, pld)
       payload_verify_authorization_context(client, pld)
       payload_requested_max_age(pld)
+      state_reference_validate_payload(client, pld)
 
       if (isTRUE(audit_success)) {
         audit_callback_validation_success(client, pld, shiny_session)
@@ -122,6 +127,7 @@ state_payload_revalidate <- function(
       payload_verify_client_binding(client, payload)
       payload_verify_authorization_context(client, payload)
       payload_requested_max_age(payload)
+      state_reference_validate_payload(client, payload)
 
       if (isTRUE(audit_success)) {
         audit_callback_validation_success(client, payload, shiny_session)
@@ -233,7 +239,10 @@ state_policy_digest <- function(components) {
   paste0(
     "sha256:v2:",
     string_digest(
-      enc2utf8(paste0("shinyOAuth/state-policy/v2\n", paste(canonical, collapse = "\n"))),
+      enc2utf8(paste0(
+        "shinyOAuth/state-policy/v2\n",
+        paste(canonical, collapse = "\n")
+      )),
       key = NULL
     )
   )
@@ -275,7 +284,10 @@ state_policy_normalize_value <- function(value) {
   if (is.function(value)) {
     # Closure environments can contain secrets and process-local mutable state.
     # Captured configuration is bound by the provider's explicit selector ID.
-    return(list(type = "function", source = paste(deparse(value), collapse = "\n")))
+    return(list(
+      type = "function",
+      source = paste(deparse(value), collapse = "\n")
+    ))
   }
 
   if (!is.list(value) && !is.atomic(value)) {
@@ -289,8 +301,10 @@ state_policy_normalize_value <- function(value) {
   # Named objects are order-independent only when their names are unique and
   # complete. Preserve duplicate/empty names and array dimensions explicitly.
   if (
-    !is.null(value_names) && is.null(attrs[["dim"]]) &&
-      !anyNA(value_names) && all(nzchar(value_names)) &&
+    !is.null(value_names) &&
+      is.null(attrs[["dim"]]) &&
+      !anyNA(value_names) &&
+      all(nzchar(value_names)) &&
       !anyDuplicated(value_names)
   ) {
     ord <- order(enc2utf8(value_names), method = "radix")
@@ -306,13 +320,21 @@ state_policy_normalize_value <- function(value) {
     # Exact, fixed-endian IEEE/integer bytes avoid display precision, decimal
     # locale and JSON rounding. Type tags distinguish logicals, integers, raw
     # bytes and doubles; NA, NaN and literal strings remain distinct.
-    bytes <- if (is.raw(value)) value else writeBin(value, raw(), endian = "big")
+    bytes <- if (is.raw(value)) {
+      value
+    } else {
+      writeBin(value, raw(), endian = "big")
+    }
     paste0(sprintf("%02x", as.integer(bytes)), collapse = "")
   }
   list(
     type = typeof(value),
     names = if (is.null(value_names)) NULL else enc2utf8(value_names),
-    attributes = if (length(attrs)) state_policy_normalize_value(attrs) else NULL,
+    attributes = if (length(attrs)) {
+      state_policy_normalize_value(attrs)
+    } else {
+      NULL
+    },
     value = data
   )
 }
@@ -363,7 +385,8 @@ state_policy_client_assertion_key_thumbprint <- function(client) {
     arg_name = "client_assertion_private_key"
   )
   compute_jwk_thumbprint(private_key_public_jwk(
-    key, arg_name = "client_assertion_private_key"
+    key,
+    arg_name = "client_assertion_private_key"
   ))
 }
 
@@ -617,6 +640,16 @@ state_client_policy_fingerprint <- function(client) {
   )
 
   # Preserve the fingerprint of existing GET transactions.
+  if (identical(client@state_transport, "reference")) {
+    components[["state_transport"]] <- "reference"
+    components[["state_reference_key"]] <- paste(
+      openssl::sha256(
+        charToRaw("shinyOAuth:state-reference-key:v1"),
+        key = normalize_key32(client@state_key)
+      ),
+      collapse = ""
+    )
+  }
   if (!identical(client@authorization_method, "GET")) {
     components[["authorization_method"]] <- client@authorization_method
   }
@@ -1054,6 +1087,11 @@ state_store_get_remove <- function(client, state, shiny_session = NULL) {
     # acceptable when the deployment has sticky sessions or other external
     # safeguards.
     if (!inherits(store, "cache_mem")) {
+      if (identical(client@state_transport, "reference")) {
+        err_config(
+          "Reference state transport requires atomic take() for shared stores"
+        )
+      }
       if (isTRUE(getOption("shinyOAuth.allow_non_atomic_state_store"))) {
         warn_pkg(
           "Using non-atomic get()+remove() state store fallback",
@@ -1436,6 +1474,14 @@ state_store_unseal <- function(record, client, state) {
   # The context JSON is itself a string in the encrypted JSON record, so allow
   # its escaping plus browser/PKCE/nonce fields, then both base64 envelopes.
   max_ct <- 2L * authorization_context_max_bytes + 8192L
+  if (identical(client@state_transport, "reference")) {
+    max_ct <- max_ct +
+      get_option_env_positive_number(
+        "shinyOAuth.state_max_token_chars",
+        "shinyOAuth_STATE_MAX_TOKEN_CHARS",
+        8192
+      )
+  }
   max_ct_b64 <- 4L * ceiling(max_ct / 3L)
   max_wrapper <- max_ct_b64 + 256L
   state_decrypt_gcm(
@@ -1454,6 +1500,9 @@ state_store_unseal <- function(record, client, state) {
 # harmless backend field reordering or omission of unused NULLs is tolerated.
 state_store_record_digest <- function(record, client) {
   fields <- c("browser_token", "pkce_code_verifier", "nonce")
+  if (!is.null(record[["state_payload"]])) {
+    fields <- c(fields, "state_payload")
+  }
   if (!is.null(record[["transaction_context"]])) {
     fields <- c(fields, "transaction_context")
   }
@@ -1478,8 +1527,12 @@ state_store_consume_checked <- function(
   expected_record,
   shiny_session = NULL,
   .transaction_context = NULL,
-  .transaction_context_digest = NULL
+  .transaction_context_digest = NULL,
+  .state_payload = NULL
 ) {
+  if (!is.null(.state_payload)) {
+    state_reference_verify_record(client, .state_payload, expected_record)
+  }
   state_record_verify_authorization_context(
     expected_record,
     .transaction_context_digest
@@ -1508,6 +1561,95 @@ state_store_consume_checked <- function(
     err_invalid_state("State store record changed during consumption")
   }
   consumed
+}
+
+state_reference_digest <- function(client, encrypted) {
+  paste(
+    openssl::sha256(
+      charToRaw(encrypted),
+      key = openssl::sha256(
+        charToRaw("shinyOAuth:state-reference-payload:v1"),
+        key = normalize_key32(client@state_key)
+      )
+    ),
+    collapse = ""
+  )
+}
+
+state_reference_resolve <- function(client, reference, shiny_session = NULL) {
+  tryCatch(
+    {
+      validate_state(reference)
+      record <- state_store_get(client, reference, shiny_session)
+      encrypted <- record[["state_payload"]]
+      if (!is_valid_string(encrypted)) {
+        err_invalid_state("State reference has no encrypted payload")
+      }
+      payload <- state_decrypt_gcm(encrypted, client@state_key)
+      if (
+        !identical(payload[["state"]], reference) ||
+          !is.null(payload[["reference_payload_digest"]])
+      ) {
+        err_invalid_state(
+          "State reference does not match its encrypted payload"
+        )
+      }
+      payload[["reference_payload_digest"]] <- state_reference_digest(
+        client,
+        encrypted
+      )
+      payload
+    },
+    error = function(error) {
+      try(
+        audit_event(
+          "state_parse_failure",
+          context = list(
+            reason = "state_reference_rejected",
+            state_digest = string_digest(reference),
+            error_class = class(error)[[1L]]
+          ),
+          shiny_session = shiny_session
+        ),
+        silent = TRUE
+      )
+      rethrow_with_context(
+        error,
+        class = c("shinyOAuth_state_error", "shinyOAuth_error")
+      )
+    }
+  )
+}
+
+state_reference_validate_payload <- function(client, payload) {
+  if (identical(client@state_transport, "reference")) {
+    validate_state(payload[["state"]])
+    digest <- payload[["reference_payload_digest"]]
+    if (!is_valid_string(digest) || !grepl("^[a-f0-9]{64}$", digest)) {
+      err_invalid_state("Cached state reference has no payload binding")
+    }
+  }
+  invisible(NULL)
+}
+
+state_reference_verify_record <- function(client, payload, record) {
+  if (!identical(client@state_transport, "reference")) {
+    return(invisible(NULL))
+  }
+  state_reference_validate_payload(client, payload)
+  encrypted <- record[["state_payload"]]
+  if (
+    !is_valid_string(encrypted) ||
+      !constant_time_compare(
+        payload[["reference_payload_digest"]],
+        state_reference_digest(client, encrypted)
+      )
+  ) {
+    err_invalid_state(
+      "State reference payload changed during callback processing"
+    )
+  }
+  invisible(NULL)
 }
 
 # Backend exceptions can contain credentials or stored records. Never attach

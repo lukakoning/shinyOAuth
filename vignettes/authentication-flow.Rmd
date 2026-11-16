@@ -65,6 +65,14 @@ transaction context needed for the return. The encrypted state and stored
 context also record the client/provider policy used to start login. A callback
 cannot continue under a changed validation policy.
 
+The default `state_transport = "encrypted"` sends the encrypted payload as
+the protocol's `state` value. Set `state_transport = "reference"` in
+`oauth_client()` when a provider requires shorter values. This sends only a
+random opaque identifier (64 characters by default, controlled by
+`state_entropy`) and keeps the encrypted payload in the pending record. Both
+modes retain the same browser, policy, freshness and single-use checks.
+Reference mode requires an atomic `take()` operation for shared stores.
+
 `state_payload_max_age` limits the encrypted state's age, while the store's
 retention determines how long the pending record remains available. Both
 default to five minutes. State consumption is single-use, so replaying a

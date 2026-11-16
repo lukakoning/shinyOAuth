@@ -704,6 +704,19 @@ and message signing. The C09 public-client and C06 warm-cache gaps remain open.
 Fresh hosted CI still needs an available verified copy of the locked server
 image, and C15 retains callback error-page query cleanup.
 
+The compact-state product slice is implemented as the opt-in
+`oauth_client(state_transport = "reference")`; encrypted wire state remains the
+default. The opaque logical state resolves the existing pending record's
+encrypted payload, with exact ciphertext binding across cached callbacks and
+atomic consumption. Shared stores require `take()` even under the legacy
+non-atomic opt-in. Tests cover malformed, missing, expired, swapped and replayed
+references, policy/key changes, JSON-cached callbacks, browser-bound POST
+success/errors in both store types, and real simultaneous callbacks in two R
+processes. The worker test sets its private library before deserializing package
+closures so it exercises this checkout. The next harness slice adds
+`fapi-oauth-dpop-reference` and requires all eleven modules to finish `PASSED`,
+with independently measured compact PAR state and the actual client mode.
+
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second
 full provider. Add another mock server only when a remaining test case justifies

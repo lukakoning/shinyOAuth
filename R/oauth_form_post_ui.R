@@ -1213,7 +1213,8 @@ oauth_form_post_store_set <- function(client, id, payload) {
   if (!is.null(logical_state)) {
     # Decryption alone proves authenticity, not that the transaction is live.
     # Reading preserves the rightful browser's state until browser binding.
-    state_store_get(client, logical_state)
+    record <- state_store_get(client, logical_state)
+    state_reference_verify_record(client, payload[["state_payload"]], record)
   }
   storage_state <- logical_state %||% payload[["state"]] %||% random_urlsafe(32)
   store <- client@state_store

@@ -66,8 +66,13 @@ oauth_client(
   ...,
   introspect_elements = NULL,
   token_targets = list(),
-  token_target_default = if (length(token_targets) == 1L) names(token_targets) else
-    character()
+  token_target_default = if (length(token_targets) == 1L) {
+     names(token_targets)
+ }
+    else {
+     character()
+ },
+  state_transport = c("encrypted", "reference")
 )
 }
 \arguments{
@@ -586,6 +591,12 @@ for examples, provider-specific permission rules and declaration limits.}
 \item{token_target_default}{Name of the API to use when a connection method
 omits \code{target}. Required with several targets; the sole target is selected
 automatically.}
+
+\item{state_transport}{How pending-login state travels through the provider.
+\code{"encrypted"} (default) sends the encrypted payload. \code{"reference"} sends only
+the opaque identifier (22-128 characters) and retains the encrypted payload
+in \code{state_store}. Both modes enforce the same bindings and single-use
+consumption. Reference mode requires atomic \code{take()} for shared stores.}
 }
 \value{
 \link{OAuthClient} object
