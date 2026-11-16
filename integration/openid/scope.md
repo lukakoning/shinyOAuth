@@ -347,6 +347,16 @@ Metadata is unsigned JSON fetched over verified TLS, with the RFC 8414 URL
 layout and exact issuer check. This adds no signed-metadata, refresh, mTLS or
 certification claim. Callback error-page query retention remains visible.
 
+The `fapi-oauth-dpop-reference` selection runs the same eleven modules with
+`oauth_client(state_transport = "reference")`. All eleven must finish `PASSED`.
+Each non-discovery result must report the real client's reference transport
+and independent PAR evidence: a 22-128-character opaque URL-safe state value,
+unchanged across retries. Only the length and validity result enter the
+sanitized report. Missing proof, an encrypted client, oversized state, warning
+or skipped result fails the gate. Complete coverage for this selection means
+this pinned OAuth/private-key-JWT/DPoP variant using reference state. The
+original encrypted-state selection keeps its warning policy and coverage limit.
+
 Baseline references: [OIDC Core](https://openid.net/specs/openid-connect-core-1_0.html),
 [Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html),
 [RFC 6749](https://www.rfc-editor.org/rfc/rfc6749.html),

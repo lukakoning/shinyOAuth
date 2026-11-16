@@ -171,6 +171,7 @@ openid_run_case <- function(
     "form_post"
   )
   config <- list(
+    state_transport = plan[["state_transport"]],
     issuer = module[["issuer"]],
     client_id = plan[["registration"]][["client_id"]],
     client_secret = plan[["credentials"]][["client_secret"]],

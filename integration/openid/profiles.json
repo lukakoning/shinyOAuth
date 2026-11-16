@@ -308,6 +308,26 @@
     }
   },
   "profiles": {
+    "fapi-oauth-dpop-reference": {
+      "plan": "fapi-oauth-dpop",
+      "state_transport": "reference",
+      "complete_profile": true,
+      "all_modules_required": true,
+      "coverage_limitations": ["fapi_oauth_private_key_jwt_dpop_only", "unsigned_authorization_server_metadata_only", "resource_request_in_main_process", "http_callback_rejection_retains_query"],
+      "modules": [
+        {"module": "fapi2-security-profile-final-client-test-happy-path", "outcome": "authorized", "resource_api": "connection"},
+        {"module": "fapi2-security-profile-final-client-test-discovery-issuer-mismatch", "action": "discovery", "outcome": "discovery_rejected"},
+        {"module": "fapi2-security-profile-final-client-test-invalid-authorization-response-iss", "outcome": "callback_rejected", "error_code": "http_callback_rejected", "callback_label": "issuer_mismatch", "state_present": true, "issuer_present": true},
+        {"module": "fapi2-security-profile-final-client-test-remove-authorization-response-iss", "outcome": "callback_rejected", "error_code": "http_callback_rejected", "callback_label": "issuer_missing", "state_present": true, "issuer_present": false},
+        {"module": "fapi2-security-profile-final-client-test-ensure-authorization-response-with-invalid-state-fails", "outcome": "callback_rejected", "error_code": "http_callback_rejected", "callback_label": "state_parse_failure", "state_present": true, "issuer_present": true},
+        {"module": "fapi2-security-profile-final-client-test-ensure-authorization-response-with-invalid-missing-state-fails", "outcome": "callback_rejected", "error_code": "http_callback_rejected", "callback_label": "callback_shape_rejected", "state_present": false, "issuer_present": true},
+        {"module": "fapi2-security-profile-final-client-test-token-endpoint-response-without-expires_in", "outcome": "authorized", "resource_api": "connection"},
+        {"module": "fapi2-security-profile-final-client-test-token-type-case-insensitivity", "outcome": "authorized", "resource_api": "connection"},
+        {"module": "fapi2-security-profile-final-client-test-rs-dpop-auth-scheme-case-insensitivity", "outcome": "authorized", "resource_api": "connection"},
+        {"module": "fapi2-security-profile-final-client-test-happy-path-no-dpop-nonce", "outcome": "authorized", "resource_api": "connection"},
+        {"module": "fapi2-security-profile-final-client-test-happy-path-no-mtls-endpoint-aliases", "outcome": "authorized", "resource_api": "connection"}
+      ]
+    },
     "fapi-oauth-dpop": {
       "plan": "fapi-oauth-dpop",
       "complete_profile": false,

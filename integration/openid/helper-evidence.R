@@ -766,6 +766,19 @@ openid_check_report <- function(report, context, manifest) {
           stop("Module did not finish with the expected suite verdict")
         }
         discovery <- identical(expectation[["action"]], "discovery")
+        if (
+          identical(profile[["state_transport"]], "reference") && !discovery
+        ) {
+          proof <- result[["fapi"]]
+          if (
+            !identical(result[["app"]][["state_transport"]], "reference") ||
+              !isTRUE(proof[["state_reference_valid"]]) ||
+              !openid_count(proof[["state_characters"]], 22L) ||
+              proof[["state_characters"]] > 128L
+          ) {
+            stop("Missing actual compact state-reference evidence")
+          }
+        }
         refreshing <- identical(expectation[["action"]], "refresh")
         if (
           !identical(

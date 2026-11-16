@@ -20,6 +20,7 @@ on:
           - fapi-dpop
           - fapi-dpop-full
           - fapi-oauth-dpop
+          - fapi-oauth-dpop-reference
       transport:
         description: Transport (shared-pool requires mirai; future supports smoke and refresh)
         type: choice

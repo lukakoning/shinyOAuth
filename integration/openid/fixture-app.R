@@ -158,6 +158,11 @@ openid_fixture_app <- function(config) {
         run_id = config[["run_id"]],
         transport = observed[["transport"]],
         ready = !is.null(provider),
+        state_transport = if (is.null(provider)) {
+          NULL
+        } else {
+          client@state_transport
+        },
         oauth_only_configured = !is.null(provider) &&
           !provider@infer_oidc_from_issuer &&
           !provider@use_nonce &&
@@ -286,6 +291,11 @@ openid_fixture_app <- function(config) {
       config[["scopes"]]
     },
     response_mode = config[["response_mode"]],
+    state_transport = if (is.null(config[["state_transport"]])) {
+      "encrypted"
+    } else {
+      config[["state_transport"]]
+    },
     state_key = openssl::rand_bytes(32)
   )
   if (isTRUE(config[["preload_jwks"]])) {

@@ -1,7 +1,15 @@
 fapi_full_fixture <- function(backend = "sync", profile = "fapi-dpop-full") {
   f <- evidence_fixture(profile)
   expected <- f[["manifest"]][["profiles"]][[profile]][["modules"]]
-  oauth_only <- identical(profile, "fapi-oauth-dpop")
+  oauth_only <- identical(
+    openid_plan_spec(f[["manifest"]], profile)[["plan_variant"]][[
+      "fapi_client_type"
+    ]],
+    "plain_oauth"
+  )
+  state_transport <- f[["manifest"]][["profiles"]][[profile]][[
+    "state_transport"
+  ]]
   for (i in seq_along(expected)) {
     e <- expected[[i]]
     row <- f[["report"]][["results"]][[i]]
@@ -10,6 +18,7 @@ fapi_full_fixture <- function(backend = "sync", profile = "fapi-dpop-full") {
     }
     app <- row[["app"]]
     app[["oauth_only_configured"]] <- oauth_only
+    app[["state_transport"]] <- state_transport
     if (identical(e[["action"]], "discovery")) {
       row[["action"]] <- "discovery"
       row[["no_callback"]] <- TRUE
@@ -72,6 +81,7 @@ fapi_full_fixture <- function(backend = "sync", profile = "fapi-dpop-full") {
       e,
       oauth_only = oauth_only
     )
+    logs[["plan"]][["state_transport"]] <- state_transport
     row[["fapi"]] <- openid_fapi_evidence(
       logs[["logs"]],
       logs[["module"]],

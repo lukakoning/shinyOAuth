@@ -379,7 +379,27 @@ measured state length above 128, and no other warning, failure or review event.
 Every other module must finish `PASSED`. This records the completed exchanges
 while keeping `coverage_complete = false`, including if the manifest's complete
 flag is changed. The original encrypted state and its binding checks remain
-in use. A compact state reference needs separate implementation and validation.
+in use. Reference mode has a separate selection below.
+
+Run the same eleven OAuth modules with compact state references:
+
+```sh
+Rscript integration/openid/run-tests.R --profile fapi-oauth-dpop-reference --transport sync
+Rscript integration/openid/run-tests.R --profile fapi-oauth-dpop-reference --transport mirai
+```
+
+This fixture selects the public `oauth_client(state_transport = "reference")`
+option. The default encrypted transport remains available in the original
+profile. The reference profile requires every module to finish `PASSED`;
+warnings receive no credit. For each flow reaching PAR, the gate checks the
+actual client property and independently measures every PAR state value:
+22-128 URL-safe characters, identical across retries. Reports retain only the
+length and validity result. The encrypted payload stays in the pending record,
+with browser, client/provider/policy, freshness and atomic single-use checks.
+
+`coverage_complete = true` here refers to all eleven modules in this pinned
+OAuth/private-key-JWT/DPoP variant with reference state. The encrypted-state
+profile retains its warnings and incomplete coverage status.
 
 The helper reads unsigned JSON metadata over verified TLS. Signed metadata,
 refresh, other sender constraints and certification remain separate. Resource
@@ -390,7 +410,7 @@ The [workflow](../../.github/workflows/openid-conformance.yml) runs preflight,
 API checks and smoke on pull requests affecting the package or this harness.
 Manual dispatch offers `smoke`, `basic`, `config`, `form-post`, `refresh`,
 `auth-post`, `auth-secret-jwt`, `auth-private-jwt`, `shared-pool`, `fapi-dpop`,
-`fapi-dpop-full` and `fapi-oauth-dpop`;
+`fapi-dpop-full`, `fapi-oauth-dpop` and `fapi-oauth-dpop-reference`;
 larger selections remain manual while GitHub runner timings are unmeasured.
 Manual transport choices are `sync`, `mirai` and the limited `future` parity
 selection. `shared-pool` requires mirai. Pull requests keep synchronous smoke.

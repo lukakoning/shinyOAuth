@@ -66,6 +66,32 @@ openid_fapi_checks <- function(positive, nonce = TRUE) {
   )
 }
 
+openid_fapi_reference_evidence <- function(logs, module) {
+  par <- Filter(
+    function(event) {
+      identical(event[["http"]], "incoming") &&
+        identical(
+          event[["incoming_path"]],
+          paste0(
+            sub("^https://[^/]+", "", module[["issuer"]]),
+            "par"
+          )
+        )
+    },
+    logs
+  )
+  states <- lapply(par, function(event) {
+    event[["incoming_body_form_params"]][["state"]]
+  })
+  state <- if (length(states)) states[[1L]] else NULL
+  list(
+    state_characters = if (openid_string(state)) nchar(state) else 0L,
+    state_reference_valid = openid_string(state) &&
+      grepl("^[A-Za-z0-9_-]{22,128}$", state) &&
+      all(vapply(states, identical, logical(1), state))
+  )
+}
+
 openid_fapi_evidence <- function(logs, module, plan, expectation) {
   if (
     !length(logs) ||
@@ -80,7 +106,14 @@ openid_fapi_evidence <- function(logs, module, plan, expectation) {
   if (
     expectation[["outcome"]] %in% c("discovery_rejected", "callback_rejected")
   ) {
-    return(openid_fapi_pre_token_evidence(logs, module, plan, expectation))
+    proof <- openid_fapi_pre_token_evidence(logs, module, plan, expectation)
+    if (
+      identical(plan[["state_transport"]], "reference") &&
+        !identical(expectation[["outcome"]], "discovery_rejected")
+    ) {
+      proof <- c(proof, openid_fapi_reference_evidence(logs, module))
+    }
+    return(proof)
   }
   requests <- function(endpoint) {
     Filter(
@@ -344,6 +377,9 @@ openid_fapi_evidence <- function(logs, module, plan, expectation) {
         openid_string(state) &&
         all(vapply(states, identical, logical(1), state))
     }
+  }
+  if (identical(plan[["state_transport"]], "reference")) {
+    proof <- c(proof, openid_fapi_reference_evidence(logs, module))
   }
   proof
 }

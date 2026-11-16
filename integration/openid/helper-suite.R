@@ -176,6 +176,7 @@ openid_suite_plan <- function(
     registration = registration,
     credentials = credentials,
     alias = config[["alias"]],
+    state_transport = manifest[["profiles"]][[profile]][["state_transport"]],
     spec = spec
   )
 }

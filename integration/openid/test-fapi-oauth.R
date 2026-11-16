@@ -1,3 +1,84 @@
+testthat::test_that("compact OAuth state requires all eleven PASSED outcomes and actual reference proof", {
+  for (backend in c("sync", "mirai")) {
+    f <- fapi_full_fixture(backend, "fapi-oauth-dpop-reference")
+    check <- function(report) {
+      openid_check_report(report, f[["context"]], f[["manifest"]])
+    }
+    valid <- check(f[["report"]])
+    testthat::expect_true(valid[["gate_passed"]], info = valid[["reason"]])
+    testthat::expect_true(valid[["coverage_complete"]])
+    testthat::expect_length(f[["report"]][["results"]], 11L)
+    for (i in seq_len(11L)) {
+      report <- f[["report"]]
+      report[["results"]] <- report[["results"]][-i]
+      testthat::expect_false(check(report)[["gate_passed"]])
+      for (verdict in c("WARNING", "FAILED", "SKIPPED", "REVIEW")) {
+        report <- f[["report"]]
+        report[["results"]][[i]][["suite_result"]] <- verdict
+        testthat::expect_false(check(report)[["gate_passed"]])
+      }
+      if (identical(f[["report"]][["results"]][[i]][["action"]], "discovery")) {
+        next
+      }
+      for (mode in list(NULL, "encrypted")) {
+        report <- f[["report"]]
+        report[["results"]][[i]][["app"]][["state_transport"]] <- mode
+        testthat::expect_false(check(report)[["gate_passed"]])
+      }
+      for (value in list(NULL, FALSE)) {
+        report <- f[["report"]]
+        report[["results"]][[i]][["fapi"]][["state_reference_valid"]] <- value
+        testthat::expect_false(check(report)[["gate_passed"]])
+      }
+      for (size in list(NULL, 0L, 21L, 129L)) {
+        report <- f[["report"]]
+        report[["results"]][[i]][["fapi"]][["state_characters"]] <- size
+        testthat::expect_false(check(report)[["gate_passed"]])
+      }
+    }
+  }
+})
+
+testthat::test_that("compact-state evidence measures all actual PAR attempts without exporting state", {
+  f <- fapi_logs_fixture(
+    "fapi2-security-profile-final-client-test-happy-path",
+    oauth_only = TRUE
+  )
+  proof <- openid_fapi_reference_evidence(f[["logs"]], f[["module"]])
+  testthat::expect_identical(
+    proof,
+    list(state_characters = 64L, state_reference_valid = TRUE)
+  )
+  indices <- which(vapply(
+    f[["logs"]],
+    function(event) endsWith(event[["incoming_path"]] %||% "", "/par"),
+    logical(1)
+  ))
+  for (value in list(
+    NULL,
+    "short",
+    strrep("s", 129L),
+    strrep("!", 64L)
+  )) {
+    logs <- f[["logs"]]
+    logs[[indices[[1L]]]][["incoming_body_form_params"]][["state"]] <- value
+    testthat::expect_false(openid_fapi_reference_evidence(logs, f[["module"]])[[
+      "state_reference_valid"
+    ]])
+  }
+  logs <- c(f[["logs"]], list(f[["logs"]][[indices[[1L]]]]))
+  logs[[length(logs)]][["incoming_body_form_params"]][["state"]] <- strrep(
+    "t",
+    64L
+  )
+  testthat::expect_false(openid_fapi_reference_evidence(logs, f[["module"]])[[
+    "state_reference_valid"
+  ]])
+  testthat::expect_false(openid_fapi_reference_evidence(list(), f[["module"]])[[
+    "state_reference_valid"
+  ]])
+})
+
 testthat::test_that("OAuth-only FAPI requires every resolved module in both transports", {
   for (backend in c("sync", "mirai")) {
     f <- fapi_full_fixture(backend, "fapi-oauth-dpop")

@@ -114,6 +114,7 @@ fapi_logs_fixture <- function(
       "POST",
       form = list(
         response_type = "code",
+        state = strrep("s", 64L),
         scope = plan[["registration"]][["scope"]],
         code_challenge_method = "S256",
         code_challenge = openid_fapi_hash(verifier)
