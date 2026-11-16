@@ -401,8 +401,44 @@ with browser, client/provider/policy, freshness and atomic single-use checks.
 OAuth/private-key-JWT/DPoP variant with reference state. The encrypted-state
 profile retains its warnings and incomplete coverage status.
 
-The helper reads unsigned JSON metadata over verified TLS. Signed metadata,
-refresh, other sender constraints and certification remain separate. Resource
+Run the nine modules resolved for OAuth-only private-key-JWT authentication
+with mTLS sender constraint:
+
+```sh
+Rscript integration/openid/run-tests.R --profile fapi-oauth-mtls --transport sync
+Rscript integration/openid/run-tests.R --profile fapi-oauth-mtls --transport mirai
+```
+
+The fixture generates a temporary client certificate, registers its public
+certificate and `use_mtls_endpoint_aliases = true`, and uses the normal package
+connection for resource access. It selects reference state. Because the suite
+issues opaque access tokens, the fixture explicitly sets
+`mtls_require_observed_cnf = FALSE`; certificate presentation and server-side
+checks provide the binding evidence. The package's default remains unchanged.
+This separates JWT client authentication from the mTLS sender constraint, as
+described in [RFC 8705](https://www.rfc-editor.org/rfc/rfc8705.html#section-3).
+
+Each normal module requires `PASSED`. The gate correlates the suite's incoming
+request IDs with TLS-listener logs, checking the actual peer certificate for
+PAR, token and resource calls. The no-alias case uses the advertised mTLS token
+URL and ordinary PAR URL. Reports contain comparison results without tokens,
+certificate contents, keys or TLS fingerprints.
+
+Three isolated controls present a bound token with a wrong certificate, a wrong
+certificate plus a forged certificate header, or no certificate. They require
+the actual unexpected TLS peer and the suite's certificate-failure verdict.
+The missing-certificate request returns HTTP 400. In this pinned suite, both
+wrong-certificate requests return HTTP 200 and the resource marker even though
+their module verdict is `FAILED`: its
+[`checkMtlsCertificate()`](https://gitlab.com/openid/conformance-suite/-/blob/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/fapi2spfinal/AbstractFAPI2SPFinalClientTest.java)
+continues after a certificate mismatch. These failed instances remain separate
+from the nine normal outcomes. The report always keeps
+`coverage_complete = false` and `mtls_resource_denial_not_established` visible.
+An independent resource-denial check and mTLS client authentication remain
+unfinished C11 work; the upstream suite is unchanged.
+
+The discovery helper reads unsigned JSON metadata over verified TLS. Signed
+metadata, refresh, other FAPI variants and certification remain separate. Resource
 requests still run in the Shiny process, and HTTP callback error pages retain
 their query as described above.
 
@@ -410,7 +446,8 @@ The [workflow](../../.github/workflows/openid-conformance.yml) runs preflight,
 API checks and smoke on pull requests affecting the package or this harness.
 Manual dispatch offers `smoke`, `basic`, `config`, `form-post`, `refresh`,
 `auth-post`, `auth-secret-jwt`, `auth-private-jwt`, `shared-pool`, `fapi-dpop`,
-`fapi-dpop-full`, `fapi-oauth-dpop` and `fapi-oauth-dpop-reference`;
+`fapi-dpop-full`, `fapi-oauth-dpop`, `fapi-oauth-dpop-reference` and
+`fapi-oauth-mtls`;
 larger selections remain manual while GitHub runner timings are unmeasured.
 Manual transport choices are `sync`, `mirai` and the limited `future` parity
 selection. `shared-pool` requires mirai. Pull requests keep synchronous smoke.

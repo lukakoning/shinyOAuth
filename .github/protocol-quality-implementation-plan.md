@@ -745,6 +745,71 @@ and message signing. The C09 public-client and C06 warm-cache gaps remain open.
 Fresh hosted CI still needs an available verified copy of the locked server
 image, and C15 retains callback error-page query cleanup.
 
+C11's first slice is implemented in `b3347a41`, with the pinned informational
+alias events corrected in `3c065170`. The new `fapi-oauth-mtls` profile selects
+all nine modules resolved for OAuth-only private-key-JWT authentication plus
+mTLS sender constraint. It uses temporary client certificates, reference state,
+ES256 assertions, PAR and S256, and the public connection API for resources.
+It explicitly permits opaque tokens with `mtls_require_observed_cnf = FALSE`;
+the production library's defaults remain unchanged.
+
+The gate correlates suite request IDs with the TLS listener's actual peer
+certificate, method, path and listener. It verifies alias use for PAR/token
+and the ordinary PAR URL plus advertised mTLS token URL when aliases are
+absent. Reports keep authentication and sender constraint separate, and omit
+certificates, TLS fingerprints, keys and tokens. All nine normal modules must
+finish `PASSED`, including discovery mismatch, four callback rejections, token
+expiry/type behavior and alias fallback.
+
+Three isolated attacker instances use the real issued token with a wrong
+certificate, a wrong certificate plus a forged certificate header, and no
+certificate. All three must produce the expected certificate-failure verdict
+and independently observed unexpected TLS peer. They use a raw attacker
+request, with a separate report label from the normal connection request.
+Their IDs, full variants, run/attempt/checkout/source/plan identity, application
+outcome, worker execution and cleanup must match this run. They receive no
+normal-module pass credit.
+
+These controls establish a limitation in the pinned suite. Its
+`checkMtlsCertificate()` continues after `EnsureClientCertificateMatches`
+fails. Wrong-certificate and forged-header attempts therefore return HTTP 200
+with the resource marker while the suite marks their instances `FAILED`.
+Missing certificates return HTTP 400 and `INTERRUPTED/FAILED`. The harness
+preserves those outcomes and always forces `coverage_complete = false` with
+`mtls_resource_denial_not_established`, including if the manifest's complete
+flag or coverage limits are changed. The upstream suite remains unchanged.
+
+Validation on 2026-11-16 passed **36 normal module runs** across four gates,
+plus twelve separate expected-failure certificate controls. The three-module
+OIDC/DPoP mirai regression also passed. All 1,923 evidence assertions and Jarl
+checks passed, with no test warnings or skips. Reports were revalidated against
+the final checker, including the full control-variant binding.
+
+| Environment / transport | Nine-module loop (s) | Private artifact directory |
+| --- | ---: | --- |
+| Windows / sync | 120.18 | `fapi-oauth-mtls-20261116-233406-4d27ba8a846f` |
+| Windows / mirai | 126.61 | `fapi-oauth-mtls-20261116-233512-7207746b711d` |
+| Linux / sync | 64.65 | `fapi-oauth-mtls-20261116-223406-3543a6dcac11` |
+| Linux / mirai | 70.47 | `fapi-oauth-mtls-20261116-223835-906e46ba60a1` |
+
+The OIDC regression report is `fapi-dpop-20261116-233443-defce702ba4e`.
+Windows used R 4.5.1 and Linux used R 4.5.0. Timings exclude certificate and
+suite setup, package installation, the app-stop control, certificate controls
+and teardown. Concurrent runs share host resources. Reports identify collector
+commit `3c065170` and the dirty follow-up checkout, with unchanged locked images
+from the verified cache. Earlier collector failures and a Linux mirai Chrome
+startup timeout remain failed reports and earn no validation credit; the final
+Linux mirai run used less concurrent work. No owned Docker containers remain.
+
+C11 remains partial. Next, extend the existing Python strict-AS fixture's real
+TLS support with a protected resource and an issued-token/certificate binding
+table. Require successful public connection access and rejection of wrong or
+missing peers; this supplies an independent resource-denial check without
+another mock dependency. Then add the suite's mTLS client-authentication variant
+and assess OIDC/mTLS separately. C12 retains Message Signing; C13-C14 retain
+`oidc-provider`. C06 warm-cache, C09 public-client, C15 callback error-page query
+cleanup and fresh hosted CI image availability remain open.
+
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second
 full provider. Add another mock server only when a remaining test case justifies

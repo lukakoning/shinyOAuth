@@ -306,6 +306,9 @@ testthat::test_that("mTLS controls retain separate failed instances and cannot c
       "suite_id"
     ]]
     testthat::expect_false(check(report)[["gate_passed"]])
+    report <- f[["report"]]
+    report[["mtls_controls"]][[i]][["variant"]][["fapi_client_type"]] <- "oidc"
+    testthat::expect_false(check(report)[["gate_passed"]])
   }
   manifest <- f[["manifest"]]
   manifest[["profiles"]][["fapi-oauth-mtls"]][["complete_profile"]] <- TRUE

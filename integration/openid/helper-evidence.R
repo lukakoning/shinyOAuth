@@ -864,6 +864,21 @@ openid_check_report <- function(report, context, manifest) {
       )
       if (
         mtls_limited &&
+          !all(vapply(
+            report[["mtls_controls"]],
+            function(row) {
+              identical(
+                openid_variant_key(row[["variant"]]),
+                openid_variant_key(variant)
+              )
+            },
+            logical(1)
+          ))
+      ) {
+        stop("mTLS control variants do not match this plan")
+      }
+      if (
+        mtls_limited &&
           !openid_mtls_controls_match(report[["mtls_controls"]], context, ids)
       ) {
         stop("Missing isolated mTLS certificate controls")

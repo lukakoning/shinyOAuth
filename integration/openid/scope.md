@@ -357,6 +357,25 @@ or skipped result fails the gate. Complete coverage for this selection means
 this pinned OAuth/private-key-JWT/DPoP variant using reference state. The
 original encrypted-state selection keeps its warning policy and coverage limit.
 
+The `fapi-oauth-mtls` selection resolves nine modules for private-key-JWT client
+authentication and mTLS token binding. It excludes the two DPoP-only modules
+and requests only `accounts`. All nine require `PASSED`, including the alias
+fallback, token type/expiry and five pre-token rejection scenarios. Peer logs
+from the TLS listener must correlate with each suite request and the registered
+certificate. Authentication and sender constraint have separate evidence fields.
+The fixture permits opaque tokens with `mtls_require_observed_cnf = FALSE`;
+it retains the certificate on requests and verifies actual TLS and suite checks.
+
+Three separate attacker instances must fail for missing/wrong certificates,
+including an attempt to forge the certificate header. Missing certificates
+produce HTTP 400. The pinned suite detects wrong certificates but continues to
+return HTTP 200 with its resource marker. Those controls establish detection
+and header replacement, while resource denial remains unproven. The gate forces
+`coverage_complete = false` and the resource-denial coverage limit even if the
+manifest's complete flag is changed. Other C11 work includes mTLS client
+authentication and an independent resource-denial check. No suite condition or
+production library default is changed by this fixture.
+
 Baseline references: [OIDC Core](https://openid.net/specs/openid-connect-core-1_0.html),
 [Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html),
 [RFC 6749](https://www.rfc-editor.org/rfc/rfc6749.html),
