@@ -11,6 +11,9 @@ Install the package's R dependencies and test dependencies first.
 The runner installs this checkout in a private library
 under `.artifacts/` and uses that installation in the main process and mirai
 workers. It requires zero test failures, errors, warnings or skips.
+On OpenSSL below 2.6.0, startup explicitly checks and records the package's
+once-per-session upgrade advisory before running the protocol tests. Unexpected
+warnings from that check and any warnings during those tests fail the run.
 
 Each run writes a sanitized `evidence.json` with its checkout revision, dirty
 flag, dependency versions, package-installation check and assertion counts.
@@ -77,11 +80,45 @@ issuance record. This complements the
 certificate mismatch but continues to return its resource body. The independent
 check does not alter that provider or its incomplete coverage status.
 
-Each algorithm runs the full flow matrix with a separately pinned server
-registration. JARM responses and the server's public JWKS use the selected
-algorithm too, exercising Python signing followed by shinyOAuth verification.
-Every successful combination runs with both GET and explicitly selected POST
-authorization. POST uses `prepare_authorization_request()` and real form-encoded
+`test-mtls-authentication.R` repeats the 32-bound-grant resource matrix using
+PKI `tls_client_auth`. The server selects this mode at startup, independently of
+request scopes. Python's TLS library verifies certificate chains against the
+temporary CA; the server matches the actual peer's subject DN to the fixed
+registration. Both eligible certificates can authenticate with that same DN,
+while each access token remains bound to its particular issuing certificate.
+
+Raw PAR and token requests test wrong subject names, missing TLS certificates,
+forged certificate headers, and missing or unknown client IDs. These require
+HTTP 400 with `invalid_client` and no grant data. Competing secrets, JWT
+assertions or HTTP Authorization credentials require `invalid_request`, even
+when a credential field is empty. This follows
+[RFC 8705 section 2](https://www.rfc-editor.org/rfc/rfc8705.html#section-2) and
+[RFC 6749 section 5.2](https://www.rfc-editor.org/rfc/rfc6749.html#section-5.2).
+The tests require 80 HTTP denials: 48 for client authentication and 32 for
+competing credentials. Eight additional requests present a matching subject
+from an untrusted CA and must fail during TLS, before an OAuth response.
+
+The same signed Request Object and authorization code remain usable after
+rejected authentication. A subsequent eligible certificate may redeem the code,
+but the certificate used at PAR cannot then use its token at the resource.
+These cases run with and without the fixture's `mtls` scope marker, so scope
+selection cannot disable client authentication. Public API checks also require
+four failed token callbacks across RS256/RS384 and sync/mirai to leave no token
+or connection, and two failed PAR preparations to raise HTTP errors. Callback
+audit events must identify the HTTP error, expected process and private package
+installation. These sessions run in process; no browser is involved.
+
+This profile covers one fixed subject DN and trust anchor. SAN registrations,
+DN normalization edge cases, certificate revocation, self-signed client
+authentication and mTLS-bound refresh remain outside it. The OIDF selection's
+coverage limits remain unchanged; this is a separate package-owned fixture.
+
+`test-strict-as.R` runs its exchange matrix with a separately pinned server
+registration for each algorithm. JARM responses and the server's public JWKS use
+the selected algorithm too, exercising Python signing followed by shinyOAuth
+verification. Every successful combination in that matrix runs with both GET
+and explicitly selected POST authorization. POST uses
+`prepare_authorization_request()` and real form-encoded
 HTTP over TLS; the independent server reports the received method and verifies
 the same signatures and transaction claims. Browser form submission itself is
 covered by the [SMART and ordinary OAuth browser gates](../smart/authorization-post.md).
@@ -105,7 +142,8 @@ These expectations follow [RFC 7518 section 3.3](https://www.rfc-editor.org/rfc/
 and [RFC 9449 section 4.2](https://www.rfc-editor.org/rfc/rfc9449.html#section-4.2).
 Python cryptography and R's bindings may share OpenSSL as their underlying
 cryptographic backend. The runner requires zero skips and CI already runs this
-directory. Set `SHINYOAUTH_TEST_PYTHON` to a Python executable if it is not on `PATH`.
+directory. Set `SHINYOAUTH_TEST_PYTHON` to the executable with these dependencies
+when using multiple Python installations.
 
 These are focused protocol tests, not OpenID certification or evidence that a
 third-party server enforces these policies. The live AS fixture omits user login, ID

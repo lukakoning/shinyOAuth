@@ -905,9 +905,66 @@ edits on `9d94af4f`.
 The fixture README now follows the restored `openssl >= 2.1.2` dependency
 requirement without a development repository. No owned Docker containers remain.
 
-C11 remains partial. Next, extend the independent Python fixture with mTLS
-client-authentication rejection checks, including `invalid_client` for wrong or
-missing certificates and invalid client identity. Assess OIDC/mTLS separately.
+C11's independent PKI authentication and denial checks are implemented in
+`2c7273d5`. The Python fixture now has a fixed `tls_client_auth` startup mode.
+Its TLS library verifies client chains against the temporary CA, and the server
+compares the actual peer's subject DN with the registration. Authentication is
+required at PAR/token independently of the requested scopes; competing secrets,
+JWT assertions and HTTP Authorization credentials are rejected.
+
+The public Shiny module and resource connection complete 32 bound grants across
+RS256/RS384 JAR, direct/PAR authorization, sync/mirai token callbacks,
+returned/omitted `cnf` and both eligible certificates. Shared helpers retain the
+existing private-key-JWT resource matrix. Each callback verifies the expected
+process, exactly one exchange and the private package installation.
+
+Raw controls require **80 HTTP 400 denials per platform**: 48 `invalid_client`
+responses for wrong subjects, absent peers, forged certificate headers and
+missing/unknown identities, plus 32 `invalid_request` responses for competing
+credentials, including empty credential fields. Eight requests with the correct
+subject but an untrusted CA must fail during TLS. The same signed Request
+Object and authorization code remain usable afterward. A new eligible
+certificate with the same registered subject can authenticate, while its token
+rejects the certificate used at PAR, including with a forged header.
+
+Four public callback failures across both algorithms and transports leave no
+token or connection. Their audit events require an HTTP error from the correct
+process and installation. Two public PAR preparations also reject the wrong
+subject with HTTP errors. The fixture covers a single fixed DN and trust
+anchor; SANs, DN normalization edge cases, revocation, self-signed client
+authentication and bound refresh remain separate. The pinned OIDF suite's
+registration model, verdicts and forced coverage limits remain unchanged.
+
+The concurrent state-encryption selection fix `7f2fa08c` was integrated in
+`51c1653f`. Its OpenSSL upgrade warning made the older-version fixture gate fail
+as intended. The runner now explicitly checks the one expected
+`shinyOAuth_openssl_upgrade_warning` at startup on OpenSSL below 2.6.0 and records
+its class, phase and count in sanitized evidence (`c8ee6f36`). Unexpected warnings
+from that check and all protocol-test warnings still fail the run. The production
+warning remains unchanged, and the earlier failed run receives no pass credit.
+
+Validation on 2026-11-17 passed **3,281 assertions on each platform**, including
+both sync and mirai callbacks and the existing private-key-JWT, resource,
+JAR/JARM, refresh and RS384 regressions. Both runs had zero test failures,
+errors, warnings or skips. The Windows startup advisory was checked and
+recorded once; Linux required none.
+
+| Environment | R / OpenSSL / Python cryptography | Private artifact directory |
+| --- | --- | --- |
+| Windows | 4.5.1 / 2.4.0 / 46.0.5 | `tests-20261117-163805-37b46d194913` |
+| Linux | 4.5.0 / 2.6.0 / 50.0.2 | `tests-20261117-163805-745fbf7b3` |
+
+Reports identify `c8ee6f36` with documentation-only edits and the correct private
+package installation. Their complete test-file selections, assertion totals,
+dependency versions and startup-advisory records were revalidated. Only
+sanitized JSON reports were retained in the main checkout; private libraries,
+keys and logs were excluded. Earlier setup and assertion failures remain failed
+reports. No owned Docker containers remain. These are package-owned protocol
+checks with `coverage_complete = false`, and they do not establish external
+provider conformance or OpenID certification.
+
+C11 remains partial. Next, assess the suite's OIDC/mTLS variants and add the
+applicable ID-token, nonce and protected-resource checks.
 C12 retains Message Signing; C13-C14 retain
 `oidc-provider`. C06 warm-cache, C09 public-client, C15 callback error-page query
 cleanup and fresh hosted CI image availability remain open.
@@ -924,7 +981,7 @@ it is an engineering assessment, not a benchmark of the tools.
 | --- | --- | --- |
 | [`tests/testthat/`](../tests/testthat/) and the browser runner | Local validation, parsers, state, callbacks, browser binding and regression tests | Package-owned fixtures share assumptions with the implementation. |
 | [Keycloak](../integration/keycloak/README.md) | Full provider and browser interoperability, including attack cases | Its documented rejection canaries and accepted invalid JAR claims leave gaps in successful advanced combinations. |
-| [Independent Python fixture](../integration/conformance/README.md) | Cross-language signatures, strict selected protocol exchanges and mTLS resource denial | The live AS fixture omits discovery, login, consent and ID tokens; resource checks cover only mTLS token binding. |
+| [Independent Python fixture](../integration/conformance/README.md) | Cross-language signatures, selected protocol exchanges, PKI client authentication and mTLS resource denial | The live AS fixture omits discovery, login, consent and ID tokens; resource checks cover only mTLS token binding. |
 | [Retained connections](../integration/connections/README.md) | Cross-session state, multiple providers, refresh, resource isolation and actual browsers/workers | Synthetic providers establish local behavior, not external conformance. |
 | [Inferno](../integration/smart/inferno.md) | Independent SMART client-request verification | The local simulator has documented corrections; its verdict is specific to SMART and that deployment. |
 | [`check_oauth21()`](../R/check_oauth21.R) | Versioned configuration assessment against OAuth 2.1 draft 16 | It does not test the running provider or establish protocol conformance. |

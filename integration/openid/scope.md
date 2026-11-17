@@ -392,6 +392,9 @@ selection also lacks authentication-failure controls at PAR/token. The checker
 therefore forces `suite_exact_certificate_registration_only` and
 `mtls_client_authentication_denial_not_tested` into its coverage limits alongside
 the existing resource-denial limit. `coverage_complete` remains false.
+The [independent Python fixture](../conformance/README.md) separately checks
+selected PKI authentication and denial cases; it does not change this suite's
+registration model or coverage limits.
 
 Baseline references: [OIDC Core](https://openid.net/specs/openid-connect-core-1_0.html),
 [Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html),

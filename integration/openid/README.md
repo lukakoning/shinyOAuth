@@ -465,6 +465,9 @@ or rejection of invalid client-authentication credentials. The checker forces
 `suite_exact_certificate_registration_only` and
 `mtls_client_authentication_denial_not_tested` into the coverage limits, even if
 the manifest omits them. Resource denial remains limited as described above.
+The [independent Python PKI fixture](../conformance/README.md) separately checks
+client-authentication denial, trusted subject matching and untrusted-CA
+rejection. It leaves this suite's outcomes and coverage limits intact.
 OIDC/mTLS and mTLS-bound refresh remain separate work.
 
 The discovery helper reads unsigned JSON metadata over verified TLS. Signed
