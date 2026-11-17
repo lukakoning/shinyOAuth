@@ -200,6 +200,7 @@ oauth_provider_oidc_discover <- function(
     "id_token_allowed_algs",
     "allowed_algs"
   )
+  userinfo_default_algs <- allowed_algs
   if (identical(id_token_profile, "fapi2")) {
     fapi_algs <- c("ES256", "ED25519", "EDDSA")
     if (default_id_token_algs) {
@@ -330,7 +331,7 @@ oauth_provider_oidc_discover <- function(
   # UserInfo has independent discovery metadata and must retain the caller's
   # policy before the ID-token intersection narrows it.
   userinfo_allowed_algs <- toupper(
-    dots[["userinfo_allowed_algs"]] %||% allowed_algs
+    dots[["userinfo_allowed_algs"]] %||% userinfo_default_algs
   )
   userinfo_allowed_algs <- intersect(
     userinfo_allowed_algs,
