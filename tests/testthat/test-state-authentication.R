@@ -11,7 +11,7 @@ test_that("version 3 state matches an independent CBC-HMAC fixture", {
     rand_bytes = function(n) { stopifnot(n == 16L); iv },
     .package = "openssl"
   )
-  token <- state_encrypt_gcm(payload, key)
+  token <- state_encrypt_gcm(payload, key, version = 3L)
   wrapper <- jsonlite::fromJSON(rawToChar(base64url_decode_raw(token)))
   expect_identical(wrapper[["v"]], 3L)
   expect_identical(base64url_decode_raw(wrapper[["iv"]]), iv)
@@ -24,7 +24,7 @@ test_that("version 3 state matches an independent CBC-HMAC fixture", {
   expect_equal(state_decrypt_gcm(token, key), payload)
 })
 
-test_that("short state payloads roundtrip without relying on GCM APIs", {
+test_that("CBC-HMAC payloads roundtrip without relying on GCM APIs", {
   testthat::local_mocked_bindings(
     aes_gcm_encrypt = function(...) stop("GCM must not be used"),
     aes_gcm_decrypt = function(...) stop("GCM must not be used"),
@@ -32,9 +32,11 @@ test_that("short state payloads roundtrip without relying on GCM APIs", {
   )
   key <- strrep("k", 64)
   for (payload in list(list(x = "s"), list(state = strrep("s", 128)))) {
-    expect_identical(state_decrypt_gcm(state_encrypt_gcm(payload, key), key), payload)
+    expect_identical(
+      state_decrypt_gcm(state_encrypt_gcm(payload, key, version = 3L), key), payload
+    )
   }
-  expect_error(state_encrypt_gcm(list(x = "s"), key, version = 1L), "version 3")
+  expect_error(state_encrypt_gcm(list(x = "s"), key, version = 1L), "version 2 or 3")
 })
 
 test_that("encryption rejects malformed CBC backend output", {
@@ -46,7 +48,7 @@ test_that("encryption rejects malformed CBC backend output", {
   for (value in list(raw(0), raw(15), raw(17), list(data = raw(32)), "invalid")) {
     returned <- value
     expect_error(
-      state_encrypt_gcm(list(state = "valid"), strrep("k", 64)),
+      state_encrypt_gcm(list(state = "valid"), strrep("k", 64), version = 3L),
       "Unexpected ciphertext",
       class = "shinyOAuth_config_error"
     )
@@ -59,7 +61,7 @@ test_that("CBC rejects IV changes that would preserve valid JSON", {
   changed <- list(state = "walid", issued_at = 1)
   json <- charToRaw(jsonlite::toJSON(payload, auto_unbox = TRUE))
   changed_json <- charToRaw(jsonlite::toJSON(changed, auto_unbox = TRUE))
-  token <- state_encrypt_gcm(payload, key)
+  token <- state_encrypt_gcm(payload, key, version = 3L)
   wrapper <- jsonlite::fromJSON(rawToChar(base64url_decode_raw(token)))
   iv <- base64url_decode_raw(wrapper[["iv"]])
   difference <- bitwXor(as.integer(json[1:16]), as.integer(changed_json[1:16]))
@@ -81,7 +83,7 @@ test_that("CBC rejects IV changes that would preserve valid JSON", {
 
 test_that("every ciphertext, tag and IV byte is verified before decryption", {
   key <- strrep("k", 64)
-  token <- state_encrypt_gcm(list(state = "valid", issued_at = 1), key)
+  token <- state_encrypt_gcm(list(state = "valid", issued_at = 1), key, version = 3L)
   wrapper <- jsonlite::fromJSON(rawToChar(base64url_decode_raw(token)))
   calls <- 0L
   testthat::local_mocked_bindings(
@@ -129,7 +131,7 @@ test_that("version 2 GCM records require an API that verifies tags", {
   token <- encode(wrapper)
   if ("tag" %in% names(formals(openssl::aes_gcm_decrypt))) {
     expect_equal(state_decrypt_gcm(token, key), list(state = "valid", issued_at = 1))
-    for (field in c("ct", "tg")) {
+    for (field in c("ct", "tg", "iv")) {
       changed <- wrapper
       raw <- base64url_decode_raw(changed[[field]])
       raw[1] <- as.raw(bitwXor(as.integer(raw[1]), 1L))

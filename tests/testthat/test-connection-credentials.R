@@ -123,7 +123,10 @@ test_that("credential ciphertext budgets include padding at the plaintext limit"
   ))
   sealed <- connection_credentials_seal(token, owner, id, client, key, 1000)
   wrapper <- jsonlite::fromJSON(rawToChar(base64url_decode_raw(sealed)))
-  expect_length(base64url_decode_raw(wrapper[["ct"]]), 1024^2 + 16L)
+  expect_length(
+    base64url_decode_raw(wrapper[["ct"]]),
+    1024^2 + if (wrapper[["v"]] == 3L) 16L else 0L
+  )
   restored <- connection_credentials_open(sealed, owner, id, client, key)
   expect_identical(restored[["token"]]@extra_fields, token@extra_fields)
   token@extra_fields <- list(note = paste0(token@extra_fields[["note"]], "x"))

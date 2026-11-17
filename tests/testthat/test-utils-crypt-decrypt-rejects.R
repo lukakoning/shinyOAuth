@@ -244,7 +244,8 @@ test_that("state_decrypt_gcm includes state-key mismatch hints", {
   key <- strrep("k", 64)
   tok <- shinyOAuth:::state_encrypt_gcm(
     list(state = "ok", issued_at = 1),
-    key = key
+    key = key,
+    version = 3L
   )
 
   # 1) Force native decryption failure after tag verification
