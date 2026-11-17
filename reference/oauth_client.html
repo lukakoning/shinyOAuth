@@ -230,8 +230,8 @@ A random key is generated when omitted. This is separate from
 <code>client_secret</code> and is also used for public clients.</p>
 <p>Deployments with multiple R processes use the same key and <code>state_store</code> across
 processes. The key is a character string or raw vector containing at least
-32 cryptographically random bytes. State uses AES-256-CBC-HMAC-SHA512
-authenticated encryption.</p></dd>
+32 cryptographically random bytes. State uses AES-GCM on openssl &gt;= 2.6.0
+and authenticated AES-256-CBC-HMAC-SHA512 on older openssl versions.</p></dd>
 
 
 <dt id="arg-client-assertion-private-key">client_assertion_private_key<a class="anchor" aria-label="anchor" href="#arg-client-assertion-private-key"></a></dt>

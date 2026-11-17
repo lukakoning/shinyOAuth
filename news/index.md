@@ -5,19 +5,23 @@
 - Fixed state authentication while retaining support for
   `openssl >= 2.1.2`
   ([\#26](https://github.com/lukakoning/shinyOAuth/issues/26), thanks to
-  Jeroen Ooms). New version-3 envelopes use the RFC 7518
-  AES-256-CBC-HMAC-SHA512 construction with separate derived encryption
-  and MAC keys. Authentication is verified before decryption on older
-  and newer openssl versions. Envelopes are slightly larger because of
-  the longer IV, tag and CBC padding. No additional package or
-  development repository is required. Version-2 AES-GCM envelopes remain
-  readable when openssl supports explicit tag verification (2.6.0 and
-  later); older versions reject them safely. Original version-1
-  envelopes remain rejected: their purported tags were ciphertext bytes,
-  leaving those envelopes unauthenticated. Pending logins from version 1
-  must restart, and persisted connections must be recreated through
-  authorization. This also applies to old encrypted state-store records,
-  callback handoffs, routing records and SMART launch continuations.
+  Jeroen Ooms). With openssl 2.6.0 or later, new envelopes use AES-GCM
+  (version 2), passing the ciphertext and authentication tag separately.
+  Older openssl versions use the RFC 7518 AES-256-CBC-HMAC-SHA512
+  construction (version 3), with separate derived encryption and MAC
+  keys and authentication checked before decryption. When this
+  compatibility mode is first used, a warning recommends upgrading
+  openssl to 2.6.0 or later; it appears once per R session across
+  clients. CBC-HMAC envelopes are slightly larger because of the longer
+  IV, tag and padding. No additional package or development repository
+  is required. Both versions can be read with openssl \>= 2.6.0; older
+  openssl can read CBC-HMAC and safely rejects GCM envelopes. Original
+  version-1 envelopes remain rejected: their purported tags were
+  ciphertext bytes, leaving those envelopes unauthenticated. Pending
+  logins from version 1 must restart, and persisted connections must be
+  recreated through authorization. This also applies to old encrypted
+  state-store records, callback handoffs, routing records and SMART
+  launch continuations.
 
 - `oauth_client(state_transport = "reference")` sends a short opaque
   state value and keeps the encrypted login payload in the state store.

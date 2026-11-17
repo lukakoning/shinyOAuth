@@ -42,7 +42,7 @@ tokens. shinyOAuth supplies a current token, refreshing it when needed.
   [`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md),
   or configure a provider yourself.
 
-- Security: authenticated AES-CBC-HMAC state, single-use server-side
+- Security: authenticated AES-GCM/CBC-HMAC state, single-use server-side
   state, origin- and tab-scoped browser binding, HTTPS enforcement and
   PKCE (S256). OIDC checks cover ID token signatures and claims,
   including nonce, and match the UserInfo subject to the ID token. DPoP,
