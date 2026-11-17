@@ -23,6 +23,8 @@ on:
           - fapi-oauth-dpop-reference
           - fapi-oauth-mtls
           - fapi-oauth-mtls-auth
+          - fapi-mtls
+          - fapi-mtls-auth
       transport:
         description: Transport (shared-pool requires mirai; future supports smoke and refresh)
         type: choice
@@ -133,6 +135,7 @@ jobs:
             integration/openid/.artifacts/fapi-oauth-dpop-*/evidence.json
             integration/openid/.artifacts/fapi-oauth-mtls-*/evidence.json
             integration/openid/.artifacts/fapi-oauth-mtls-auth-*/evidence.json
+            integration/openid/.artifacts/fapi-mtls-*/evidence.json
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 7

@@ -2,6 +2,83 @@
   "schema_version": 2,
   "source_revision": "410812ef6bc72a84723c1685725edce3558e31e3",
   "plans": {
+    "fapi-mtls": {
+      "plan": "fapi2-security-profile-final-client-test-plan",
+      "plan_variant": {
+        "fapi_profile": "plain_fapi",
+        "client_auth_type": "private_key_jwt",
+        "sender_constrain": "mtls",
+        "fapi_client_type": "oidc",
+        "authorization_request_type": "simple",
+        "grant_management": "disabled"
+      },
+      "module_variant": {
+        "fapi_request_method": "unsigned",
+        "fapi_response_mode": "plain_response"
+      },
+      "available_modules": [
+        "fapi2-security-profile-final-client-test-happy-path",
+        "fapi2-security-profile-final-client-test-discovery-issuer-mismatch",
+        "fapi2-security-profile-final-client-test-invalid-iss",
+        "fapi2-security-profile-final-client-test-invalid-aud",
+        "fapi2-security-profile-final-client-test-invalid-secondary-aud",
+        "fapi2-security-profile-final-client-test-invalid-null-alg",
+        "fapi2-security-profile-final-client-test-invalid-alternate-alg",
+        "fapi2-security-profile-final-client-test-invalid-expired-exp",
+        "fapi2-security-profile-final-client-test-invalid-missing-exp",
+        "fapi2-security-profile-final-client-test-invalid-missing-aud",
+        "fapi2-security-profile-final-client-test-invalid-missing-iss",
+        "fapi2-security-profile-final-client-test-valid-aud-as-array",
+        "fapi2-security-profile-final-client-test-invalid-nonce",
+        "fapi2-security-profile-final-client-test-invalid-missing-nonce",
+        "fapi2-security-profile-final-client-test-invalid-authorization-response-iss",
+        "fapi2-security-profile-final-client-test-remove-authorization-response-iss",
+        "fapi2-security-profile-final-client-test-ensure-authorization-response-with-invalid-state-fails",
+        "fapi2-security-profile-final-client-test-ensure-authorization-response-with-invalid-missing-state-fails",
+        "fapi2-security-profile-final-client-test-token-endpoint-response-without-expires_in",
+        "fapi2-security-profile-final-client-test-token-type-case-insensitivity",
+        "fapi2-security-profile-final-client-test-happy-path-no-mtls-endpoint-aliases"
+      ],
+      "client_assertion_alg": "ES256"
+    },
+    "fapi-mtls-auth": {
+      "plan": "fapi2-security-profile-final-client-test-plan",
+      "plan_variant": {
+        "fapi_profile": "plain_fapi",
+        "client_auth_type": "mtls",
+        "sender_constrain": "mtls",
+        "fapi_client_type": "oidc",
+        "authorization_request_type": "simple",
+        "grant_management": "disabled"
+      },
+      "module_variant": {
+        "fapi_request_method": "unsigned",
+        "fapi_response_mode": "plain_response"
+      },
+      "available_modules": [
+        "fapi2-security-profile-final-client-test-happy-path",
+        "fapi2-security-profile-final-client-test-discovery-issuer-mismatch",
+        "fapi2-security-profile-final-client-test-invalid-iss",
+        "fapi2-security-profile-final-client-test-invalid-aud",
+        "fapi2-security-profile-final-client-test-invalid-secondary-aud",
+        "fapi2-security-profile-final-client-test-invalid-null-alg",
+        "fapi2-security-profile-final-client-test-invalid-alternate-alg",
+        "fapi2-security-profile-final-client-test-invalid-expired-exp",
+        "fapi2-security-profile-final-client-test-invalid-missing-exp",
+        "fapi2-security-profile-final-client-test-invalid-missing-aud",
+        "fapi2-security-profile-final-client-test-invalid-missing-iss",
+        "fapi2-security-profile-final-client-test-valid-aud-as-array",
+        "fapi2-security-profile-final-client-test-invalid-nonce",
+        "fapi2-security-profile-final-client-test-invalid-missing-nonce",
+        "fapi2-security-profile-final-client-test-invalid-authorization-response-iss",
+        "fapi2-security-profile-final-client-test-remove-authorization-response-iss",
+        "fapi2-security-profile-final-client-test-ensure-authorization-response-with-invalid-state-fails",
+        "fapi2-security-profile-final-client-test-ensure-authorization-response-with-invalid-missing-state-fails",
+        "fapi2-security-profile-final-client-test-token-endpoint-response-without-expires_in",
+        "fapi2-security-profile-final-client-test-token-type-case-insensitivity",
+        "fapi2-security-profile-final-client-test-happy-path-no-mtls-endpoint-aliases"
+      ]
+    },
     "fapi-oauth-mtls-auth": {
       "plan": "fapi2-security-profile-final-client-test-plan",
       "plan_variant": {
@@ -363,6 +440,279 @@
     }
   },
   "profiles": {
+    "fapi-mtls": {
+      "plan": "fapi-mtls",
+      "state_transport": "reference",
+      "complete_profile": false,
+      "all_modules_required": true,
+      "coverage_limitations": [
+        "oidc_private_key_jwt_mtls_only",
+        "mtls_client_authentication_not_selected",
+        "mtls_resource_denial_not_established",
+        "unsigned_authorization_server_metadata_only",
+        "resource_request_in_main_process",
+        "http_callback_rejection_retains_query"
+      ],
+      "modules": [
+        {
+          "module": "fapi2-security-profile-final-client-test-happy-path",
+          "outcome": "authenticated",
+          "resource_api": "connection"
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-discovery-issuer-mismatch",
+          "action": "discovery",
+          "outcome": "discovery_rejected"
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-invalid-iss",
+          "outcome": "rejected",
+          "claim": "iss"
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-invalid-aud",
+          "outcome": "rejected",
+          "claim": "aud"
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-invalid-secondary-aud",
+          "outcome": "rejected",
+          "claims_any": [
+            "aud",
+            "azp"
+          ]
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-invalid-null-alg",
+          "outcome": "rejected",
+          "reason": "disallowed_algorithm"
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-invalid-alternate-alg",
+          "outcome": "rejected",
+          "reason": "disallowed_algorithm"
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-invalid-expired-exp",
+          "outcome": "rejected",
+          "claim": "exp"
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-invalid-missing-exp",
+          "outcome": "rejected",
+          "claim": "exp"
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-invalid-missing-aud",
+          "outcome": "rejected",
+          "claim": "aud"
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-invalid-missing-iss",
+          "outcome": "rejected",
+          "claim": "iss"
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-valid-aud-as-array",
+          "outcome": "authenticated",
+          "resource_api": "connection"
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-invalid-nonce",
+          "outcome": "rejected",
+          "claim": "nonce"
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-invalid-missing-nonce",
+          "outcome": "rejected",
+          "claim": "nonce"
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-invalid-authorization-response-iss",
+          "outcome": "callback_rejected",
+          "error_code": "http_callback_rejected",
+          "callback_label": "issuer_mismatch",
+          "state_present": true,
+          "issuer_present": true
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-remove-authorization-response-iss",
+          "outcome": "callback_rejected",
+          "error_code": "http_callback_rejected",
+          "callback_label": "issuer_missing",
+          "state_present": true,
+          "issuer_present": false
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-ensure-authorization-response-with-invalid-state-fails",
+          "outcome": "callback_rejected",
+          "error_code": "http_callback_rejected",
+          "callback_label": "state_parse_failure",
+          "state_present": true,
+          "issuer_present": true
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-ensure-authorization-response-with-invalid-missing-state-fails",
+          "outcome": "callback_rejected",
+          "error_code": "http_callback_rejected",
+          "callback_label": "callback_shape_rejected",
+          "state_present": false,
+          "issuer_present": true
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-token-endpoint-response-without-expires_in",
+          "outcome": "authenticated",
+          "resource_api": "connection"
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-token-type-case-insensitivity",
+          "outcome": "authenticated",
+          "resource_api": "connection"
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-happy-path-no-mtls-endpoint-aliases",
+          "outcome": "authenticated",
+          "resource_api": "connection"
+        }
+      ]
+    },
+    "fapi-mtls-auth": {
+      "plan": "fapi-mtls-auth",
+      "state_transport": "reference",
+      "complete_profile": false,
+      "all_modules_required": true,
+      "coverage_limitations": [
+        "oidc_mtls_mtls_only",
+        "suite_exact_certificate_registration_only",
+        "mtls_client_authentication_denial_not_tested",
+        "mtls_resource_denial_not_established",
+        "unsigned_authorization_server_metadata_only",
+        "resource_request_in_main_process",
+        "http_callback_rejection_retains_query"
+      ],
+      "modules": [
+        {
+          "module": "fapi2-security-profile-final-client-test-happy-path",
+          "outcome": "authenticated",
+          "resource_api": "connection"
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-discovery-issuer-mismatch",
+          "action": "discovery",
+          "outcome": "discovery_rejected"
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-invalid-iss",
+          "outcome": "rejected",
+          "claim": "iss"
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-invalid-aud",
+          "outcome": "rejected",
+          "claim": "aud"
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-invalid-secondary-aud",
+          "outcome": "rejected",
+          "claims_any": [
+            "aud",
+            "azp"
+          ]
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-invalid-null-alg",
+          "outcome": "rejected",
+          "reason": "disallowed_algorithm"
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-invalid-alternate-alg",
+          "outcome": "rejected",
+          "reason": "disallowed_algorithm"
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-invalid-expired-exp",
+          "outcome": "rejected",
+          "claim": "exp"
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-invalid-missing-exp",
+          "outcome": "rejected",
+          "claim": "exp"
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-invalid-missing-aud",
+          "outcome": "rejected",
+          "claim": "aud"
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-invalid-missing-iss",
+          "outcome": "rejected",
+          "claim": "iss"
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-valid-aud-as-array",
+          "outcome": "authenticated",
+          "resource_api": "connection"
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-invalid-nonce",
+          "outcome": "rejected",
+          "claim": "nonce"
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-invalid-missing-nonce",
+          "outcome": "rejected",
+          "claim": "nonce"
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-invalid-authorization-response-iss",
+          "outcome": "callback_rejected",
+          "error_code": "http_callback_rejected",
+          "callback_label": "issuer_mismatch",
+          "state_present": true,
+          "issuer_present": true
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-remove-authorization-response-iss",
+          "outcome": "callback_rejected",
+          "error_code": "http_callback_rejected",
+          "callback_label": "issuer_missing",
+          "state_present": true,
+          "issuer_present": false
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-ensure-authorization-response-with-invalid-state-fails",
+          "outcome": "callback_rejected",
+          "error_code": "http_callback_rejected",
+          "callback_label": "state_parse_failure",
+          "state_present": true,
+          "issuer_present": true
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-ensure-authorization-response-with-invalid-missing-state-fails",
+          "outcome": "callback_rejected",
+          "error_code": "http_callback_rejected",
+          "callback_label": "callback_shape_rejected",
+          "state_present": false,
+          "issuer_present": true
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-token-endpoint-response-without-expires_in",
+          "outcome": "authenticated",
+          "resource_api": "connection"
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-token-type-case-insensitivity",
+          "outcome": "authenticated",
+          "resource_api": "connection"
+        },
+        {
+          "module": "fapi2-security-profile-final-client-test-happy-path-no-mtls-endpoint-aliases",
+          "outcome": "authenticated",
+          "resource_api": "connection"
+        }
+      ]
+    },
     "fapi-oauth-mtls-auth": {
       "plan": "fapi-oauth-mtls-auth",
       "state_transport": "reference",

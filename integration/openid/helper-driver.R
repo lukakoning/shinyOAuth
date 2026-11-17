@@ -412,7 +412,8 @@ openid_run_case <- function(
         openid_api(stack, paste0("/api/log/", module[["id"]])),
         module,
         plan,
-        openid_mtls_peers(stack)
+        openid_mtls_peers(stack),
+        expectation
       )
     } else {
       openid_fapi_evidence(
