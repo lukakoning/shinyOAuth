@@ -1,0 +1,8 @@
+{
+  "name": "shinyoauth-oidc-provider-fixture",
+  "private": true,
+  "type": "module",
+  "engines": { "node": "24.22.3" },
+  "scripts": { "test": "node --test test-provider.mjs" },
+  "dependencies": { "oidc-provider": "9.14.0" }
+}

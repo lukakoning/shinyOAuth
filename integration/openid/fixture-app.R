@@ -52,6 +52,7 @@ openid_fixture_app <- function(config) {
   }
   style <- switch(
     method,
+    none = "public",
     client_secret_basic = "header",
     client_secret_post = "body",
     client_secret_jwt = "client_secret_jwt",
@@ -130,6 +131,9 @@ openid_fixture_app <- function(config) {
     } else {
       "oidc"
     }
+  }
+  if (!is.null(config[["extra_auth_params"]])) {
+    discovery_args[["extra_auth_params"]] <- config[["extra_auth_params"]]
   }
   provider <- tryCatch(
     do.call(discover, discovery_args),

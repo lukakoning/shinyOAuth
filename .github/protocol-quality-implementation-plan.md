@@ -1110,6 +1110,48 @@ was retained in the main checkout. Keys, libraries and raw logs remain private.
 No owned test containers remain. Fresh hosted CI image availability remains
 unverified.
 
+C13 implementation (2026-11-18): `integration/oidc-provider/` runs the published
+`oidc-provider` 9.14.0 package with Node 24.22.3 LTS. The official Node container
+is pinned by digest; the npm lock fixes all 40 dependencies and their integrity
+values. The runner verifies the locks and records its built image ID and fixture
+input hashes. Builds run three Node fixture tests before starting the server.
+
+Four explicit registrations/callback cases cover public (`none`) and
+confidential (`client_secret_basic`) clients with query and Form Post responses.
+Every case uses S256, browser login/consent, validated ID tokens, UserInfo and
+refresh through the public connection API. Refresh must preserve identity and
+the existing connection while rotating its refresh token. Both UserInfo calls
+must use the currently issued access token. A live request missing PKCE must
+fail before code issuance. Reports include selected discovery capabilities and
+provider events, with no token, code, nonce, credential or raw error values.
+
+The fixture uses the provider's public interaction API for its fixed test
+account and consent screen. Normal provider handlers perform discovery,
+authorization, PKCE, token, ID-token, UserInfo and refresh processing. No
+provider protocol handler is patched. Development interactions are disabled;
+PKCE is required for both client types, and refresh rotation is explicit.
+Temporary signing keys, TLS material and static registrations isolate cases.
+
+The harness reuses the existing Shiny, Chrome, TLS, audit and worker helpers.
+The shared app fixture adds public-client authentication and optional configured
+authorization parameters for `prompt=consent`. It continues to install this
+checkout privately and verify package identity, worker CA/hostname checks,
+actual sync/mirai execution and cleanup. A stopped-app canary must fail; setup
+or discovery failures fail preflight instead of becoming unsupported results.
+
+Each successful real report supplies the valid control for 64 report-mutation
+checks: missing cases, lost provider evidence, failed PKCE/code/authentication
+binding, stale UserInfo credentials, refresh/identity failures, missing worker
+or Form Post evidence and incomplete cleanup. The serialized report must also
+pass the checker. The new workflow runs sync on relevant pull requests and
+offers sync/mirai manual dispatch, uploading only sanitized evidence JSON.
+
+`coverage_complete` remains false: these are selected provider interoperability
+checks, not certification. C14 retains advanced JAR/PAR/sender-constraint/JARM
+combinations, signed UserInfo, resource indicators and lifecycle across
+navigation. The independent Python fixture remains separate. Validation of the
+committed C13 implementation is recorded below when complete.
+
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second
 full provider. Add another mock server only when a remaining test case justifies

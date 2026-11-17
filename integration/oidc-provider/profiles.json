@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "cases": [
+    { "id": "public-query", "client_auth_type": "none", "response_mode": "query" },
+    { "id": "public-form-post", "client_auth_type": "none", "response_mode": "form_post" },
+    { "id": "confidential-query", "client_auth_type": "client_secret_basic", "response_mode": "query" },
+    { "id": "confidential-form-post", "client_auth_type": "client_secret_basic", "response_mode": "form_post" }
+  ]
+}

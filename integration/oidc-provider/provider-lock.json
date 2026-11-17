@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "provider_version": "9.14.0",
+  "node_version": "v24.22.3",
+  "node_image": "node:24.22.3-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54",
+  "provider_integrity": "sha512-rfdRcKIq9HK0hRXCxLj3Pm8ctyHXTOMMPgjM/Q2JINWbED6Mq9QszjerCiePbKZdsr6/DUnttx/d1qlRKDl4KA=="
+}

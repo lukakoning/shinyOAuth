@@ -1,0 +1,7 @@
+*
+!Dockerfile
+!package.json
+!package-lock.json
+!provider-lock.json
+!provider.mjs
+!test-provider.mjs

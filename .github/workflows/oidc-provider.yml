@@ -1,0 +1,71 @@
+name: oidc-provider interoperability
+
+on:
+  workflow_dispatch:
+    inputs:
+      transport:
+        description: Token and UserInfo transport
+        type: choice
+        default: sync
+        options:
+          - sync
+          - mirai
+  pull_request:
+    paths:
+      - "R/**"
+      - "DESCRIPTION"
+      - "NAMESPACE"
+      - "integration/oidc-provider/**"
+      - "integration/openid/helper-*.R"
+      - "integration/openid/fixture-*.R"
+      - "integration/connections/tls-proxy.py"
+      - ".github/actions/setup-r-dependencies/**"
+      - ".github/workflows/oidc-provider.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  basic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CURL_SSL_BACKEND: openssl
+      NOT_CRAN: "true"
+      INTEROP_TRANSPORT: ${{ inputs.transport || 'sync' }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: r-lib/actions/setup-r@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
+        with:
+          r-version: "4.5.1"
+          use-public-rspm: true
+      - uses: browser-actions/setup-chrome@2dbff04819ebbfd5c974947148805a825b8a07fd # v2.1.0
+        id: chrome
+      - uses: ./.github/actions/setup-r-dependencies
+        with:
+          extra-packages: |
+            local::.
+            any::testthat
+            any::chromote
+            any::callr
+            any::withr
+            any::processx
+            any::httpuv
+            any::mirai
+            any::promises
+            any::later
+            any::ps
+          cache-version: 1
+      - name: Select Chrome
+        run: echo "CHROMOTE_CHROME=${{ steps.chrome.outputs.chrome-path }}" >> "$GITHUB_ENV"
+      - name: Run public and confidential code flows and refresh
+        run: Rscript integration/oidc-provider/run-tests.R --transport "$INTEROP_TRANSPORT"
+      - name: Upload sanitized evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: oidc-provider-${{ env.INTEROP_TRANSPORT }}-evidence
+          path: integration/oidc-provider/.artifacts/basic-*/evidence.json
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
