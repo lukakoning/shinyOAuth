@@ -1253,7 +1253,7 @@ testthat::test_that("swapped form_post code callbacks against the wrong app are 
 
   attacked_page <- .wait_for_form_post_page_text(
     drv_a,
-    pattern = "state token decrypted payload is not valid JSON"
+    pattern = "State authentication failed"
   )
   testthat::expect_match(
     attacked_page,
@@ -1262,8 +1262,8 @@ testthat::test_that("swapped form_post code callbacks against the wrong app are 
   )
   testthat::expect_match(
     attacked_page,
-    "state token decrypted payload is not valid JSON",
-    ignore.case = TRUE
+    "State authentication failed",
+    fixed = TRUE
   )
 
   .navigate_form_post_browser_to_url(drv_a, client_a@redirect_uri)
@@ -1396,7 +1396,7 @@ testthat::test_that("swapped form_post callbacks against the wrong app are rejec
 
   attacked_page <- .wait_for_form_post_page_text(
     drv_a,
-    pattern = "state token decrypted payload is not valid JSON"
+    pattern = "State authentication failed"
   )
   testthat::expect_match(
     attacked_page,
@@ -1405,8 +1405,8 @@ testthat::test_that("swapped form_post callbacks against the wrong app are rejec
   )
   testthat::expect_match(
     attacked_page,
-    "state token decrypted payload is not valid JSON",
-    ignore.case = TRUE
+    "State authentication failed",
+    fixed = TRUE
   )
 
   .navigate_form_post_browser_to_url(drv_a, client_a@redirect_uri)
