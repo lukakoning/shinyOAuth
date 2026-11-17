@@ -1,4 +1,14 @@
+test_that("an independent GCM fixture decrypts correctly", {
+  fixture <- state_test_gcm_fixture()
+  expect_equal(
+    state_decrypt_gcm(state_test_wrap(fixture[["wrapper"]]), fixture[["key"]]),
+    list(state = "valid", issued_at = 1)
+  )
+})
+
 test_that("GCM encryption and decryption match an independent known answer", {
+  # Byte-for-byte JSON and backend checks run in the full suite.
+  skip_on_cran()
   fixture <- state_test_gcm_fixture()
   expected <- fixture[["wrapper"]]
   payload <- list(state = "valid", issued_at = 1)
@@ -52,6 +62,7 @@ test_that("GCM rejects ciphertext changes that would produce valid JSON", {
 })
 
 test_that("GCM authenticates every bit of the ciphertext, tag and IV", {
+  skip_on_cran()
   local_options(shinyOAuth.state_fail_delay_ms = 0)
   fixture <- state_test_gcm_fixture()
   wrapper <- fixture[["wrapper"]]
@@ -72,6 +83,7 @@ test_that("GCM authenticates every bit of the ciphertext, tag and IV", {
 })
 
 test_that("GCM rejects substituted fields, wrong keys and ciphertext resizing", {
+  skip_on_cran()
   local_options(shinyOAuth.state_fail_delay_ms = 0)
   fixture <- state_test_gcm_fixture()
   wrapper <- fixture[["wrapper"]]
@@ -106,6 +118,7 @@ test_that("GCM rejects substituted fields, wrong keys and ciphertext resizing", 
 })
 
 test_that("legacy envelopes cannot be accepted by changing the expected version", {
+  skip_on_cran()
   local_options(shinyOAuth.state_fail_delay_ms = 0)
   fixture <- state_test_gcm_fixture()
   wrapper <- fixture[["wrapper"]]
@@ -157,6 +170,7 @@ test_that("relabeling original unauthenticated state cannot restore it", {
 })
 
 test_that("authentication failures are audited without secrets or plaintext", {
+  skip_on_cran()
   fixture <- state_test_gcm_fixture()
   wrapper <- fixture[["wrapper"]]
   wrapper[["tg"]] <- base64url_encode(raw(16L))

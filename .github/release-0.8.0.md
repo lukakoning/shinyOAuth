@@ -13,7 +13,7 @@ Prepared on 2026-11-17 using the
 - [x] Build the PDF reference manual.
 - [x] Run `R CMD check --as-cran --no-manual` on Windows R 4.6.2 and R 4.5.1:
       both return 0 errors, 0 warnings and 0 notes, including examples,
-      vignettes and the 50-file CRAN regression suite.
+      vignettes and the 49-file CRAN regression suite.
 - [x] Inspect the source archive for version consistency, test selection,
       documentation consistency and exclusion of local infrastructure.
 - [x] Complete the full local test suite with current dependencies: no failures
@@ -52,5 +52,18 @@ in both environments.
 The existing deprecated request aliases continue to point users to their
 replacements; no further deprecation stage is advanced in this release.
 
+The test additions since 0.7.0 were reviewed again for CRAN portability.
+Five of the six new test files are outside the CRAN selection. The remaining
+file keeps small independent-decryption, forged-state rejection and legacy-state
+rejection checks. Its exhaustive mutations, exact-byte checks and diagnostic
+output checks run only in the full suite. New subprocess, exact 1 MiB boundary,
+backend-error and serialization-dependent callback checks also skip on CRAN.
+The crypto fixture is static data and does not require Python.
+
+Fresh CRAN-mode checks on both Windows R versions pass 2,972 assertions with
+nine deliberate skips and no failures or warnings. A separate check explicitly
+including the backend file confirms its file-level CRAN skip. The affected
+tests still pass all 900 assertions in full mode without warnings or skips.
+
 Checked source archive SHA-256:
-`8b4d236cfa27f17eed8b1ba152acb97e1d60a7576cc60b9a5af0108bbfdc855a`.
+`aab739c697a18f9c41267831b1ae36ee2d8bdef1b730024c311fa9e247563088`.

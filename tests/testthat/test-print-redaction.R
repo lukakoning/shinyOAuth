@@ -6,6 +6,7 @@ collect_rendered_output <- function(x) {
 }
 
 test_that("installed authorization objects redact state for ordinary callers", {
+  skip_on_cran()
   prepared <- shinyOAuth:::prepare_authorization(
     make_test_client(),
     valid_browser_token()

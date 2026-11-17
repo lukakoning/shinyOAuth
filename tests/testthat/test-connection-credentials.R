@@ -115,6 +115,7 @@ test_that("encrypted credential schemas retain token continuity without live obj
 })
 
 test_that("GCM credential ciphertext fits the exact plaintext limit", {
+  skip_on_cran()
   client <- connection_test_client(make_test_client(), c(api = "https://api.example/v1"))
   token <- OAuthToken(
     access_token = "synthetic-access", token_type = "Bearer",

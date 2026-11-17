@@ -66,6 +66,8 @@ test_that("state envelopes reject malformed UTF-8 without parser warnings", {
 })
 
 test_that("GCM authentication failures preserve the rightful pending login", {
+  # Constructing the forged ciphertext depends on exact JSON serialization.
+  skip_on_cran()
   local_options(shinyOAuth.state_fail_delay_ms = 0)
   client <- make_test_client()
   browser <- valid_browser_token()

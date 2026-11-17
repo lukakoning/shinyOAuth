@@ -1,3 +1,6 @@
+# Backend-shape checks and exhaustive input matrices stay in the full suite.
+skip_on_cran()
+
 test_that("state always uses authenticated GCM with a separate tag", {
   expect_true(utils::packageVersion("openssl") >= "2.6.0")
   key <- strrep("k", 64)

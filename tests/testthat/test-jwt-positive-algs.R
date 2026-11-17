@@ -1,4 +1,5 @@
 test_that("signature verification rejects cryptographic backend errors", {
+  skip_on_cran()
   key <- openssl::rsa_keygen(bits = 2048)
   header <- shinyOAuth:::base64url_encode(charToRaw('{"alg":"RS256"}'))
   payload <- shinyOAuth:::base64url_encode(charToRaw('{"sub":"fixture"}'))
