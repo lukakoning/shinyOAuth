@@ -1,4 +1,8 @@
-strict_as_fixture <- function(alg, .env = parent.frame()) {
+strict_as_fixture <- function(
+  alg,
+  authentication = "legacy",
+  .env = parent.frame()
+) {
   python <- Sys.getenv("SHINYOAUTH_TEST_PYTHON", unset = Sys.which("python"))
   testthat::expect_true(nzchar(python))
   root <- tempfile("strict-as-")
@@ -11,7 +15,7 @@ strict_as_fixture <- function(alg, .env = parent.frame()) {
   )
   server <- processx::process[["new"]](
     python,
-    c("strict_as.py", root, alg),
+    c("strict_as.py", root, alg, authentication),
     stdout = "|",
     stderr = "|"
   )

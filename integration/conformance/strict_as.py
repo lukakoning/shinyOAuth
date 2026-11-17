@@ -18,7 +18,7 @@ from urllib.parse import parse_qs, urlsplit, urlencode
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa, ec, padding, utils
-from cryptography.x509.oid import NameOID
+from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
 
 def b64(data):
@@ -40,6 +40,8 @@ def require(condition, reason):
 
 root = Path(sys.argv[1])
 jws_alg = sys.argv[2] if len(sys.argv) > 2 else 'RS256'
+authentication = sys.argv[3] if len(sys.argv) > 3 else 'legacy'
+require(authentication in ('legacy', 'tls_client_auth'), 'authentication_profile')
 # Pin the registration independently of the untrusted JOSE header. RFC 7518
 # section 3.3 requires PKCS#1 v1.5 with the corresponding SHA-2 digest.
 jws_hash = {'RS256': hashes.SHA256, 'RS384': hashes.SHA384}[jws_alg]
@@ -53,18 +55,20 @@ alternate_key = rsa.generate_private_key(65537, 2048)
 ca_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, 'Conformance test CA')])
 
 
-def certificate(name, key, ca=False):
+def certificate(name, key, ca=False, issuer_key=None, issuer_name=None):
     now = datetime.now(timezone.utc)
     builder = (x509.CertificateBuilder()
         .subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, name)]))
-        .issuer_name(ca_name).public_key(key.public_key())
+        .issuer_name(issuer_name or ca_name).public_key(key.public_key())
         .serial_number(x509.random_serial_number())
         .not_valid_before(now - timedelta(minutes=1))
         .not_valid_after(now + timedelta(days=1))
         .add_extension(x509.BasicConstraints(ca=ca, path_length=None), critical=True))
     if name == 'localhost':
         builder = builder.add_extension(x509.SubjectAlternativeName([x509.DNSName('localhost')]), False)
-    return builder.sign(ca_key, hashes.SHA256())
+    elif not ca:
+        builder = builder.add_extension(x509.ExtendedKeyUsage([ExtendedKeyUsageOID.CLIENT_AUTH]), False)
+    return builder.sign(issuer_key or ca_key, hashes.SHA256())
 
 
 ca_cert = certificate('Conformance test CA', ca_key, True)
@@ -72,10 +76,20 @@ client_cert = certificate('registered-mtls-client', client_key)
 # Both certificates are eligible for this client, with the same subject DN.
 # A token must still require the particular certificate used at issuance.
 alternate_cert = certificate('registered-mtls-client', alternate_key)
-for name, cert, key in [('ca', ca_cert, ca_key),
+certificates = [('ca', ca_cert, ca_key),
                         ('server', certificate('localhost', server_key), server_key),
                         ('client', client_cert, client_key),
-                        ('alternate', alternate_cert, alternate_key)]:
+                        ('alternate', alternate_cert, alternate_key)]
+if authentication == 'tls_client_auth':
+    unregistered_key = rsa.generate_private_key(65537, 2048)
+    rogue_ca_key = rsa.generate_private_key(65537, 2048)
+    rogue_key = rsa.generate_private_key(65537, 2048)
+    rogue_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, 'Untrusted test CA')])
+    certificates.extend([
+        ('unregistered', certificate('unregistered-client', unregistered_key), unregistered_key),
+        ('rogue', certificate('registered-mtls-client', rogue_key,
+                              issuer_key=rogue_ca_key, issuer_name=rogue_name), rogue_key)])
+for name, cert, key in certificates:
     (root / (name + '.pem')).write_bytes(cert.public_bytes(serialization.Encoding.PEM))
     (root / (name + '-key.pem')).write_bytes(key.private_bytes(serialization.Encoding.PEM,
         serialization.PrivateFormat.PKCS8, serialization.NoEncryption()))
@@ -180,6 +194,10 @@ class ResourceDenied(ValueError):
     pass
 
 
+class ClientDenied(ValueError):
+    pass
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
@@ -205,6 +223,22 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         self.dispatch()
 
+    def authenticate_mtls(self, params):
+        require(not self.headers.get_all('Authorization') and
+                not any(name in params for name in
+                        ('client_secret', 'client_assertion', 'client_assertion_type')),
+                'single_client_auth')
+        if params.get('client_id') != 'client':
+            raise ClientDenied('client_id')
+        peer = self.connection.getpeercert(binary_form=True)
+        if peer is None:
+            raise ClientDenied('client_certificate_missing')
+        # The TLS library verifies the chain against the configured CA. Register
+        # the subject independently, allowing a new certificate for the same DN.
+        if x509.load_der_x509_certificate(peer).subject != client_cert.subject:
+            raise ClientDenied('client_certificate_subject')
+        return peer
+
     def dispatch(self):
         try:
             path = urlsplit(self.path).path
@@ -218,6 +252,10 @@ class Handler(BaseHTTPRequestHandler):
             parsed = parse_qs(query, keep_blank_values=True)
             require(all(len(v) == 1 for v in parsed.values()), 'duplicate_parameter')
             params = {k: v[0] for k, v in parsed.items()}
+            authenticated_peer = None
+            if authentication == 'tls_client_auth' and path in ('/par', '/token'):
+                require(self.command == 'POST', 'authentication_transport')
+                authenticated_peer = self.authenticate_mtls(params)
             if path == '/resource/records':
                 require(self.command == 'GET' and not params, 'resource_transport')
                 authorization = self.headers.get_all('Authorization') or []
@@ -251,7 +289,7 @@ class Handler(BaseHTTPRequestHandler):
                     claims = verify_jar(params.get('request'))
                 if path == '/par':
                     profile = assertion_profile(claims)
-                    if profile:
+                    if profile and authentication == 'legacy':
                         verify_client_assertion(params, path, profile, self.headers.get('Authorization'))
                     handle = 'urn:strict:par:' + secrets.token_urlsafe(24)
                     pushed[handle] = claims
@@ -279,16 +317,17 @@ class Handler(BaseHTTPRequestHandler):
                 challenge = b64(hashlib.sha256(params.get('code_verifier', '').encode()).digest())
                 require(challenge == claims['code_challenge'], 'pkce_mismatch')
                 profile = assertion_profile(claims)
-                if profile:
+                if profile and authentication == 'legacy':
                     verify_client_assertion(params, path, profile, self.headers.get('Authorization'))
-                cnf = {}
-                peer = None
+                peer = authenticated_peer
+                cnf = {'x5t#S256': b64(hashlib.sha256(peer).digest())} if peer else {}
                 if claims.get('dpop_jkt'):
                     verify_dpop(self.headers.get('DPoP'), claims['dpop_jkt'])
                     cnf = {'jkt': claims['dpop_jkt']}
                 if 'mtls' in claims.get('scope', '').split():
                     peer = self.connection.getpeercert(binary_form=True)
-                    require(peer in registered_certificates, 'mtls_certificate')
+                    if authentication == 'legacy':
+                        require(peer in registered_certificates, 'mtls_certificate')
                     cnf = {'x5t#S256': b64(hashlib.sha256(peer).digest())}
                 del codes[params['code']]
                 return self.respond(200, token_response(claims, cnf, peer))
@@ -300,6 +339,8 @@ class Handler(BaseHTTPRequestHandler):
                 access_tokens.pop(params.get('token'), None)
                 return self.respond(200, {})
             self.respond(404, {'error': 'unknown_endpoint'})
+        except ClientDenied as error:
+            self.respond(400, {'error': 'invalid_client', 'reason': str(error)})
         except ResourceDenied as error:
             self.respond(401, {'error': 'invalid_token', 'reason': str(error)},
                          headers={'WWW-Authenticate': 'Bearer error="invalid_token"'})
