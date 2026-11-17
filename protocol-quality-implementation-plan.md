@@ -1083,11 +1083,68 @@ Docker containers remain. These are package-owned protocol checks with
 `coverage_complete = false`, and they do not establish external provider
 conformance or OpenID certification.
 
-C11 remains partial. Next, assess the suite’s OIDC/mTLS variants and add
-the applicable ID-token, nonce and protected-resource checks. C12
-retains Message Signing; C13-C14 retain `oidc-provider`. C06 warm-cache,
-C09 public-client, C15 callback error-page query cleanup and fresh
-hosted CI image availability remain open.
+C11’s OIDC/mTLS selections are implemented in `564316db`: `fapi-mtls`
+uses private-key-JWT authentication, and `fapi-mtls-auth` uses the
+suite’s mTLS authentication variant. Both resolve all 21 applicable
+modules, with reference state and the client’s existing `fapi2` ID-token
+profile. The selections cover five successful exchanges, eleven ID-token
+rejections, four callback rejections and one discovery rejection. All
+modules require `PASSED` without warnings or skips, including the
+optional-nonce cases selected by this client configuration.
+
+The collector observes the actual returned ID token and checks the
+selected issuer/audience/expiry/algorithm mutation and the nonce
+relationship to PAR. It inspects claims; the installed client validates
+signatures and claims. Token rejections must make no UserInfo or
+resource request. Successful exchanges require both, with the actual
+registered TLS peer and the same issued Bearer token. UserInfo’s
+no-alias fallback requires its literal mTLS URL and the pinned setup
+event. The gate retains separate auth-method and token-binding
+dimensions, reference-state measurement and verified worker execution.
+
+The three isolated resource controls remain separate expected-failure
+instances. The pinned suite still returns resource content after
+detecting a wrong certificate, so every mTLS report retains its forced
+incomplete-coverage status. The mTLS authentication variant also retains
+the exact-certificate registration and authentication-denial limits. The
+independent Python checks remain separate evidence for selected PKI
+authentication and actual resource denial.
+
+Validation on 2026-11-17 passed all eight profile/platform/transport
+gates: **168 normal `PASSED` modules and 24 separate expected-failure
+resource controls**. The normal results include 40 successful resource
+exchanges, 88 ID-token rejections, 32 callback rejections and eight
+discovery rejections. All 5,276 evidence assertions, Jarl checks and
+workflow validation passed, with zero test warnings or skips. Every gate
+verified the app-stop control and cleanup.
+
+| Selection | Environment / transport | 21-module loop (s) | Private artifact directory |
+|----|----|---:|----|
+| `fapi-mtls` | Windows / sync | 237.80 | `fapi-mtls-20261117-175726-6abae364ff71` |
+| `fapi-mtls` | Windows / mirai | 277.21 | `fapi-mtls-20261117-180731-486e3bad157c` |
+| `fapi-mtls` | Linux / sync | 164.34 | `fapi-mtls-20261117-171257-f6c2f39dd8ec` |
+| `fapi-mtls` | Linux / mirai | 189.81 | `fapi-mtls-20261117-171801-84a1383e8263` |
+| `fapi-mtls-auth` | Windows / sync | 240.57 | `fapi-mtls-auth-20261117-181434-8f50a5cbf9b4` |
+| `fapi-mtls-auth` | Windows / mirai | 268.98 | `fapi-mtls-auth-20261117-182056-1178d7dabc39` |
+| `fapi-mtls-auth` | Linux / sync | 163.49 | `fapi-mtls-auth-20261117-165736-72e91f9df037` |
+| `fapi-mtls-auth` | Linux / mirai | 187.32 | `fapi-mtls-auth-20261117-170731-b9322416cee6` |
+
+Windows used R 4.5.1 and Linux used R 4.5.0, both with OpenSSL 2.6.0.
+Reports identify `564316db`; the first Windows sync checkout was clean
+and later dirty flags reflect documentation-only edits. Locked images
+came from the verified cache. Timings exclude installation, setup,
+failure controls and teardown; concurrent runs share host resources. All
+eight reports were revalidated for complete selections, expected stages,
+nonce results, actual peers, issued-token use and sanitized output. Only
+evidence JSON was retained in the main checkout; keys, libraries and
+logs remain private. No owned Docker containers remain.
+
+C11’s selected OAuth/OIDC mTLS variants now have gates for both
+transports; coverage remains bounded by these documented suite and
+fixture limitations. C12 retains Message Signing; C13-C14 retain
+`oidc-provider`. C06 warm-cache, C09 public-client, C15 callback
+error-page query cleanup and fresh hosted CI image availability remain
+open.
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
