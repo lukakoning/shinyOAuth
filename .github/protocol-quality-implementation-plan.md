@@ -1150,7 +1150,41 @@ offers sync/mirai manual dispatch, uploading only sanitized evidence JSON.
 checks, not certification. C14 retains advanced JAR/PAR/sender-constraint/JARM
 combinations, signed UserInfo, resource indicators and lifecycle across
 navigation. The independent Python fixture remains separate. Validation of the
-committed C13 implementation is recorded below when complete.
+committed C13 implementation is recorded below.
+
+C13 validation (2026-11-18), source `6d527c8782f02f13e88eb391c32aaabffc2a3be5`:
+the four Windows/Linux sync/mirai gates passed all sixteen selected code flows
+and refreshes. Each case completed a live missing-PKCE rejection before the
+successful exchange. All four stopped-app canaries and 256 report-mutation
+controls passed. Serialized reports were independently rechecked against the
+locked runtime, fixture hashes, complete case selection, provider events,
+current-token UserInfo use, refresh rotation, worker execution and cleanup.
+Both runtime checkouts were clean during validation.
+
+| Runtime / transport | Four-case loop seconds | Local sanitized evidence directory |
+| --- | ---: | --- |
+| Windows / sync | 39.21 | `basic-20261117-233646-6b10249938f4` |
+| Windows / mirai | 46.92 | `basic-20261117-233759-3301a4333dbd` |
+| Linux / sync | 22.99 | `basic-20261117-233656-00a611bb695a` |
+| Linux / mirai | 26.28 | `basic-20261117-233810-91da40e6d757` |
+
+Windows used R 4.5.1, httr2 1.2.2 and mirai 2.7.1; Linux used R 4.5.0,
+httr2 1.3.0 and mirai 2.7.4 in a Docker Desktop container. Both used R openssl
+2.6.0 and chromote 0.5.1, against the same Node 24.22.3 / oidc-provider 9.14.0
+runtime and fixture inputs. Timings cover the four normal case loops, excluding
+installation, build, the stopped-app control and outer teardown. Concurrent
+runs shared host resources.
+
+The existing OIDF evidence checks still passed 6,678 assertions. Its Linux/sync
+smoke regression also passed all three modules, its app-stop control and cleanup:
+`smoke-20261117-234004-aa1b30266a8d`. Node's three fixture tests, Jarl,
+R formatting and actionlint passed. Only sanitized evidence JSON was retained
+in the main checkout; keys, registrations, libraries and raw logs remain private.
+No owned test containers remain. Hosted CI has not been run for this new gate.
+
+C13's selected baseline is implemented. C14 is next; its advanced combinations
+remain untested against this provider. C06 warm-cache, C09 public-client suite
+capability and C15 rejection/query-cleanup work remain separate.
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second
