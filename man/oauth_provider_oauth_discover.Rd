@@ -63,6 +63,20 @@ Supply an issuer identifier, rather than a metadata-document URL. This helper
 does not fall back to another discovery location and does not verify signed
 metadata. Use \code{\link[=oauth_provider_oidc_discover]{oauth_provider_oidc_discover()}} for OpenID Connect.
 }
+\examples{
+\dontrun{
+# Requires your service's issuer URL and a registered public OAuth client.
+provider <- oauth_provider_oauth_discover(
+  issuer = "https://auth.example.com",
+  token_auth_style = "public"
+)
+client <- oauth_client(
+  provider = provider,
+  client_id = "your-client-id",
+  redirect_uri = "http://127.0.0.1:8100/callback"
+)
+}
+}
 \seealso{
 \code{\link[=oauth_provider]{oauth_provider()}}, \code{\link[=oauth_provider_oidc_discover]{oauth_provider_oidc_discover()}}
 }

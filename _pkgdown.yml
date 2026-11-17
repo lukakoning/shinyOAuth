@@ -42,11 +42,13 @@ reference:
 - contents:
   - oauth_provider
   - oauth_provider_oidc
+  - oauth_provider_oauth_discover
   - oauth_provider_oidc_discover
 - subtitle: Preconfigured
 - contents:
   - starts_with("oauth_provider_")
   - -oauth_provider_oidc
+  - -oauth_provider_oauth_discover
   - -oauth_provider_oidc_discover
 
 - title: Tokens and API requests

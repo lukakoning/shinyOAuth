@@ -23,6 +23,19 @@
 #'   issuer matching are not accepted by this OAuth-only helper.
 #' @return An [OAuthProvider] configured from the authorization-server metadata.
 #' @seealso [oauth_provider()], [oauth_provider_oidc_discover()]
+#' @examples
+#' \dontrun{
+#' # Requires your service's issuer URL and a registered public OAuth client.
+#' provider <- oauth_provider_oauth_discover(
+#'   issuer = "https://auth.example.com",
+#'   token_auth_style = "public"
+#' )
+#' client <- oauth_client(
+#'   provider = provider,
+#'   client_id = "your-client-id",
+#'   redirect_uri = "http://127.0.0.1:8100/callback"
+#' )
+#' }
 #' @export
 oauth_provider_oauth_discover <- function(
   issuer,
