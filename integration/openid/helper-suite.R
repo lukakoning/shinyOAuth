@@ -2,11 +2,25 @@ openid_string <- function(value) {
   is.character(value) && length(value) == 1L && !is.na(value) && nzchar(value)
 }
 
+openid_fapi_plan <- function(name) {
+  isTRUE(
+    name %in%
+      c(
+        "fapi2-security-profile-final-client-test-plan",
+        "fapi2-message-signing-final-client-test-plan"
+      )
+  )
+}
+
 openid_variant_key <- function(variant) {
   # The pinned refresh plan has no forced per-module variants (JSON null).
+  # Message Signing returns an empty object for its per-module variants.
   # Runtime evidence still has to match the full, non-null plan variant.
   if (is.null(variant)) {
     return("null")
+  }
+  if (is.list(variant) && !length(variant)) {
+    return("{}")
   }
   if (
     !is.list(variant) ||
@@ -87,7 +101,8 @@ openid_suite_plan <- function(
     spec[["plan"]] %in%
       c(
         "oidcc-client-test-plan",
-        "fapi2-security-profile-final-client-test-plan"
+        "fapi2-security-profile-final-client-test-plan",
+        "fapi2-message-signing-final-client-test-plan"
       )
   ) {
     registration[["token_endpoint_auth_method"]] <- if (method == "mtls") {
@@ -130,9 +145,7 @@ openid_suite_plan <- function(
     publish = "nothing",
     client = registration
   )
-  if (
-    identical(spec[["plan"]], "fapi2-security-profile-final-client-test-plan")
-  ) {
+  if (openid_fapi_plan(spec[["plan"]])) {
     server_key <- openssl::ec_keygen("P-256")
     server_jwk <- jsonlite::fromJSON(
       jose::write_jwk(server_key),
@@ -318,12 +331,7 @@ openid_suite_module <- function(stack, plan, name, .env = parent.frame()) {
     stop("OpenID exported issuer is missing or outside this local test")
   }
   module[["issuer"]] <- issuer
-  if (
-    identical(
-      plan[["spec"]][["plan"]],
-      "fapi2-security-profile-final-client-test-plan"
-    )
-  ) {
+  if (openid_fapi_plan(plan[["spec"]][["plan"]])) {
     resource <- runtime[["exposed"]][["accounts_endpoint"]]
     resource_base <- if (
       identical(plan[["spec"]][["plan_variant"]][["sender_constrain"]], "mtls")

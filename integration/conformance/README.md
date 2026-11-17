@@ -24,7 +24,8 @@ a deeply nested Windows checkout would exceed path limits. Reports keep
 The fixture uses Python cryptography, independent of shinyOAuth and R's jose,
 to enforce RS256 and RS384 Request Object signatures, issuer, audience, expiry, replay,
 and mandatory signing. It completes JAR+DPoP (with and without PAR), JAR+mTLS
-(with and without PAR), and JAR+signed-JARM authorization-code exchanges over
+(with and without PAR), and JAR+signed-JARM authorization-code exchanges
+(with and without PAR) over
 local TLS. DPoP proofs are verified against the signed Request Object's key
 thumbprint; mTLS authenticates an actual TLS peer certificate. PKCE is checked
 before issuing an access token. All keys and certificates are temporary.

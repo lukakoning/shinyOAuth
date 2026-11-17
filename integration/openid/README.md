@@ -500,6 +500,51 @@ authentication variant also retains its exact-certificate registration and
 authentication-denial limits.
 mTLS-bound refresh remains separate work.
 
+## FAPI Message Signing
+
+```sh
+Rscript integration/openid/run-tests.R --profile fapi-message-signing --transport sync
+Rscript integration/openid/run-tests.R --profile fapi-message-signing --transport mirai
+```
+
+This selection uses the pinned `fapi2-message-signing-final-client-test-plan`:
+OIDC, private-key-JWT authentication, DPoP, signed requests through PAR and
+signed query responses, with grant management disabled. The suite advertises
+[`response_mode=jwt`](https://github.com/openid-certification/conformance-suite/blob/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/condition/as/AddJARMResponseModeToServerConfiguration.java),
+which the client sends and handles through its query JARM transport. No suite
+assertions or discovery metadata are patched.
+
+The API must resolve exactly 29 modules: seven successful authenticated resource
+exchanges, eleven ID-token rejections, two state rejections, eight JARM
+rejections and one discovery rejection. JARM tests cover missing and invalid
+issuer/audience, missing and expired expiry, an invalid signature and `alg=none`.
+The two plain-response issuer tests do not apply to this JARM variant. Every
+module requires `PASSED`; warnings and skips fail the gate.
+
+The collector verifies ES256 signatures on the actual PAR Request Objects,
+their issuer, audience, redirect, scope, nonce, state and PKCE binding, and the
+suite's request-validation events. It checks the actual JARM redirect, its
+selected claim or signature mutation, and redemption of that response's code.
+Signature inspection uses the registered client key or the suite's public
+signing key and does not depend on JWT expiry validation. The installed client
+performs its own verification. Rejected callbacks require a browser-observed
+HTTP 400 with the expected error category, no identity, and zero token,
+UserInfo or resource requests. Successful cases require validated ID tokens,
+UserInfo and DPoP-protected resource use through the public connection API.
+Raw JWTs, codes, nonces, keys and error text stay out of the reports.
+
+`coverage_complete=true` describes this one resolved variant. Other client
+authentication methods, mTLS, algorithms, encrypted messages, Form Post,
+refresh and grant management remain outside this selection. Callback rejection
+runs before the Shiny callback session in the main process; mirai evidence
+does not claim worker execution of that rejection. HTTP error pages still
+retain their query, as tracked separately in C15.
+
+The [independent Python fixture](../conformance/README.md) also exercises signed
+JAR/PAR/JARM exchanges using RS256 and RS384, including the combined PAR/JARM
+case. Its scope omits OIDC discovery, ID tokens and browser login, so its result
+is a separate cryptographic and protocol comparison.
+
 The discovery helper reads unsigned JSON metadata over verified TLS. Signed
 metadata, refresh, other FAPI variants and certification remain separate. Resource
 requests still run in the Shiny process, and HTTP callback error pages retain
@@ -510,7 +555,8 @@ API checks and smoke on pull requests affecting the package or this harness.
 Manual dispatch offers `smoke`, `basic`, `config`, `form-post`, `refresh`,
 `auth-post`, `auth-secret-jwt`, `auth-private-jwt`, `shared-pool`, `fapi-dpop`,
 `fapi-dpop-full`, `fapi-oauth-dpop`, `fapi-oauth-dpop-reference`,
-`fapi-oauth-mtls`, `fapi-oauth-mtls-auth`, `fapi-mtls` and `fapi-mtls-auth`;
+`fapi-oauth-mtls`, `fapi-oauth-mtls-auth`, `fapi-mtls`, `fapi-mtls-auth` and
+`fapi-message-signing`;
 larger selections remain manual while GitHub runner timings are unmeasured.
 Manual transport choices are `sync`, `mirai` and the limited `future` parity
 selection. `shared-pool` requires mirai. Pull requests keep synchronous smoke.

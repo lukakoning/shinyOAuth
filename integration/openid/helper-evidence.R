@@ -100,8 +100,12 @@ openid_app_matches <- function(app, expectation, case_id, package_version) {
         logical(1)
       )) &&
         identical(app[["error_code"]], expectation[["error_code"]]) &&
-        expectation[["callback_label"]] %in%
-          unlist(app[["callback_rejections"]]) &&
+        (if (!is.null(expectation[["jarm_error"]])) {
+          identical(app[["jarm_error"]], expectation[["jarm_error"]])
+        } else {
+          expectation[["callback_label"]] %in%
+            unlist(app[["callback_rejections"]])
+        }) &&
         all(vapply(
           c(
             "audit_token_exchange",
@@ -690,10 +694,7 @@ openid_check_report <- function(report, context, manifest) {
       )
       for (result in results) {
         if (
-          identical(
-            spec[["plan"]],
-            "fapi2-security-profile-final-client-test-plan"
-          ) &&
+          openid_fapi_plan(spec[["plan"]]) &&
             !openid_fapi_matches(
               result,
               expected[[match(result[["module"]], names_expected)]]

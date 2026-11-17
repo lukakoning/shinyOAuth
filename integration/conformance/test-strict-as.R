@@ -58,9 +58,13 @@ run_strict_as <- function(alg) {
     if (method == "GET") {
       return(paste0(endpoint, "?", httr2::url_query_build(params)))
     }
-    list(method = "POST", url = endpoint, fields = lapply(names(params), function(name) {
-      list(name = name, value = params[[name]])
-    }))
+    list(
+      method = "POST",
+      url = endpoint,
+      fields = lapply(names(params), function(name) {
+        list(name = name, value = params[[name]])
+      })
+    )
   }
   # Required signing is an AS policy, independently enforced before code issue.
   unsigned <- get(paste0(
@@ -122,23 +126,39 @@ run_strict_as <- function(alg) {
   for (method in c("GET", "POST")) {
     for (use_par in c(FALSE, TRUE)) {
       configured <- client
-      if (use_par) configured@provider@par_url <- paste0(issuer, "/par")
+      if (use_par) {
+        configured@provider@par_url <- paste0(issuer, "/par")
+      }
       for (variant in c("missing", "empty", "mismatched")) {
-        params <- query(shinyOAuth::prepare_call(configured, browser_token = browser))
-        params[["client_id"]] <- switch(variant,
-          missing = NULL, empty = "", mismatched = "attacker")
+        params <- query(shinyOAuth::prepare_call(
+          configured,
+          browser_token = browser
+        ))
+        params[["client_id"]] <- switch(
+          variant,
+          missing = NULL,
+          empty = "",
+          mismatched = "attacker"
+        )
         response <- get(authorization_input(params, method))
-        testthat::expect_identical(httr2::resp_status(response), 400L,
-          info = paste(alg, method, use_par, variant))
-        testthat::expect_identical(httr2::resp_body_json(response)[["reason"]],
-          "authorization_client_id")
+        testthat::expect_identical(
+          httr2::resp_status(response),
+          400L,
+          info = paste(alg, method, use_par, variant)
+        )
+        testthat::expect_identical(
+          httr2::resp_body_json(response)[["reason"]],
+          "authorization_client_id"
+        )
         if (use_par) {
           params[["client_id"]] <- "client"
           response <- get(authorization_input(params, method))
           testthat::expect_identical(httr2::resp_status(response), 302L)
           replay <- get(authorization_input(params, method))
-          testthat::expect_identical(httr2::resp_body_json(replay)[["reason"]],
-            "par_replay")
+          testthat::expect_identical(
+            httr2::resp_body_json(replay)[["reason"]],
+            "par_replay"
+          )
         }
       }
     }
@@ -151,6 +171,7 @@ run_strict_as <- function(alg) {
       "mtls",
       "mtls-par",
       "jarm",
+      "jarm-par",
       "jwt-legacy",
       "jwt-legacy-par",
       "jwt-oauth21",
@@ -200,7 +221,7 @@ run_strict_as <- function(alg) {
       if (grepl("par", mode)) {
         configured@provider@par_url <- paste0(issuer, "/par")
       }
-      if (mode == "jarm") {
+      if (startsWith(mode, "jarm")) {
         configured@response_mode <- "query.jwt"
         configured@jarm_signed_response_alg <- alg
       }
@@ -234,7 +255,7 @@ run_strict_as <- function(alg) {
         authorization_method
       )
       callback <- query(httr2::resp_header(response, "location"))
-      if (mode != "jarm" && !jwt_profile) {
+      if (!startsWith(mode, "jarm") && !jwt_profile) {
         state <- shinyOAuth:::state_payload_decrypt_validate(
           configured,
           callback[["state"]]
@@ -257,7 +278,7 @@ run_strict_as <- function(alg) {
           if (grepl("dpop", mode)) "dpop_required" else "mtls_certificate"
         )
       }
-      if (mode == "jarm") {
+      if (startsWith(mode, "jarm")) {
         token <- NULL
         shiny::testServer(
           shinyOAuth::oauth_module_server,

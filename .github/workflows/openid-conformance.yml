@@ -25,6 +25,7 @@ on:
           - fapi-oauth-mtls-auth
           - fapi-mtls
           - fapi-mtls-auth
+          - fapi-message-signing
       transport:
         description: Transport (shared-pool requires mirai; future supports smoke and refresh)
         type: choice
@@ -136,6 +137,7 @@ jobs:
             integration/openid/.artifacts/fapi-oauth-mtls-*/evidence.json
             integration/openid/.artifacts/fapi-oauth-mtls-auth-*/evidence.json
             integration/openid/.artifacts/fapi-mtls-*/evidence.json
+            integration/openid/.artifacts/fapi-message-signing-*/evidence.json
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 7

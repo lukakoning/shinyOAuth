@@ -103,6 +103,9 @@ openid_fapi_evidence <- function(logs, module, plan, expectation) {
   ) {
     stop("FAPI logs do not belong to this suite instance")
   }
+  if (openid_signing_plan(plan)) {
+    logs <- openid_signing_parameters(logs, module)
+  }
   if (
     expectation[["outcome"]] %in% c("discovery_rejected", "callback_rejected")
   ) {
@@ -385,6 +388,12 @@ openid_fapi_evidence <- function(logs, module, plan, expectation) {
 }
 
 openid_fapi_matches <- function(result, expectation) {
+  if (
+    identical(result[["variant"]][["fapi_response_mode"]], "jarm") &&
+      !openid_signing_matches(result, expectation)
+  ) {
+    return(FALSE)
+  }
   if (identical(result[["variant"]][["sender_constrain"]], "mtls")) {
     return(openid_mtls_matches(result, expectation))
   }
@@ -813,6 +822,8 @@ openid_wait_http_callback <- function(app, browser, tab, initial, observation) {
 openid_http_callback_matches <- function(result, expectation) {
   http <- result[["callback_http"]]
   identical(result[["callback_cleaned"]], FALSE) &&
+    (is.null(expectation[["jarm_error"]]) ||
+      identical(http[["jarm_error"]], expectation[["jarm_error"]])) &&
     identical(http[["status"]], 400L) &&
     identical(http[["state_present"]], expectation[["state_present"]]) &&
     identical(http[["issuer_present"]], expectation[["issuer_present"]]) &&

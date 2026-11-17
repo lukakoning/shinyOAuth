@@ -6,7 +6,7 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
       setequal(args[c(1L, 3L)], c("--profile", "--transport"))
     if (!valid) {
       stop(
-        "Usage: Rscript integration/openid/run-tests.R --check-api | --profile smoke|basic|config|form-post|refresh|auth-post|auth-secret-jwt|auth-private-jwt|fapi-dpop|fapi-dpop-full|fapi-oauth-dpop|fapi-oauth-dpop-reference|fapi-oauth-mtls|fapi-oauth-mtls-auth|fapi-mtls|fapi-mtls-auth --transport sync|mirai|future"
+        "Usage: Rscript integration/openid/run-tests.R --check-api | --profile smoke|basic|config|form-post|refresh|auth-post|auth-secret-jwt|auth-private-jwt|fapi-dpop|fapi-dpop-full|fapi-oauth-dpop|fapi-oauth-dpop-reference|fapi-oauth-mtls|fapi-oauth-mtls-auth|fapi-mtls|fapi-mtls-auth|fapi-message-signing --transport sync|mirai|future"
       )
     }
     options <- setNames(args[c(2L, 4L)], args[c(1L, 3L)])
@@ -28,7 +28,8 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
           "fapi-oauth-mtls",
           "fapi-oauth-mtls-auth",
           "fapi-mtls",
-          "fapi-mtls-auth"
+          "fapi-mtls-auth",
+          "fapi-message-signing"
         ) ||
         !options[["--transport"]] %in% c("sync", "mirai", "future") ||
         (identical(options[["--transport"]], "future") &&
@@ -45,6 +46,7 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
   source("integration/openid/helper-evidence.R", local = TRUE)
   source("integration/openid/helper-auth.R", local = TRUE)
   source("integration/openid/helper-fapi.R", local = TRUE)
+  source("integration/openid/helper-signing.R", local = TRUE)
   source("integration/openid/helper-mtls.R", local = TRUE)
   source("integration/openid/helper-app.R", local = TRUE)
   source("integration/openid/helper-driver.R", local = TRUE)
@@ -169,12 +171,7 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
         ),
         transport = openid_transport_matches(row, expectation, context)
       )
-      if (
-        identical(
-          plan[["spec"]][["plan"]],
-          "fapi2-security-profile-final-client-test-plan"
-        )
-      ) {
+      if (openid_fapi_plan(plan[["spec"]][["plan"]])) {
         checks[["fapi"]] <- openid_fapi_matches(row, expectation)
       }
       if (!all(checks)) {

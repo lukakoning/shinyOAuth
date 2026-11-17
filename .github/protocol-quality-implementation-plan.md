@@ -1026,6 +1026,53 @@ C12 retains Message Signing; C13-C14 retain
 `oidc-provider`. C06 warm-cache, C09 public-client, C15 callback error-page query
 cleanup and fresh hosted CI image availability remain open.
 
+C12 implementation (2026-11-17): `fapi-message-signing` selects the pinned final
+Message Signing client plan with OIDC, private-key-JWT, DPoP, signed Request
+Objects through PAR and signed query responses. Its eight plan variants are
+explicit; its per-module variant is the empty object returned by the suite.
+The suite API must return exactly 29 modules. The selected JARM response mode
+excludes the two plain-response issuer tests; the eight JARM rejection modules
+replace that coverage. Every normal module requires `PASSED` without warning
+or skip allowances. The profile and sync/mirai transports are available through
+manual workflow dispatch.
+
+The installed app uses ES256 for client assertions and Request Objects, and
+requires ES256 JARM responses. The suite advertises only `response_mode=jwt`;
+the app sends that supported spelling and uses the client's query transport.
+The initial `query.jwt` fixture configuration correctly failed the client's
+metadata check and was corrected without changing discovery metadata or any
+suite assertion. Request Objects include explicit `nbf` and a short lifetime.
+The optional `max_age` claim is absent; evidence requires the pinned suite's
+exact informational event for that case rather than inventing a success event.
+
+Evidence verifies actual JAR signatures against the registered key, the signed
+issuer/audience/redirect/scope/nonce/PKCE parameters, PAR-only authorization and
+the suite's validation events. It independently inspects the actual JARM
+redirect and verifies its ES256 signature, or the precise selected invalid
+signature/algorithm case, without applying JWT expiry checks during signature
+inspection. Claim and expiry variants remain separate checks. Token requests
+must redeem the code from that JARM response. Invalid callbacks require the
+expected browser-observed HTTP 400 category, no identity and zero token,
+UserInfo or resource requests. Legitimate exchanges require validated ID tokens,
+UserInfo and a DPoP-protected resource request through the public connection API.
+Compact JWTs, claim values, signing keys, codes and raw HTTP error text stay
+private. Both top-level and nested response credentials are checked against the
+HTTP rejection body before the fixture emits sanitized evidence.
+
+The independent Python fixture now also combines JAR, PAR and signed JARM for
+RS256/RS384, over GET/POST authorization requests. Its targeted 458 assertions
+passed on Windows. It remains a separate comparison without OIDC discovery,
+ID tokens or browser login. No package behavior or upstream fixture assertion
+was changed by C12. Full cross-platform validation is recorded below when run.
+
+`coverage_complete=true` is limited to the exact resolved 29-module variant.
+Other authentication methods, mTLS, signing algorithms, encryption, Form Post,
+refresh and grant management remain additional selections. Resource use stays
+in the main process. JARM rejection occurs at the main-process HTTP boundary;
+mirai does not execute that rejection. C15 retains error-page query cleanup,
+and fresh hosted CI image availability remains unverified. C13-C14 remain the
+next provider interoperability work.
+
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second
 full provider. Add another mock server only when a remaining test case justifies
@@ -1093,7 +1140,7 @@ deployment can run a different release; record its reported version separately.
 | `refresh` | `oidcc-client-refreshtoken-test-plan` | Refresh plus invalid refreshed issuer/subject cases; outside certification. |
 | `extended` | `oidcc-client-test-plan` | Explicit applicable module/variant selection for public clients, other authentication methods and optional supported features. |
 | `fapi-dpop`, `fapi-mtls` | `fapi2-security-profile-final-client-test-plan` | Generic `plain_fapi` authorization-code profiles, with selected client authentication and sender constraint. |
-| `fapi-signing` | `fapi2-message-signing-final-client-test-plan` | Selected JAR/JARM variants after the Security Profile gates work. |
+| `fapi-message-signing` | `fapi2-message-signing-final-client-test-plan` | OIDC/private-key-JWT/DPoP with signed JAR through PAR and query JARM; other variants remain separate. |
 
 The pinned [OIDC client plan sources](https://gitlab.com/openid/conformance-suite/-/tree/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/openid/client)
 and [FAPI client plan sources](https://gitlab.com/openid/conformance-suite/-/tree/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/fapi2spfinal)

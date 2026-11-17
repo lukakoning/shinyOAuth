@@ -186,9 +186,10 @@ openid_run_case <- function(
     client_assertion_private_key = plan[["credentials"]][["private_key"]],
     client_assertion_private_key_kid = plan[["credentials"]][["key_id"]],
     client_assertion_alg = plan[["spec"]][["client_assertion_alg"]],
-    fapi = identical(
+    fapi = openid_fapi_plan(plan[["spec"]][["plan"]]),
+    message_signing = identical(
       plan[["spec"]][["plan"]],
-      "fapi2-security-profile-final-client-test-plan"
+      "fapi2-message-signing-final-client-test-plan"
     ),
     resource_endpoint = module[["resource_endpoint"]],
     oauth_only = identical(
@@ -202,7 +203,18 @@ openid_run_case <- function(
       expectation[["outcome"]],
       "callback_rejected"
     ),
-    response_mode = if (form_post) "form_post" else "query",
+    response_mode = if (
+      identical(
+        plan[["spec"]][["plan_variant"]][["fapi_response_mode"]],
+        "jarm"
+      )
+    ) {
+      "jwt"
+    } else if (form_post) {
+      "form_post"
+    } else {
+      "query"
+    },
     provider_origin = stack[["origin"]],
     transport = context[["transport"]],
     run_id = paste0(context[["run_id"]], "-", module[["id"]]),
@@ -407,9 +419,18 @@ openid_run_case <- function(
   }
   row[["browser_version"]] <- chrome
   if (isTRUE(config[["fapi"]])) {
+    logs <- openid_api(stack, paste0("/api/log/", module[["id"]]))
+    if (isTRUE(config[["message_signing"]])) {
+      row[["message_signing"]] <- openid_signing_evidence(
+        logs,
+        module,
+        plan,
+        expectation
+      )
+    }
     row[["fapi"]] <- if (identical(config[["sender_constraint"]], "mtls")) {
       openid_mtls_evidence(
-        openid_api(stack, paste0("/api/log/", module[["id"]])),
+        logs,
         module,
         plan,
         openid_mtls_peers(stack),
@@ -417,7 +438,7 @@ openid_run_case <- function(
       )
     } else {
       openid_fapi_evidence(
-        openid_api(stack, paste0("/api/log/", module[["id"]])),
+        logs,
         module,
         plan,
         expectation

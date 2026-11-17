@@ -2,6 +2,27 @@ openid_fixture_digest <- function(value) {
   paste(openssl::sha256(charToRaw(value)), collapse = "")
 }
 
+openid_fixture_jarm_error <- function(content) {
+  messages <- c(
+    "without-iss" = "JARM payload missing required iss claim",
+    "with-invalid-iss" = "JARM issuer does not match provider issuer",
+    "without-aud" = "JARM aud claim is invalid",
+    "with-invalid-aud" = "JARM aud claim does not include client_id",
+    "without-exp" = "JARM payload missing required exp claim",
+    "with-expired-exp" = "JARM payload expired",
+    "with-invalid-sig" = "JARM signature is invalid",
+    "signature-is-not-none" = "JARM alg=none is not allowed",
+    "without-state" = "JARM payload missing required state",
+    "with-invalid-state" = "State store entry is missing or malformed"
+  )
+  index <- which(vapply(
+    messages,
+    function(message) grepl(message, content, fixed = TRUE),
+    logical(1)
+  ))
+  if (length(index) == 1L) names(messages)[[index]] else NULL
+}
+
 openid_fixture_app <- function(config) {
   required <- c(
     "issuer",
@@ -21,7 +42,7 @@ openid_fixture_app <- function(config) {
       )) ||
       !startsWith(config[["issuer"]], "https://") ||
       !grepl("^https://localhost:[0-9]+$", config[["origin"]]) ||
-      !config[["response_mode"]] %in% c("query", "form_post")
+      !config[["response_mode"]] %in% c("query", "form_post", "jwt")
   ) {
     stop("Invalid private OpenID fixture configuration")
   }
@@ -292,6 +313,26 @@ openid_fixture_app <- function(config) {
       "client_assertion_private_key_kid"
     ]],
     client_assertion_alg = config[["client_assertion_alg"]],
+    request_object_mode = if (isTRUE(config[["message_signing"]])) {
+      "request"
+    } else {
+      "parameters"
+    },
+    request_object_signing_alg = if (isTRUE(config[["message_signing"]])) {
+      "ES256"
+    } else {
+      NULL
+    },
+    jarm_signed_response_alg = if (isTRUE(config[["message_signing"]])) {
+      "ES256"
+    } else {
+      NULL
+    },
+    request_object_nbf_skew = if (isTRUE(config[["message_signing"]])) {
+      0
+    } else {
+      NULL
+    },
     client_assertion_audience = if (isTRUE(config[["fapi"]])) {
       config[["issuer"]]
     } else {
@@ -434,9 +475,25 @@ openid_fixture_app <- function(config) {
       if (is.list(response) && identical(response[["status"]], 400L)) {
         params <- shiny::parseQueryString(req[["QUERY_STRING"]])
         sensitive <- unlist(
-          params[intersect(names(params), c("code", "state", "iss"))],
+          params[intersect(
+            names(params),
+            c("code", "state", "iss", "response")
+          )],
           use.names = FALSE
         )
+        if (isTRUE(config[["message_signing"]])) {
+          claims <- getFromNamespace(
+            "parse_jwt_payload_or_null",
+            "shinyOAuth"
+          )(params[["response"]])
+          sensitive <- c(
+            sensitive,
+            unlist(
+              claims[intersect(names(claims), c("code", "state", "iss"))],
+              use.names = FALSE
+            )
+          )
+        }
         sensitive <- sensitive[nchar(sensitive) >= 16L]
         headers <- response[["headers"]]
         names(headers) <- tolower(names(headers))
@@ -448,6 +505,9 @@ openid_fixture_app <- function(config) {
           ),
           simplifyVector = FALSE
         )
+        if (isTRUE(config[["message_signing"]])) {
+          value[["jarm_error"]] <- openid_fixture_jarm_error(content)
+        }
         value[["http_rejection"]] <- list(
           status = 400L,
           no_store = identical(headers[["cache-control"]], "no-store"),
@@ -462,6 +522,9 @@ openid_fixture_app <- function(config) {
           issuer_present = !is.null(params[["iss"]]),
           content_digest = openid_fixture_digest(trimws(content))
         )
+        if (isTRUE(config[["message_signing"]])) {
+          value[["http_rejection"]][["jarm_error"]] <- value[["jarm_error"]]
+        }
         path <- file.path(config[["audit_directory"]], "callback-http.json")
         pending <- paste0(path, ".pending")
         jsonlite::write_json(value, pending, auto_unbox = TRUE, null = "null")
