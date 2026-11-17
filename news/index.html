@@ -46,25 +46,13 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
-<div class="section level3">
-<h3 id="security-fix-and-upgrading-development-version">Security fix and upgrading<a class="anchor" aria-label="anchor" href="#security-fix-and-upgrading-development-version"></a></h3>
-<ul><li>
-<p>Encrypted login state and other internal data, including stored credentials, now use authenticated encryption to reject tampering. This fixes a flaw that left these values encrypted but unauthenticated (<a href="https://github.com/lukakoning/shinyOAuth/issues/26" class="external-link">#26</a>, thanks to Jeroen Ooms). The package now requires <code>openssl &gt;= 2.6.0</code>.</p>
-<p>Update openssl and restart all R workers together when deploying this release. Users must restart pending logins and reconnect saved authorizations. Let old encrypted records in custom persistent stores expire or invalidate them.</p>
-</li>
-</ul></div>
-<div class="section level3">
-<h3 id="new-features-development-version">New features<a class="anchor" aria-label="anchor" href="#new-features-development-version"></a></h3>
-<ul><li><p><code>oauth_client(state_transport = "reference")</code> sends a short opaque state value to support providers that limit the length of the <code>state</code> parameter. It keeps the encrypted login details in <code>state_store</code>, with the same browser binding and single-use checks as the default encrypted mode. Custom shared stores need an atomic <code>take()</code> method.</p></li>
+<ul><li><p>Fixed encrypted-state decryption errors with openssl 2.6.0, which now verifies authentication tags. shinyOAuth now supplies these tags correctly, protecting encrypted login state and stored data, including credentials, against tampering. Earlier openssl versions did not verify the tags, so the package now requires <code>openssl &gt;= 2.6.0</code>.</p></li>
+<li><p><code>oauth_client(state_transport = "reference")</code> sends a short opaque state value to support providers that limit the length of the <code>state</code> parameter.</p></li>
 <li><p><code><a href="../reference/oauth_provider_oauth_discover.html">oauth_provider_oauth_discover()</a></code> configures OAuth-only providers from their published server metadata (RFC 8414), avoiding manual endpoint configuration without requiring OpenID Connect support.</p></li>
-<li><p><code>oauth_provider_oidc_discover(id_token_profile = "fapi2")</code> supports providers that advertise FAPI 2.0 signing algorithms but omit RS256, while respecting your <code>id_token_allowed_algs</code> restrictions. Configure the provider’s other FAPI requirements separately.</p></li>
-</ul></div>
-<div class="section level3">
-<h3 id="fixes-and-diagnostics-development-version">Fixes and diagnostics<a class="anchor" aria-label="anchor" href="#fixes-and-diagnostics-development-version"></a></h3>
-<ul><li><p>Audit events now identify failed ID-token claims and discovery issuer checks, making rejected logins easier to diagnose without recording claim values. Algorithm and signature rejections include reason codes; state authentication failures use <code>state_auth_failed</code>.</p></li>
+<li><p><code>oauth_provider_oidc_discover(id_token_profile = "fapi2")</code> supports providers that advertise FAPI 2.0 signing algorithms but omit RS256, while respecting your <code>id_token_allowed_algs</code> restrictions.</p></li>
+<li><p>Audit events now identify failed ID-token claims and discovery issuer checks, making rejected logins easier to diagnose without recording claim values. Algorithm and signature rejections include reason codes; state authentication failures use <code>state_auth_failed</code>.</p></li>
 <li><p><code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> and <code><a href="https://rdrr.io/r/base/format.html" class="external-link">format()</a></code> now redact prepared authorization objects correctly when using the installed package, preventing login state and redirect details from appearing in console output and logs.</p></li>
 </ul></div>
-</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.7.0" id="shinyoauth-070">shinyOAuth 0.7.0<a class="anchor" aria-label="anchor" href="#shinyoauth-070"></a></h2><p class="text-muted">CRAN release: 2026-10-31</p>
 <ul><li>
