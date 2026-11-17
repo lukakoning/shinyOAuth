@@ -889,6 +889,22 @@ expected-failure controls in Linux sync. Its report is
 `fapi-oauth-mtls-20261117-155242-ed41c76ae9a6` (62.47 seconds for the module loop).
 This checks the original PAR alias fallback against the updated collector.
 
+The concurrent authenticated-state compatibility fix `e8b70286` was then
+integrated in `9d94af4f`. Two fresh complete gates verified the combined checkout:
+Windows mirai with OpenSSL 2.4.0 and Linux sync with OpenSSL 2.6.0. All eighteen
+normal modules passed, with six separate expected-failure resource controls,
+verified cleanup and the same forced coverage limits. Evidence checks again
+passed with zero test warnings or skips. Both reports record documentation-only
+edits on `9d94af4f`.
+
+| Environment / transport | OpenSSL | Nine-module loop (s) | Private artifact directory |
+| --- | --- | ---: | --- |
+| Windows / mirai | 2.4.0 | 117.69 | `fapi-oauth-mtls-auth-20261117-165756-08cfbdeea48e` |
+| Linux / sync | 2.6.0 | 63.33 | `fapi-oauth-mtls-auth-20261117-155756-dd2eb403bcff` |
+
+The fixture README now follows the restored `openssl >= 2.1.2` dependency
+requirement without a development repository. No owned Docker containers remain.
+
 C11 remains partial. Next, extend the independent Python fixture with mTLS
 client-authentication rejection checks, including `invalid_client` for wrong or
 missing certificates and invalid client identity. Assess OIDC/mTLS separately.

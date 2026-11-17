@@ -7,10 +7,8 @@ python -m pip install -r integration/conformance/requirements.txt
 Rscript integration/conformance/run-tests.R
 ```
 
-Install the package's R dependencies and test dependencies first. The current
-OpenSSL requirement is available from the
-[maintainer's R-universe repository](https://jeroen.r-universe.dev/openssl),
-which CI already uses. The runner installs this checkout in a private library
+Install the package's R dependencies and test dependencies first.
+The runner installs this checkout in a private library
 under `.artifacts/` and uses that installation in the main process and mirai
 workers. It requires zero test failures, errors, warnings or skips.
 
