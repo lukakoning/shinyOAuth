@@ -436,8 +436,36 @@ from the nine normal outcomes. The report always keeps
 `coverage_complete = false` and `mtls_resource_denial_not_established` visible.
 The [independent Python resource check](../conformance/README.md) separately
 requires per-token certificate matching and real HTTP 401 denial. It leaves
-this suite's outcomes and incomplete coverage status intact. mTLS client
-authentication remains unfinished C11 work.
+this suite's outcomes and incomplete coverage status intact.
+
+Run the separate OAuth-only mTLS client-authentication selection:
+
+```sh
+Rscript integration/openid/run-tests.R --profile fapi-oauth-mtls-auth --transport sync
+Rscript integration/openid/run-tests.R --profile fapi-oauth-mtls-auth --transport mirai
+```
+
+This resolves the same nine modules with the suite's `client_auth_type = mtls`
+variant, which advertises `tls_client_auth`. Registration contains the public
+client certificate and omits shared secrets and JWT client keys. PAR and token
+requests must carry `client_id`, omit JWT assertions and shared secrets, and
+present the registered certificate on the actual TLS connection. The resource
+still uses mTLS token binding through the public connection API.
+
+Without endpoint aliases, this variant advertises literal mTLS URLs for both
+PAR and token. The gate requires the suite's PAR fallback event and verifies
+that both requests reach the mTLS listener. The private-key-JWT variant retains
+its ordinary TLS PAR fallback. All nine normal modules require `PASSED`;
+the separate resource attacker controls retain their expected `FAILED` verdicts.
+
+The pinned suite registers one exact certificate and compares it with the TLS
+peer. This selection does not establish the PKI chain and subject-name validation
+described by [RFC 8705 section 2.1](https://www.rfc-editor.org/rfc/rfc8705.html#section-2.1),
+or rejection of invalid client-authentication credentials. The checker forces
+`suite_exact_certificate_registration_only` and
+`mtls_client_authentication_denial_not_tested` into the coverage limits, even if
+the manifest omits them. Resource denial remains limited as described above.
+OIDC/mTLS and mTLS-bound refresh remain separate work.
 
 The discovery helper reads unsigned JSON metadata over verified TLS. Signed
 metadata, refresh, other FAPI variants and certification remain separate. Resource
@@ -448,8 +476,8 @@ The [workflow](../../.github/workflows/openid-conformance.yml) runs preflight,
 API checks and smoke on pull requests affecting the package or this harness.
 Manual dispatch offers `smoke`, `basic`, `config`, `form-post`, `refresh`,
 `auth-post`, `auth-secret-jwt`, `auth-private-jwt`, `shared-pool`, `fapi-dpop`,
-`fapi-dpop-full`, `fapi-oauth-dpop`, `fapi-oauth-dpop-reference` and
-`fapi-oauth-mtls`;
+`fapi-dpop-full`, `fapi-oauth-dpop`, `fapi-oauth-dpop-reference`,
+`fapi-oauth-mtls` and `fapi-oauth-mtls-auth`;
 larger selections remain manual while GitHub runner timings are unmeasured.
 Manual transport choices are `sync`, `mirai` and the limited `future` parity
 selection. `shared-pool` requires mirai. Pull requests keep synchronous smoke.

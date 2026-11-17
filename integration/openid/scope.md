@@ -375,8 +375,23 @@ and header replacement, while resource denial remains unproven. The gate forces
 manifest's complete flag is changed. The
 [independent Python fixture](../conformance/README.md) now separately checks
 actual resource denial with per-token TLS bindings. Other C11 work includes
-mTLS client authentication. No suite condition or
+invalid client-authentication rejection and OIDC/mTLS. No suite condition or
 production library default is changed by this fixture.
+
+The separate `fapi-oauth-mtls-auth` selection resolves the same nine OAuth-only
+modules with `client_auth_type = mtls`. Discovery advertises `tls_client_auth`.
+PAR and token requests require `client_id`, the registered actual TLS peer,
+and no shared secret or JWT assertion. The no-alias module advertises literal
+mTLS URLs for both endpoints, so PAR must still reach the mTLS listener. These
+checks cover successful certificate authentication and retain the isolated
+expected-failure resource controls.
+
+The pinned provider compares exact certificates; it does not implement the PKI
+chain and subject-name validation required for RFC 8705's PKI method. This
+selection also lacks authentication-failure controls at PAR/token. The checker
+therefore forces `suite_exact_certificate_registration_only` and
+`mtls_client_authentication_denial_not_tested` into its coverage limits alongside
+the existing resource-denial limit. `coverage_complete` remains false.
 
 Baseline references: [OIDC Core](https://openid.net/specs/openid-connect-core-1_0.html),
 [Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html),
