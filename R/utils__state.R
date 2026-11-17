@@ -1432,7 +1432,7 @@ validate_state_store_value <- function(
   invisible(ssv)
 }
 
-# External state-store records use a separate, context-bound AES-GCM key. The
+# External state-store records use a separate, context-bound encryption key. The
 # HMAC derivation binds ciphertext to this client/provider and state lookup key,
 # preventing a backend from moving valid records between login transactions.
 state_store_sealing_key <- function(client, state) {

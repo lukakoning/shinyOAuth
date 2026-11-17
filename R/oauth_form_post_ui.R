@@ -885,7 +885,7 @@ oauth_form_post_envelope_limits <- function() {
 
 #' Internal: seal one form_post bridge payload before storing it
 #'
-#' Wraps the accepted callback payload in an authenticated AES-GCM envelope so
+#' Wraps the accepted callback payload in an authenticated encryption envelope so
 #' a writable external state store cannot rewrite bridged callback values after
 #' the POST boundary succeeds.
 #'

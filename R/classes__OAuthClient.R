@@ -277,7 +277,8 @@
 #'
 #'   Deployments with multiple R processes use the same key and `state_store` across
 #'   processes. The key is a character string or raw vector containing at least
-#'   32 cryptographically random bytes. State uses AES-GCM authenticated encryption.
+#'   32 cryptographically random bytes. State uses AES-256-CBC-HMAC-SHA512
+#'   authenticated encryption.
 #'
 #' @param client_assertion_private_key Optional private key for `private_key_jwt` client authentication
 #'   at the token endpoint. Can be an `openssl::key` or a PEM string containing a

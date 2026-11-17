@@ -96,7 +96,7 @@ test_that("state_decrypt_gcm rejects invalid token shapes and types", {
   )))
   expect_error(
     shinyOAuth:::state_decrypt_gcm(t5, key = key),
-    "invalid GCM IV length",
+    "invalid state IV length",
     class = "shinyOAuth_state_error"
   )
 
@@ -132,7 +132,7 @@ test_that("state_decrypt_gcm rejects invalid token shapes and types", {
   )))
   expect_error(
     shinyOAuth:::state_decrypt_gcm(t8, key = key),
-    "invalid GCM tag length",
+    "invalid state tag length",
     class = "shinyOAuth_state_error"
   )
 
@@ -192,7 +192,7 @@ test_that("state_encrypt_gcm validates inputs and decrypt fails on tamper", {
     class = "shinyOAuth_input_error"
   )
 
-  # Happy path roundtrip then tamper tag (flip one byte) -> GCM auth fail
+  # Happy path roundtrip then tamper tag (flip one byte) -> authentication failure
   payload <- list(state = "ok", issued_at = 1)
   tok <- shinyOAuth:::state_encrypt_gcm(payload, key = key)
   wrapper <- jsonlite::fromJSON(rawToChar(shinyOAuth:::base64url_decode_raw(
@@ -207,7 +207,7 @@ test_that("state_encrypt_gcm validates inputs and decrypt fails on tamper", {
   )))
   expect_error(
     shinyOAuth:::state_decrypt_gcm(tampered, key = key),
-    "GCM authentication failed",
+    "State authentication failed",
     class = "shinyOAuth_state_error"
   )
 })
@@ -247,9 +247,9 @@ test_that("state_decrypt_gcm includes state-key mismatch hints", {
     key = key
   )
 
-  # 1) Force GCM auth failure branch
+  # 1) Force native decryption failure after tag verification
   testthat::local_mocked_bindings(
-    aes_gcm_decrypt = function(...) stop("auth failed"),
+    aes_cbc_decrypt = function(...) stop("auth failed"),
     .package = "openssl"
   )
   e1 <- tryCatch(
@@ -258,13 +258,13 @@ test_that("state_decrypt_gcm includes state-key mismatch hints", {
   )
   expect_s3_class(e1, "shinyOAuth_state_error")
   m1 <- conditionMessage(e1)
-  expect_match(m1, "GCM authentication failed", fixed = TRUE)
+  expect_match(m1, "State authentication failed", fixed = TRUE)
   expect_match(m1, "state key/secret", fixed = TRUE)
   expect_match(m1, "OAuthClient created inside a Shiny session", fixed = TRUE)
 
   # 2) Force decrypted JSON invalid branch
   testthat::local_mocked_bindings(
-    aes_gcm_decrypt = function(...) charToRaw("not-json"),
+    aes_cbc_decrypt = function(...) charToRaw("not-json"),
     .package = "openssl"
   )
   e2 <- tryCatch(
@@ -283,7 +283,7 @@ test_that("state_decrypt_gcm includes state-key mismatch hints", {
 
   # 3) Force embedded-NUL decrypted payload branch
   testthat::local_mocked_bindings(
-    aes_gcm_decrypt = function(...) {
+    aes_cbc_decrypt = function(...) {
       c(charToRaw("{\"state\":\"ok\"}"), as.raw(0))
     },
     .package = "openssl"

@@ -40,7 +40,7 @@ test_that("state_encrypt_gcm <-> state_decrypt_gcm roundtrip and properties", {
     as.numeric(payload[["issued_at"]])
   )
 
-  # Decrypt with a wrong key must fail GCM authentication
+  # Decrypt with a wrong key must fail authentication
   wrong_key <- strrep("x", 64)
   expect_error(
     shinyOAuth:::state_decrypt_gcm(enc1, key = wrong_key),
@@ -73,7 +73,7 @@ test_that("decrypted state rejects malformed UTF-8 without parser warnings", {
   token <- shinyOAuth:::state_encrypt_gcm(list(state = "valid"), key)
   decrypted <- raw()
   testthat::local_mocked_bindings(
-    aes_gcm_decrypt = function(...) decrypted,
+    aes_cbc_decrypt = function(...) decrypted,
     .package = "openssl"
   )
 

@@ -63,7 +63,6 @@ jobs:
         with:
           r-version: "4.5.1"
           use-public-rspm: true
-          extra-repositories: https://jeroen.r-universe.dev
 
       - name: Set up Chrome
         id: chrome
