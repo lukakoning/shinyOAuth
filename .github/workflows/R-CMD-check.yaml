@@ -31,7 +31,7 @@ jobs:
           # minimum-testthat job on compatible R and shinytest2 versions.
           - {os: ubuntu-latest,   r: '4.5', testthat: 'testthat@3.2.2', shinytest2: 'shinytest2@0.4.1'}
           # Exercise authenticated state on the oldest supported openssl API.
-          - {os: ubuntu-latest,   r: '4.5', openssl: 'openssl@2.1.2'}
+          - {os: ubuntu-latest,   r: '4.5', openssl: 'openssl@2.6.0'}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -78,10 +78,18 @@ jobs:
             packageVersion("shinytest2") == "0.4.1"
           )
 
-      - name: Verify minimum openssl dependency version
-        if: matrix.config.openssl != ''
+      - name: Verify authenticated GCM dependency
         shell: Rscript {0}
-        run: stopifnot(packageVersion("openssl") == "2.1.2")
+        env:
+          MINIMUM_OPENSSL_JOB: ${{ matrix.config.openssl != '' }}
+        run: |
+          stopifnot(
+            packageVersion("openssl") >= "2.6.0",
+            "tag" %in% names(formals(openssl::aes_gcm_decrypt))
+          )
+          if (Sys.getenv("MINIMUM_OPENSSL_JOB") == "true") {
+            stopifnot(packageVersion("openssl") == "2.6.0")
+          }
 
       - uses: r-lib/actions/check-r-package@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
         with:

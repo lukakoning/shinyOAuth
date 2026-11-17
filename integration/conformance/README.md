@@ -11,9 +11,8 @@ Install the package's R dependencies and test dependencies first.
 The runner installs this checkout in a private library
 under `.artifacts/` and uses that installation in the main process and mirai
 workers. It requires zero test failures, errors, warnings or skips.
-On OpenSSL below 2.6.0, startup explicitly checks and records the package's
-once-per-session upgrade advisory before running the protocol tests. Unexpected
-warnings from that check and any warnings during those tests fail the run.
+The R package openssl must be version 2.6.0 or later, available from CRAN.
+Any warnings during the tests fail the run.
 
 Each run writes a sanitized `evidence.json` with its checkout revision, dirty
 flag, dependency versions, package-installation check and assertion counts.

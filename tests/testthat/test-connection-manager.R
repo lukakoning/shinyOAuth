@@ -274,6 +274,42 @@ test_that("browser UI establishes and clears cookies only at the ordinary HTTP b
   ]])
 })
 
+test_that("a browser cookie from a previous process clears and recovers", {
+  before <- manager_test_fixture()
+  old_cookie <- manager_test_cookie(before)
+  manager <- oauth_connections(
+    before[["manager"]][["clients"]], "https://app.example",
+    retention = "browser", owner_policy = oauth_browser_owner(),
+    store = oauth_connection_store_memory(),
+    keys = before[["manager"]][["keys"]]
+  )
+  restarted <- list(
+    manager = manager,
+    ui = oauth_connections_ui(shiny::fluidPage("Connections"), "health", manager)
+  )
+  response <- restarted[["ui"]](manager_test_request(old_cookie))
+  expect_identical(response[["status"]], 303L)
+  expect_match(response[["headers"]][["Set-Cookie"]], "Max-Age=0", fixed = TRUE)
+  expect_identical(response[["headers"]][["Location"]], "https://app.example/")
+  fresh_cookie <- manager_test_cookie(restarted)
+  expect_false(identical(fresh_cookie, old_cookie))
+  expect_equal(
+    restarted[["ui"]](manager_test_request(fresh_cookie))[["status"]], 200L
+  )
+  expect_null(restarted[["ui"]](manager_test_request(fresh_cookie))[["headers"]][["Set-Cookie"]])
+  shiny::testServer(
+    oauth_connections_server,
+    args = list(id = "health", manager = restarted[["manager"]]),
+    session = manager_test_session(fresh_cookie),
+    {
+      expect_length(controller[["records"]](), 0L)
+      id <- manager_test_accept(controller)
+      expect_true(nzchar(id))
+      expect_length(controller[["records"]](), 1L)
+    }
+  )
+})
+
 test_that("browser owner capacity is configurable independently of the store", {
   f <- manager_test_fixture(owner = oauth_browser_owner(max_entries = 1L))
   cookie <- manager_test_cookie(f)

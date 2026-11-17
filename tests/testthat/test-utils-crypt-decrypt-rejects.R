@@ -244,13 +244,12 @@ test_that("state_decrypt_gcm includes state-key mismatch hints", {
   key <- strrep("k", 64)
   tok <- shinyOAuth:::state_encrypt_gcm(
     list(state = "ok", issued_at = 1),
-    key = key,
-    version = 3L
+    key = key
   )
 
-  # 1) Force native decryption failure after tag verification
+  # 1) Force native GCM authentication failure
   testthat::local_mocked_bindings(
-    aes_cbc_decrypt = function(...) stop("auth failed"),
+    aes_gcm_decrypt = function(...) stop("auth failed"),
     .package = "openssl"
   )
   e1 <- tryCatch(
@@ -265,7 +264,7 @@ test_that("state_decrypt_gcm includes state-key mismatch hints", {
 
   # 2) Force decrypted JSON invalid branch
   testthat::local_mocked_bindings(
-    aes_cbc_decrypt = function(...) charToRaw("not-json"),
+    aes_gcm_decrypt = function(...) charToRaw("not-json"),
     .package = "openssl"
   )
   e2 <- tryCatch(
@@ -284,7 +283,7 @@ test_that("state_decrypt_gcm includes state-key mismatch hints", {
 
   # 3) Force embedded-NUL decrypted payload branch
   testthat::local_mocked_bindings(
-    aes_cbc_decrypt = function(...) {
+    aes_gcm_decrypt = function(...) {
       c(charToRaw("{\"state\":\"ok\"}"), as.raw(0))
     },
     .package = "openssl"

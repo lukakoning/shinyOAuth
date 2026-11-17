@@ -70,10 +70,10 @@ test_that("decrypted state rejects malformed UTF-8 without parser warnings", {
   withr::local_locale(c(LC_CTYPE = "C"))
   withr::local_options(shinyOAuth.state_fail_delay_ms = 0)
   key <- strrep("k", 64)
-  token <- shinyOAuth:::state_encrypt_gcm(list(state = "valid"), key, version = 3L)
+  token <- shinyOAuth:::state_encrypt_gcm(list(state = "valid"), key)
   decrypted <- raw()
   testthat::local_mocked_bindings(
-    aes_cbc_decrypt = function(...) decrypted,
+    aes_gcm_decrypt = function(...) decrypted,
     .package = "openssl"
   )
 

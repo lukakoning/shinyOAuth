@@ -39,7 +39,7 @@ refreshing it when needed.
   and Auth0, discover OIDC settings with `oauth_provider_oidc_discover()`, or
   configure a provider yourself.
 
-- Security: authenticated AES-GCM/CBC-HMAC state, single-use server-side state,
+- Security: authenticated AES-256-GCM state, single-use server-side state,
   origin- and tab-scoped browser binding, HTTPS enforcement and PKCE (S256).
   OIDC checks cover ID token signatures and claims, including nonce, and match
   the UserInfo subject to the ID token. DPoP, mTLS, JAR and PAR are available

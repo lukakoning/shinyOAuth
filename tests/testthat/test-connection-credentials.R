@@ -35,6 +35,18 @@ test_that("encrypted credential schemas retain token continuity without live obj
   key <- openssl::rand_bytes(32L)
   sealed <- connection_credentials_seal(token, owner, id, client, key, 1000)
   expect_false(grepl("synthetic", sealed, fixed = TRUE))
+  wrapper <- state_test_unwrap(sealed)
+  expect_identical(wrapper[["v"]], 2L)
+  for (field in c("ct", "tg", "iv")) {
+    altered <- wrapper
+    altered[[field]] <- base64url_encode(state_test_flip_byte(
+      base64url_decode_raw(wrapper[[field]])
+    ))
+    expect_error(
+      connection_credentials_open(state_test_wrap(altered), owner, id, client, key),
+      "unavailable or incompatible", class = "shinyOAuth_token_error"
+    )
+  }
   restored <- connection_credentials_open(sealed, owner, id, client, key)
   expect_identical(
     connection_credentials_open(
@@ -102,7 +114,7 @@ test_that("encrypted credential schemas retain token continuity without live obj
   )
 })
 
-test_that("credential ciphertext budgets include padding at the plaintext limit", {
+test_that("GCM credential ciphertext fits the exact plaintext limit", {
   client <- connection_test_client(make_test_client(), c(api = "https://api.example/v1"))
   token <- OAuthToken(
     access_token = "synthetic-access", token_type = "Bearer",
@@ -125,7 +137,7 @@ test_that("credential ciphertext budgets include padding at the plaintext limit"
   wrapper <- jsonlite::fromJSON(rawToChar(base64url_decode_raw(sealed)))
   expect_length(
     base64url_decode_raw(wrapper[["ct"]]),
-    1024^2 + if (wrapper[["v"]] == 3L) 16L else 0L
+    1024^2
   )
   restored <- connection_credentials_open(sealed, owner, id, client, key)
   expect_identical(restored[["token"]]@extra_fields, token@extra_fields)

@@ -154,8 +154,8 @@ A random key is generated when omitted. This is separate from
 
 Deployments with multiple R processes use the same key and \code{state_store} across
 processes. The key is a character string or raw vector containing at least
-32 cryptographically random bytes. State uses AES-GCM on openssl >= 2.6.0
-and authenticated AES-256-CBC-HMAC-SHA512 on older openssl versions.}
+32 cryptographically random bytes. State uses authenticated AES-256-GCM
+and requires openssl >= 2.6.0.}
 
 \item{client_assertion_private_key}{Optional private key for \code{private_key_jwt} client authentication
 at the token endpoint. Can be an \code{openssl::key} or a PEM string containing a

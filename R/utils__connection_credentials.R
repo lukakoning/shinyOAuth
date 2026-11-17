@@ -333,7 +333,7 @@ connection_credentials_open <- function(
           token = 3 * 1024^2,
           wrapper = 2 * 1024^2,
           ct_b64 = 2 * 1024^2,
-          ct = 1024^2 + 16L # Allow the final CBC padding block at the payload limit.
+          ct = 1024^2
         )
       )
       targets <- token_target_bundle_decode(client, payload[["targets"]])

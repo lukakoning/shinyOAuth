@@ -165,95 +165,27 @@ state_decrypt_fail <- function(msg, context = list()) {
   err_invalid_state(msg, context = context)
 }
 
-#' Check whether the installed openssl release supports authenticated GCM
-#'
-#' @param version Installed openssl package version.
-#' @return Whether openssl is at least version 2.6.0.
-#' @keywords internal
-#' @noRd
-state_openssl_gcm_available <- function(version = utils::packageVersion("openssl")) {
-  package_version(version) >= "2.6.0"
-}
-
-#' Recommend upgrading openssl once per R session when CBC-HMAC is selected
-#'
-#' @return No meaningful return value; emits an advisory warning.
-#' @keywords internal
-#' @noRd
-state_warn_old_openssl <- function() {
-  warn_pkg(
-    "Upgrade openssl to version 2.6.0 or later",
-    c(
-      "i" = "shinyOAuth is using authenticated AES-CBC-HMAC compatibility mode because openssl < 2.6.0 is installed.",
-      "i" = 'Run install.packages("openssl") and restart R to use authenticated AES-GCM.'
-    ),
-    class = "shinyOAuth_openssl_upgrade_warning",
-    .frequency = "once",
-    .frequency_id = "shinyOAuth-openssl-upgrade"
-  )
-}
-
-#' Derive separate CBC-HMAC keys for version 3 state envelopes
-#'
-#' @param key Normalized 32-byte state key.
-#' @return Named list with raw MAC and encryption keys.
-#' @keywords internal
-#' @noRd
-state_cbc_hmac_keys <- function(key) {
-  cek <- as.raw(openssl::sha512(
-    charToRaw("shinyOAuth:state:v3:A256CBC-HS512"), key = key
-  ))
-  split_jwe_cbc_hmac_cek(cek, "A256CBC-HS512")
-}
-
-#' Authenticate a version 3 state envelope using RFC 7518 section 5.2
-#'
-#' @param ct Raw ciphertext.
-#' @param iv Raw initialization vector.
-#' @param mac_key Raw 32-byte MAC key.
-#' @return Raw 32-byte authentication tag.
-#' @keywords internal
-#' @noRd
-state_cbc_hmac_tag <- function(ct, iv, mac_key) {
-  compute_compact_jwe_auth_tag(
-    "A256CBC-HS512",
-    mac_key,
-    base64url_encode(charToRaw('{"v":3,"enc":"A256CBC-HS512"}')),
-    iv,
-    ct
-  )
-}
-
 #' Internal: encrypt a state payload into an authenticated envelope
 #'
-#' Uses AES-GCM on openssl >= 2.6.0 and AES-256-CBC-HMAC-SHA512 on older
-#' releases. Returns a base64url-wrapped token containing version, IV, tag,
+#' Uses AES-256-GCM with a separate authentication tag. Returns a
+#' base64url-wrapped token containing version, IV, tag,
 #' and ciphertext. Used when login state is created before redirect.
 #'
 #' @param payload State payload to encrypt.
 #' @param key Character passphrase or raw key material.
-#' @param version Optional envelope version: 2 for GCM or 3 for CBC-HMAC.
-#'   By default, selects GCM on openssl >= 2.6.0 and CBC-HMAC on older releases.
+#' @param version Envelope version. Only version 2 is supported.
 #' @param min_key_chars Minimum passphrase length for character keys.
 #' @return Compact encrypted state token string.
 #' @keywords internal
 #' @noRd
-state_encrypt_gcm <- function(payload, key, version = NULL, min_key_chars = 32L) {
+state_encrypt_gcm <- function(payload, key, version = 2L, min_key_chars = 32L) {
   if (is.null(payload)) {
     err_input(c("x" = "payload is NULL"), context = list(phase = "encrypt"))
   }
   key <- normalize_key32(key, min_chars = min_key_chars)
-  gcm_available <- state_openssl_gcm_available()
-  version <- if (is.null(version)) {
-    if (gcm_available) 2L else 3L
-  } else {
-    normalize_state_envelope_version(version)
-  }
-  if (is.na(version) || !version %in% c(2L, 3L)) {
-    err_input("New state envelopes must use version 2 or 3")
-  }
-  if (version == 2L && !gcm_available) {
-    err_config("AES-GCM state encryption requires openssl >= 2.6.0")
+  version <- normalize_state_envelope_version(version)
+  if (is.na(version) || version != 2L) {
+    err_input("New state envelopes must use version 2")
   }
 
   json <- jsonlite::toJSON(
@@ -269,34 +201,21 @@ state_encrypt_gcm <- function(payload, key, version = NULL, min_key_chars = 32L)
     )
   }
 
-  if (version == 2L) {
-    iv <- openssl::rand_bytes(12L)
-    enc <- openssl::aes_gcm_encrypt(charToRaw(json), key = key, iv = iv)
-    if (!is.raw(enc)) {
-      err_config(
-        "Unexpected ciphertext from aes_gcm_encrypt()",
-        context = list(phase = "encrypt")
-      )
-    }
-    tag <- attr(enc, "tag", exact = TRUE)
-    if (!is.raw(tag) || length(tag) != 16L) {
-      err_config(
-        "AES-GCM encryption requires a 16-byte authentication tag",
-        context = list(phase = "encrypt")
-      )
-    }
-  } else {
-    if (!gcm_available) state_warn_old_openssl()
-    keys <- state_cbc_hmac_keys(key)
-    iv <- openssl::rand_bytes(16L)
-    enc <- openssl::aes_cbc_encrypt(charToRaw(json), key = keys[["enc_key"]], iv = iv)
-    if (!is.raw(enc) || !length(enc) || length(enc) %% 16L != 0L) {
-      err_config(
-        "Unexpected ciphertext from aes_cbc_encrypt()",
-        context = list(phase = "encrypt")
-      )
-    }
-    tag <- state_cbc_hmac_tag(enc, iv, keys[["mac_key"]])
+  plaintext <- charToRaw(json)
+  iv <- openssl::rand_bytes(12L)
+  enc <- openssl::aes_gcm_encrypt(plaintext, key = key, iv = iv)
+  if (!is.raw(enc) || length(enc) != length(plaintext)) {
+    err_config(
+      "Unexpected ciphertext from aes_gcm_encrypt()",
+      context = list(phase = "encrypt")
+    )
+  }
+  tag <- attr(enc, "tag", exact = TRUE)
+  if (!is.raw(tag) || length(tag) != 16L) {
+    err_config(
+      "AES-GCM encryption requires a 16-byte authentication tag",
+      context = list(phase = "encrypt")
+    )
   }
 
   token_obj <- list(
@@ -339,9 +258,8 @@ normalize_state_envelope_version <- function(value) {
 #'
 #' @param token Compact encrypted state token.
 #' @param key Character passphrase or raw key material.
-#' @param expected_version Optional expected envelope version. By default,
-#'   versions 2 (AES-GCM) and 3 (AES-CBC-HMAC) are accepted. Version 2 requires
-#'   an openssl API that verifies GCM tags. Version 1 is always rejected.
+#' @param expected_version Expected envelope version. Only version 2 is
+#'   supported; legacy versions are always rejected.
 #' @param size_limits Optional internal envelope budgets; external state uses
 #'   the configured state limits by default.
 #' @param min_key_chars Minimum passphrase length for character keys.
@@ -351,7 +269,7 @@ normalize_state_envelope_version <- function(value) {
 state_decrypt_gcm <- function(
   token,
   key,
-  expected_version = NULL,
+  expected_version = 2L,
   min_key_chars = 32L,
   size_limits = NULL
 ) {
@@ -502,16 +420,12 @@ state_decrypt_gcm <- function(
     )
   }
   found_version <- normalize_state_envelope_version(obj[["v"]])
-  expected_version <- if (is.null(expected_version)) {
-    c(2L, 3L)
-  } else {
-    normalize_state_envelope_version(expected_version)
-  }
+  expected_version <- normalize_state_envelope_version(expected_version)
   if (
     is.na(found_version) ||
       anyNA(expected_version) ||
-      !found_version %in% c(2L, 3L) ||
-      !found_version %in% expected_version
+      found_version != 2L ||
+      found_version != expected_version
   ) {
     audit_fail(
       "token_version_mismatch",
@@ -538,9 +452,7 @@ state_decrypt_gcm <- function(
       context = list(phase = "decrypt")
     )
   }
-  iv_bytes <- if (found_version == 2L) 12L else 16L
-  tag_bytes <- if (found_version == 2L) 16L else 32L
-  if (length(iv) != iv_bytes) {
+  if (length(iv) != 12L) {
     audit_fail("iv_len_invalid", details = list(iv_len = length(iv)))
     state_fail(
       sprintf("invalid state IV length: %d", length(iv)),
@@ -559,7 +471,7 @@ state_decrypt_gcm <- function(
       context = list(phase = "decrypt")
     )
   }
-  if (length(tg) != tag_bytes) {
+  if (length(tg) != 16L) {
     audit_fail("tag_len_invalid", details = list(tag_len = length(tg)))
     state_fail(
       sprintf("invalid state tag length: %d", length(tg)),
@@ -626,34 +538,10 @@ state_decrypt_gcm <- function(
       context = list(phase = "decrypt")
     )
   }
-  if (found_version == 3L) {
-    keys <- state_cbc_hmac_keys(key)
-    expected_tag <- state_cbc_hmac_tag(ct, iv, keys[["mac_key"]])
-    # Verify before CBC decryption so unauthenticated input cannot reach
-    # padding checks or the native decryption error path.
-    if (!constant_time_compare(tg, expected_tag) || length(ct) %% 16L != 0L) {
-      auth_fail()
-    }
-    res <- try(
-      openssl::aes_cbc_decrypt(data = ct, key = keys[["enc_key"]], iv = iv),
-      silent = TRUE
-    )
-  } else {
-    if (
-      !state_openssl_gcm_available() ||
-        !"tag" %in% names(formals(openssl::aes_gcm_decrypt))
-    ) {
-      audit_fail("gcm_tag_api_unavailable")
-      state_fail(
-        "Version 2 state requires openssl >= 2.6.0 for authenticated GCM decryption; upgrade openssl or restart authorization.",
-        context = list(phase = "decrypt")
-      )
-    }
-    res <- try(
-      openssl::aes_gcm_decrypt(data = ct, tag = tg, key = key, iv = iv),
-      silent = TRUE
-    )
-  }
+  res <- try(
+    openssl::aes_gcm_decrypt(data = ct, tag = tg, key = key, iv = iv),
+    silent = TRUE
+  )
   if (inherits(res, "try-error")) {
     auth_fail()
   }
