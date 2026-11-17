@@ -87,6 +87,13 @@ The default store belongs to one R process. A shared store and
 atomic record consumption providing the single-use guarantee across
 processes.
 
+When upgrading from shinyOAuth 0.7.0 or earlier, install openssl 2.6.0
+or later and restart all R workers together. The updated authentication
+checks reject older encrypted records, so users must restart pending
+logins and reconnect saved authorizations. Let old encrypted records in
+custom persistent stores expire or invalidate them. Browser cookies do
+not need manual deletion.
+
 ## Authorization at the provider
 
 The module sends the browser to the prepared authorization URL, or

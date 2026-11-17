@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">shinyOAuth</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.8.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -45,7 +45,7 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.8.0" id="shinyoauth-080">shinyOAuth 0.8.0<a class="anchor" aria-label="anchor" href="#shinyoauth-080"></a></h2>
 <ul><li><p>Fixed encrypted-state decryption errors with openssl 2.6.0, which now verifies authentication tags. shinyOAuth now supplies these tags correctly, protecting encrypted login state and stored data, including credentials, against tampering. Earlier openssl versions did not verify the tags, so the package now requires <code>openssl &gt;= 2.6.0</code>.</p></li>
 <li><p><code>oauth_client(state_transport = "reference")</code> sends a short opaque state value to support providers that limit the length of the <code>state</code> parameter.</p></li>
 <li><p><code><a href="../reference/oauth_provider_oauth_discover.html">oauth_provider_oauth_discover()</a></code> configures OAuth-only providers from their published server metadata (RFC 8414), avoiding manual endpoint configuration without requiring OpenID Connect support.</p></li>

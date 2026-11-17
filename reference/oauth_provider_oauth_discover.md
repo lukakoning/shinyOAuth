@@ -91,3 +91,20 @@ for OpenID Connect.
 
 [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md),
 [`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md)
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+# Requires your service's issuer URL and a registered public OAuth client.
+provider <- oauth_provider_oauth_discover(
+  issuer = "https://auth.example.com",
+  token_auth_style = "public"
+)
+client <- oauth_client(
+  provider = provider,
+  client_id = "your-client-id",
+  redirect_uri = "http://127.0.0.1:8100/callback"
+)
+} # }
+```

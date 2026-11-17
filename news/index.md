@@ -1,6 +1,6 @@
 # Changelog
 
-## shinyOAuth (development version)
+## shinyOAuth 0.8.0
 
 - Fixed encrypted-state decryption errors with openssl 2.6.0, which now
   verifies authentication tags. shinyOAuth now supplies these tags
