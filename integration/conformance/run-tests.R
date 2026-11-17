@@ -63,6 +63,28 @@ run_conformance_tests <- function() {
     function(package) as.character(utils::packageVersion(package)),
     character(1)
   ))
+  report[["startup_advisories"]] <- list()
+  if (utils::packageVersion("openssl") < "2.6.0") {
+    notices <- 0L
+    withCallingHandlers(
+      shinyOAuth:::state_warn_old_openssl(),
+      warning = function(notice) {
+        if (!inherits(notice, "shinyOAuth_openssl_upgrade_warning")) {
+          stop("Unexpected OpenSSL startup warning")
+        }
+        notices <<- notices + 1L
+        invokeRestart("muffleWarning")
+      }
+    )
+    if (!identical(notices, 1L)) {
+      stop("Expected exactly one OpenSSL compatibility advisory at startup")
+    }
+    report[["startup_advisories"]] <- list(list(
+      class = "shinyOAuth_openssl_upgrade_warning",
+      phase = "startup",
+      count = notices
+    ))
+  }
   python <- Sys.getenv("SHINYOAUTH_TEST_PYTHON", unset = Sys.which("python"))
   report[["python_cryptography_version"]] <- trimws(processx::run(
     python,
