@@ -67,6 +67,10 @@ using the exact service URL for `OAUTH_REDIRECT_URI`.
 Its Rocker base image is pinned by digest and its Posit Package Manager
 repository defaults to the dated `2026-07-21` snapshot.
 
+The image installs openssl 2.6.0 from CRAN source because the snapshot contains
+an older version without the authenticated GCM API required by shinyOAuth.
+It installs only required package dependencies and loads shinyOAuth during
+the build, so a failed package installation stops the build before deployment.
 
 This demo uses in-process login state. If production callbacks can reach a
 different process or replica, configure shared state and a shared key as

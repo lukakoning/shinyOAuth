@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libcurl4-openssl-dev \
     libxml2-dev \
     libicu-dev \
+    pkg-config \
     git \
     ca-certificates \
   && rm -rf /var/lib/apt/lists/*
@@ -38,10 +39,13 @@ RUN set -eux; \
 # Uses the configured PPM binary repo
 RUN R -e "install.packages(c('shiny','remotes'))"
 
+# The PPM snapshot predates the authenticated GCM API required by shinyOAuth.
+RUN R -e "remotes::install_version('openssl', version='2.6.0', repos='https://cloud.r-project.org', dependencies=NA, upgrade='never', type='source'); stopifnot(packageVersion('openssl') == '2.6.0', 'tag' %in% names(formals(openssl::aes_gcm_decrypt)))"
+
 # Copy the repository and install shinyOAuth from source
 WORKDIR /opt/shinyOAuth
 COPY . /opt/shinyOAuth
-RUN R -e "remotes::install_local('/opt/shinyOAuth', dependencies=TRUE, upgrade='never')"
+RUN R -e "remotes::install_local('/opt/shinyOAuth', dependencies=NA, upgrade='never'); library(shinyOAuth)"
 
 # Copy the minimal Cloud Run app
 WORKDIR /srv/app
