@@ -864,6 +864,15 @@ testthat::test_that("otel_end_async_parent marks ok or error correctly", {
     end = function() invisible(NULL)
   )
 
+  ended_spans <- list()
+  testthat::local_mocked_bindings(
+    end_span = function(span) {
+      ended_spans[[length(ended_spans) + 1L]] <<- span
+      invisible(NULL)
+    },
+    .package = "otel"
+  )
+
   # ok path
   ok_calls <- list()
   err_calls <- list()
@@ -887,6 +896,7 @@ testthat::test_that("otel_end_async_parent marks ok or error correctly", {
   )
   testthat::expect_length(ok_calls, 1L)
   testthat::expect_length(err_calls, 0L)
+  testthat::expect_identical(ended_spans, list(mock_span))
 
   # error path
   ok_calls <- list()
@@ -912,6 +922,7 @@ testthat::test_that("otel_end_async_parent marks ok or error correctly", {
   testthat::expect_length(ok_calls, 0L)
   testthat::expect_length(err_calls, 1L)
   testthat::expect_identical(err_calls[[1]], "async failure")
+  testthat::expect_identical(ended_spans, list(mock_span, mock_span))
 })
 
 # ===========================================================================
