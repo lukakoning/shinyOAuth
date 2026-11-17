@@ -904,16 +904,55 @@ failures and a Linux mirai Chrome startup timeout remain failed reports
 and earn no validation credit; the final Linux mirai run used less
 concurrent work. No owned Docker containers remain.
 
-C11 remains partial. Next, extend the existing Python strict-AS
-fixture’s real TLS support with a protected resource and an
-issued-token/certificate binding table. Require successful public
-connection access and rejection of wrong or missing peers; this supplies
-an independent resource-denial check without another mock dependency.
-Then add the suite’s mTLS client-authentication variant and assess
-OIDC/mTLS separately. C12 retains Message Signing; C13-C14 retain
-`oidc-provider`. C06 warm-cache, C09 public-client, C15 callback
-error-page query cleanup and fresh hosted CI image availability remain
-open.
+C11’s independent resource-denial check is implemented in `df714b2c`. It
+extends the existing Python strict-AS fixture with a protected resource.
+The resource records the actual TLS peer certificate for each issued
+token and compares it with the resource request’s TLS peer. Two eligible
+certificates have identical subject names but different DER encodings; a
+token issued to either certificate requires that particular certificate.
+
+Each platform completes 32 bound grants across RS256/RS384 JAR and
+private-key-JWT authentication, direct authorization/PAR, sync/mirai
+token callbacks, returned/omitted `cnf`, and both certificates. Public
+Shiny module and connection APIs perform the exchange and resource
+request. Wrong or missing certificates, forged certificate headers,
+unknown tokens and two additional unbound grants produce **162 actual
+HTTP 401 responses per platform**, with `invalid_token`, a Bearer
+challenge and no resource content. The rightful holder can still access
+the resource afterward, including with a misleading certificate header.
+
+The runner installs the checkout in a private library and verifies that
+both the main process and callback workers load that installation.
+Exchange counts and process IDs distinguish sync from mirai execution.
+CI uploads only sanitized JSON reports containing revision, dirty flag,
+dependency versions, installation checks and assertion counts; private
+libraries, keys and logs are excluded.
+
+Validation on 2026-11-17 passed **1,609 assertions on each platform**,
+with zero test failures, errors, warnings or skips. Both runs used the
+concurrent state authentication fix `b135ac84` and OpenSSL 2.6.0. Jarl
+checks passed too.
+
+| Environment | R / Python / cryptography | Private artifact directory          |
+|-------------|---------------------------|-------------------------------------|
+| Windows     | 4.5.1 / 3.12.10 / 46.0.5  | `tests-20261116-231600-bb045ec309c` |
+| Linux       | 4.5.0 / 3.13.5 / 50.0.2   | `tests-20261116-231747-77a31328c`   |
+
+Report names use UTC. Both reports identify `df714b2c`; the Windows
+checkout was clean and Linux recorded documentation-only edits. These
+are package-owned, cross-language protocol tests with in-process Shiny
+sessions. Authorization/PAR and resource requests run in the main
+process; mirai coverage applies to the token callback. Browser login,
+full OIDC and refresh of mTLS-bound tokens remain outside this fixture.
+The reports keep `coverage_complete = false`, and this separate resource
+check does not change the pinned OIDF provider’s HTTP 200 behavior or
+its forced resource-denial coverage limit.
+
+C11 remains partial. Next, add the suite’s mTLS client-authentication
+variant and assess OIDC/mTLS separately. C12 retains Message Signing;
+C13-C14 retain `oidc-provider`. C06 warm-cache, C09 public-client, C15
+callback error-page query cleanup and fresh hosted CI image availability
+remain open.
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
@@ -929,7 +968,7 @@ limits.
 |----|----|----|
 | [`tests/testthat/`](https://lukakoning.github.io/tests/testthat/) and the browser runner | Local validation, parsers, state, callbacks, browser binding and regression tests | Package-owned fixtures share assumptions with the implementation. |
 | [Keycloak](https://lukakoning.github.io/integration/keycloak/README.md) | Full provider and browser interoperability, including attack cases | Its documented rejection canaries and accepted invalid JAR claims leave gaps in successful advanced combinations. |
-| [Independent Python fixture](https://lukakoning.github.io/integration/conformance/README.md) | Cross-language signatures and strict selected protocol exchanges | The live AS fixture omits discovery, login, consent, ID tokens and resource endpoints. |
+| [Independent Python fixture](https://lukakoning.github.io/integration/conformance/README.md) | Cross-language signatures, strict selected protocol exchanges and mTLS resource denial | The live AS fixture omits discovery, login, consent and ID tokens; resource checks cover only mTLS token binding. |
 | [Retained connections](https://lukakoning.github.io/integration/connections/README.md) | Cross-session state, multiple providers, refresh, resource isolation and actual browsers/workers | Synthetic providers establish local behavior, not external conformance. |
 | [Inferno](https://lukakoning.github.io/integration/smart/inferno.md) | Independent SMART client-request verification | The local simulator has documented corrections; its verdict is specific to SMART and that deployment. |
 | [`check_oauth21()`](https://lukakoning.github.io/R/check_oauth21.R) | Versioned configuration assessment against OAuth 2.1 draft 16 | It does not test the running provider or establish protocol conformance. |

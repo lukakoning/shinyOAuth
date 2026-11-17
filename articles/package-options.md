@@ -236,7 +236,7 @@ processes handle requests.
 - `options(shinyOAuth.state_max_ct_b64_chars = 8192)` – maximum allowed
   length of the base64url-encoded ciphertext inside the wrapper
 - `options(shinyOAuth.state_max_ct_bytes = 8192)` – maximum decoded byte
-  size of the ciphertext before attempting AES-GCM decrypt
+  size of the ciphertext before authentication and decryption
 
 These limits keep oversized state parameters from using excessive CPU or
 memory during decoding and decryption.

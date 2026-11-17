@@ -2,6 +2,23 @@
 
 ## shinyOAuth (development version)
 
+- Fixed state authentication while retaining support for
+  `openssl >= 2.1.2`
+  ([\#26](https://github.com/lukakoning/shinyOAuth/issues/26), thanks to
+  Jeroen Ooms). New version-3 envelopes use the RFC 7518
+  AES-256-CBC-HMAC-SHA512 construction with separate derived encryption
+  and MAC keys. Authentication is verified before decryption on older
+  and newer openssl versions. Envelopes are slightly larger because of
+  the longer IV, tag and CBC padding. No additional package or
+  development repository is required. Version-2 AES-GCM envelopes remain
+  readable when openssl supports explicit tag verification (2.6.0 and
+  later); older versions reject them safely. Original version-1
+  envelopes remain rejected: their purported tags were ciphertext bytes,
+  leaving those envelopes unauthenticated. Pending logins from version 1
+  must restart, and persisted connections must be recreated through
+  authorization. This also applies to old encrypted state-store records,
+  callback handoffs, routing records and SMART launch continuations.
+
 - `oauth_client(state_transport = "reference")` sends a short opaque
   state value and keeps the encrypted login payload in the state store.
   It preserves browser binding and single-use checks; shared stores must
