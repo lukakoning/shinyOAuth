@@ -90,9 +90,13 @@ openid_suite_plan <- function(
         "fapi2-security-profile-final-client-test-plan"
       )
   ) {
-    registration[["token_endpoint_auth_method"]] <- method
+    registration[["token_endpoint_auth_method"]] <- if (method == "mtls") {
+      "tls_client_auth"
+    } else {
+      method
+    }
   }
-  if (method %in% c("none", "private_key_jwt")) {
+  if (method %in% c("none", "private_key_jwt", "mtls")) {
     registration[["client_secret"]] <- credentials[["client_secret"]] <- NULL
   }
   if (identical(method, "private_key_jwt")) {

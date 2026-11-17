@@ -34,7 +34,8 @@ openid_fixture_app <- function(config) {
     client_secret_basic = "header",
     client_secret_post = "body",
     client_secret_jwt = "client_secret_jwt",
-    private_key_jwt = "private_key_jwt"
+    private_key_jwt = "private_key_jwt",
+    mtls = "tls_client_auth"
   )
   if (is.null(style)) {
     stop("Unsupported fixture client authentication method")
@@ -167,7 +168,8 @@ openid_fixture_app <- function(config) {
         ready = !is.null(provider),
         mtls_configured = !is.null(provider) &&
           identical(config[["sender_constraint"]], "mtls") &&
-          identical(provider@token_auth_style, "private_key_jwt") &&
+          identical(provider@token_auth_style, style) &&
+          style %in% c("private_key_jwt", "tls_client_auth") &&
           provider@mtls_client_certificate_bound_access_tokens &&
           client@mtls_certificate_bound_access_tokens &&
           !client@mtls_require_observed_cnf &&

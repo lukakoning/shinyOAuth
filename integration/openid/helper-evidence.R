@@ -899,6 +899,14 @@ openid_check_report <- function(report, context, manifest) {
           unlist(profile[["coverage_limitations"]]),
           if (advisory_limited) "oauth_state_length_over_128_warning",
           if (mtls_limited) "mtls_resource_denial_not_established",
+          if (
+            mtls_limited && identical(variant[["client_auth_type"]], "mtls")
+          ) {
+            c(
+              "suite_exact_certificate_registration_only",
+              "mtls_client_authentication_denial_not_tested"
+            )
+          },
           if (cache_limited) {
             "suite_jwks_no_store_prevents_cached_key_refresh_test"
           }

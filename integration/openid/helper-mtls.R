@@ -194,7 +194,8 @@ openid_mtls_controls_match <- function(rows, context, regular_ids) {
           row[["module"]],
           "fapi2-security-profile-final-client-test-happy-path"
         ) &&
-        identical(row[["variant"]][["client_auth_type"]], "private_key_jwt") &&
+        row[["variant"]][["client_auth_type"]] %in%
+          c("private_key_jwt", "mtls") &&
         identical(row[["variant"]][["sender_constrain"]], "mtls") &&
         identical(row[["suite_result"]], "FAILED") &&
         identical(
@@ -227,26 +228,47 @@ openid_mtls_controls_match <- function(rows, context, regular_ids) {
 openid_mtls_info_checks <- function() {
   c(
     RemoveMtlsEndpointAliasesFromServerConfiguration = "Removed mtls_endpoint_aliases from server configuration",
-    SetTokenEndpointToMtlsTokenEndpoint = "Set token endpoint to be the MTLS token endpoint"
+    SetTokenEndpointToMtlsTokenEndpoint = "Set token endpoint to be the MTLS token endpoint",
+    SetParEndpointToMtlsParEndpoint = "Set PAR endpoint to be the MTLS PAR endpoint"
   )
 }
 
 openid_mtls_checks <- function(
   discovery = FALSE,
   callback = FALSE,
-  fallback = FALSE
+  fallback = FALSE,
+  method = "private_key_jwt"
 ) {
+  authentication <- if (method == "mtls") {
+    c(
+      "AddTLSClientAuthToServerConfiguration",
+      "EnsureClientIdIsPresentOnTokenRequest",
+      "EnsureNoClientAssertionSentToTokenEndpoint"
+    )
+  }
   if (discovery) {
-    return(openid_fapi_pre_token_checks(TRUE))
+    return(c(
+      openid_fapi_pre_token_checks(TRUE),
+      if (method == "mtls") "AddTLSClientAuthToServerConfiguration"
+    ))
   }
   c(
+    authentication,
     if (callback) {
-      openid_fapi_pre_token_checks(FALSE)
+      if (method == "mtls") {
+        "EnsureAuthorizationRequestContainsOnlyExpectedParamsWhenUsingPAR"
+      } else {
+        openid_fapi_pre_token_checks(FALSE)
+      }
     } else {
       c(
-        openid_auth_checks("private_key_jwt"),
-        "ValidateClientAssertionClaimsForPAREndpoint",
-        "ValidateClientAssertionAudClaimIsIssuerAsString",
+        if (method == "private_key_jwt") {
+          c(
+            openid_auth_checks("private_key_jwt"),
+            "ValidateClientAssertionClaimsForPAREndpoint",
+            "ValidateClientAssertionAudClaimIsIssuerAsString"
+          )
+        },
         "EnsureAuthorizationRequestContainsOnlyExpectedParamsWhenUsingPAR",
         "ValidateCodeVerifierWithS256"
       )
@@ -256,7 +278,8 @@ openid_mtls_checks <- function(
     if (fallback) {
       c(
         "RemoveMtlsEndpointAliasesFromServerConfiguration",
-        "SetTokenEndpointToMtlsTokenEndpoint"
+        "SetTokenEndpointToMtlsTokenEndpoint",
+        if (method == "mtls") "SetParEndpointToMtlsParEndpoint"
       )
     },
     if (!callback) {
@@ -285,6 +308,7 @@ openid_mtls_evidence <- function(logs, module, plan, peers) {
     "authorization-response|invalid-state|missing-state",
     module[["name"]]
   )
+  method <- plan[["spec"]][["plan_variant"]][["client_auth_type"]]
   fallback <- endsWith(module[["name"]], "happy-path-no-mtls-endpoint-aliases")
   path <- sub("^https://[^/]+", "", module[["issuer"]])
   mtls_path <- sub("^/test/", "/test-mtls/", path)
@@ -303,10 +327,14 @@ openid_mtls_evidence <- function(logs, module, plan, peers) {
   authorization <- requests("authorize")
   forms <- c(par, token)
   client_id <- plan[["registration"]][["client_id"]]
-  assertions <- lapply(forms, function(e) {
-    openid_fapi_decode(e[["incoming_body_form_params"]][["client_assertion"]])
-  })
-  checks <- openid_mtls_checks(discovery, callback, fallback)
+  assertions <- if (method == "private_key_jwt") {
+    lapply(forms, function(e) {
+      openid_fapi_decode(e[["incoming_body_form_params"]][["client_assertion"]])
+    })
+  } else {
+    list()
+  }
+  checks <- openid_mtls_checks(discovery, callback, fallback, method)
   peer_valid <- function(
     requests,
     listener = 8444L,
@@ -348,7 +376,7 @@ openid_mtls_evidence <- function(logs, module, plan, peers) {
   scope <- openid_fapi_oauth_scope(par)
   proof <- list(
     suite_id = module[["id"]],
-    client_authentication = "private_key_jwt",
+    client_authentication = if (method == "mtls") "tls_client_auth" else method,
     sender_constraint = "mtls",
     stage = if (discovery) {
       "discovery"
@@ -381,10 +409,14 @@ openid_mtls_evidence <- function(logs, module, plan, peers) {
       form <- e[["incoming_body_form_params"]]
       identical(e[["incoming_method"]], "POST") &&
         identical(form[["client_id"]], client_id) &&
-        identical(
-          form[["client_assertion_type"]],
-          "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
-        ) &&
+        (if (method == "mtls") {
+          !any(c("client_assertion", "client_assertion_type") %in% names(form))
+        } else {
+          identical(
+            form[["client_assertion_type"]],
+            "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+          )
+        }) &&
         !"client_secret" %in% names(form) &&
         !"authorization" %in% names(e[["incoming_headers"]])
     }),
@@ -437,14 +469,14 @@ openid_mtls_evidence <- function(logs, module, plan, peers) {
     endpoint_selection_valid = same(par, function(e) {
       identical(
         e[["incoming_path"]],
-        paste0(if (fallback) path else mtls_path, "par")
+        paste0(if (fallback && method != "mtls") path else mtls_path, "par")
       )
     }) &&
       (callback ||
         same(token, function(e) {
           identical(e[["incoming_path"]], paste0(mtls_path, "token"))
         })),
-    par_peer_valid = if (fallback) {
+    par_peer_valid = if (fallback && method != "mtls") {
       peer_valid(par, 8443L, "")
     } else {
       peer_valid(par)
@@ -508,6 +540,10 @@ openid_mtls_evidence <- function(logs, module, plan, peers) {
       checks
     )
   )
+  if (method == "mtls") {
+    proof[["assertion_metadata_valid"]] <- NULL
+    proof[["assertion_jtis_distinct"]] <- NULL
+  }
   if (!discovery) {
     proof <- c(proof, openid_mtls_state_evidence(par))
   }
@@ -529,9 +565,14 @@ openid_mtls_matches <- function(result, expectation) {
   p <- result[["fapi"]]
   discovery <- identical(expectation[["outcome"]], "discovery_rejected")
   callback <- identical(expectation[["outcome"]], "callback_rejected")
+  method <- result[["variant"]][["client_auth_type"]]
   if (
-    !identical(p[["suite_id"]], result[["suite_id"]]) ||
-      !identical(p[["client_authentication"]], "private_key_jwt") ||
+    !method %in% c("private_key_jwt", "mtls") ||
+      !identical(p[["suite_id"]], result[["suite_id"]]) ||
+      !identical(
+        p[["client_authentication"]],
+        if (method == "mtls") "tls_client_auth" else method
+      ) ||
       !identical(p[["sender_constraint"]], "mtls") ||
       !identical(
         p[["stage"]],
@@ -569,8 +610,9 @@ openid_mtls_matches <- function(result, expectation) {
     c(
       "oauth_scope_valid",
       "request_credentials_valid",
-      "assertion_metadata_valid",
-      "assertion_jtis_distinct",
+      if (method == "private_key_jwt") {
+        c("assertion_metadata_valid", "assertion_jtis_distinct")
+      },
       "authorization_par_only",
       "endpoint_selection_valid",
       "pkce_s256_verified",
@@ -592,7 +634,8 @@ openid_mtls_matches <- function(result, expectation) {
   checks <- openid_mtls_checks(
     discovery,
     callback,
-    endsWith(result[["module"]], "happy-path-no-mtls-endpoint-aliases")
+    endsWith(result[["module"]], "happy-path-no-mtls-endpoint-aliases"),
+    method
   )
   if (
     !setequal(names(p[["suite_checks"]]), checks) ||
