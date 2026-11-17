@@ -102,6 +102,37 @@ test_that("encrypted credential schemas retain token continuity without live obj
   )
 })
 
+test_that("credential ciphertext budgets include padding at the plaintext limit", {
+  client <- connection_test_client(make_test_client(), c(api = "https://api.example/v1"))
+  token <- OAuthToken(
+    access_token = "synthetic-access", token_type = "Bearer",
+    extra_fields = list(note = "")
+  )
+  owner <- strrep("a", 32)
+  id <- strrep("b", 32)
+  key <- openssl::rand_bytes(32L)
+  empty <- connection_credentials_seal(token, owner, id, client, key, 1000)
+  payload <- state_decrypt_gcm(empty, connection_credential_key(key))
+  overhead <- nchar(jsonlite::toJSON(
+    payload, auto_unbox = TRUE, digits = NA, null = "null"
+  ), type = "bytes")
+  # JSON escaping reaches the serialized limit within the plain-data byte budget.
+  remaining <- 1024^2 - overhead
+  token@extra_fields <- list(note = paste0(
+    strrep("\n", remaining %/% 2L), strrep("x", remaining %% 2L)
+  ))
+  sealed <- connection_credentials_seal(token, owner, id, client, key, 1000)
+  wrapper <- jsonlite::fromJSON(rawToChar(base64url_decode_raw(sealed)))
+  expect_length(base64url_decode_raw(wrapper[["ct"]]), 1024^2 + 16L)
+  restored <- connection_credentials_open(sealed, owner, id, client, key)
+  expect_identical(restored[["token"]]@extra_fields, token@extra_fields)
+  token@extra_fields <- list(note = paste0(token@extra_fields[["note"]], "x"))
+  expect_error(
+    connection_credentials_seal(token, owner, id, client, key, 1000),
+    "credential data exceeds the size limit"
+  )
+})
+
 test_that("plain-data encoding preserves vector shapes and rejects executable objects", {
   value <- list(
     null = NULL,

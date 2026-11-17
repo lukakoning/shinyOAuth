@@ -368,7 +368,8 @@ A random key is generated when omitted. This is separate from
 
 Deployments with multiple R processes use the same key and \code{state_store} across
 processes. The key is a character string or raw vector containing at least
-32 cryptographically random bytes. State uses AES-GCM authenticated encryption.}
+32 cryptographically random bytes. State uses AES-256-CBC-HMAC-SHA512
+authenticated encryption.}
 
 \item{scope_validation}{Controls how scope discrepancies are handled when
 the authorization server grants fewer scopes than requested. RFC 6749

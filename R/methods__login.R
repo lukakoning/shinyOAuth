@@ -207,9 +207,9 @@ prepare_call_internal <- function(
           nonce <- random_urlsafe(n = 32)
         }
 
-        # Create + seal (AES-GCM AEAD) payload ------------------------------------
+        # Create + seal authenticated payload ------------------------------------
 
-        # We seal the payload using AES-GCM AEAD, which provides confidentiality and
+        # We seal the payload using CBC-HMAC, which provides confidentiality and
         #   integrity via an authentication tag, preventing tampering.
         # We will include some details about the provider & client, to prevent
         #   possible mixups if multiple clients/providers are in use

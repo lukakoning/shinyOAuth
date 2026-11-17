@@ -13,7 +13,7 @@ jobs:
   R-CMD-check:
     runs-on: ${{ matrix.config.os }}
 
-    name: ${{ matrix.config.os }} (${{ matrix.config.r }}, ${{ matrix.config.testthat || 'current testthat' }}, ${{ matrix.config.cran && 'CRAN tests' || 'full tests' }})
+    name: ${{ matrix.config.os }} (${{ matrix.config.r }}, ${{ matrix.config.testthat || 'current testthat' }}, ${{ matrix.config.openssl || 'current openssl' }}, ${{ matrix.config.cran && 'CRAN tests' || 'full tests' }})
 
     strategy:
       fail-fast: false
@@ -30,6 +30,8 @@ jobs:
           # shinytest2 >= 0.5.0 requires testthat >= 3.3.1. Keep this
           # minimum-testthat job on compatible R and shinytest2 versions.
           - {os: ubuntu-latest,   r: '4.5', testthat: 'testthat@3.2.2', shinytest2: 'shinytest2@0.4.1'}
+          # Exercise authenticated state on the oldest supported openssl API.
+          - {os: ubuntu-latest,   r: '4.5', openssl: 'openssl@2.1.2'}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -57,7 +59,6 @@ jobs:
           r-version: ${{ matrix.config.r }}
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
-          extra-repositories: https://jeroen.r-universe.dev
 
       - uses: ./.github/actions/setup-r-dependencies
         with:
@@ -65,6 +66,7 @@ jobs:
             any::rcmdcheck
             ${{ matrix.config.testthat || 'any::testthat' }}
             ${{ matrix.config.shinytest2 || 'any::shinytest2' }}
+            ${{ matrix.config.openssl || 'any::openssl' }}
           needs: check
 
       - name: Verify minimum testthat dependency versions
@@ -75,6 +77,11 @@ jobs:
             packageVersion("testthat") == "3.2.2",
             packageVersion("shinytest2") == "0.4.1"
           )
+
+      - name: Verify minimum openssl dependency version
+        if: matrix.config.openssl != ''
+        shell: Rscript {0}
+        run: stopifnot(packageVersion("openssl") == "2.1.2")
 
       - uses: r-lib/actions/check-r-package@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
         with:

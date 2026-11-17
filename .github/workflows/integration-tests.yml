@@ -26,7 +26,6 @@ jobs:
         uses: r-lib/actions/setup-r@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
         with:
           use-public-rspm: true
-          extra-repositories: https://jeroen.r-universe.dev
 
       - name: Set up Chrome (for shinytest2/chromote)
         id: setup-chrome
