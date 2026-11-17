@@ -1153,6 +1153,100 @@ fixture limitations. C12 retains Message Signing; C13-C14 retain
 error-page query cleanup and fresh hosted CI image availability remain
 open.
 
+C12 implementation (2026-11-17): `fapi-message-signing` selects the
+pinned final Message Signing client plan with OIDC, private-key-JWT,
+DPoP, signed Request Objects through PAR and signed query responses. Its
+eight plan variants are explicit; its per-module variant is the empty
+object returned by the suite. The suite API must return exactly 29
+modules. The selected JARM response mode excludes the two plain-response
+issuer tests; the eight JARM rejection modules replace that coverage.
+Every normal module requires `PASSED` without warning or skip
+allowances. The profile and sync/mirai transports are available through
+manual workflow dispatch.
+
+The installed app uses ES256 for client assertions and Request Objects,
+and requires ES256 JARM responses. The suite advertises only
+`response_mode=jwt`; the app sends that supported spelling and uses the
+client’s query transport. The initial `query.jwt` fixture configuration
+correctly failed the client’s metadata check and was corrected without
+changing discovery metadata or any suite assertion. Request Objects
+include explicit `nbf` and a short lifetime. The optional `max_age`
+claim is absent; evidence requires the pinned suite’s exact
+informational event for that case rather than inventing a success event.
+
+Evidence verifies actual JAR signatures against the registered key, the
+signed issuer/audience/redirect/scope/nonce/PKCE parameters, PAR-only
+authorization and the suite’s validation events. It independently
+inspects the actual JARM redirect and verifies its ES256 signature, or
+the precise selected invalid signature/algorithm case, without applying
+JWT expiry checks during signature inspection. Claim and expiry variants
+remain separate checks. Token requests must redeem the code from that
+JARM response. Invalid callbacks require the expected browser-observed
+HTTP 400 category, no identity and zero token, UserInfo or resource
+requests. Legitimate exchanges require validated ID tokens, UserInfo and
+a DPoP-protected resource request through the public connection API.
+Compact JWTs, claim values, signing keys, codes and raw HTTP error text
+stay private. Both top-level and nested response credentials are checked
+against the HTTP rejection body before the fixture emits sanitized
+evidence.
+
+The independent Python fixture now also combines JAR, PAR and signed
+JARM for RS256/RS384, over GET/POST authorization requests. Its targeted
+458 assertions passed on each of Windows and Linux. It remains a
+separate comparison without OIDC discovery, ID tokens or browser login.
+No package behavior or upstream fixture assertion was changed by C12.
+Full cross-platform validation is recorded below.
+
+`coverage_complete=true` is limited to the exact resolved 29-module
+variant. Other authentication methods, mTLS, signing algorithms,
+encryption, Form Post, refresh and grant management remain additional
+selections. Resource use stays in the main process. JARM rejection
+occurs at the main-process HTTP boundary; mirai does not execute that
+rejection. C15 retains error-page query cleanup, and fresh hosted CI
+image availability remains unverified. C13-C14 remain the next provider
+interoperability work.
+
+C12 validation (2026-11-18), source
+`60bb1a3a29bfeb20beb170d52470bb3e5c8e8074`: all four gates completed all
+29 normal modules with `FINISHED/PASSED`, for 116 suite passes. The
+app-stop failure control and browser, app, worker, proxy and stack
+cleanup checks passed in every gate. Reports were revalidated for the
+complete selection, signed-request/response evidence, code redemption,
+expected rejection stages, worker execution, locked images and absence
+of raw credentials. The evidence regression checks passed 6,678
+assertions with no test warning or skip. Jarl, formatting and workflow
+validation passed.
+
+| Runtime / transport | Module loop seconds | Local sanitized evidence directory |
+|----|---:|----|
+| Windows / sync | 339.82 | `fapi-message-signing-20261117-235701-9cb11a881c13` |
+| Windows / mirai | 372.33 | `fapi-message-signing-20261118-000458-530fc874d842` |
+| Linux / sync | 222.96 | `fapi-message-signing-20261117-225641-05a64f8441fa` |
+| Linux / mirai | 245.96 | `fapi-message-signing-20261117-230228-0a6027efb908` |
+
+Windows used R 4.5.1 and Linux used R 4.5.0 in a Docker Desktop
+container; both used R openssl 2.6.0. Each independent Python comparison
+passed 458 assertions from a fresh installation of the same commit.
+Python cryptography was 46.0.5 on Windows and 50.0.2 on Linux.
+Comparison evidence:
+
+- Linux: `independent-signing-20261117-225755-2ad68ec2d008`.
+- Windows: `independent-signing-20261117-235805-860b433fa023`.
+
+Windows checkout flags were clean during validation. Linux reported a
+dirty checkout because its default Git configuration interpreted the
+Windows mount’s CRLF files differently. A read-only comparison with
+matching `core.autocrlf=true` returned no diff and an empty status;
+these flags do not represent source edits. The flags are preserved in
+the reports.
+
+Locked service images came from the digest-verified cache. Timings cover
+module loops only, excluding evidence tests, installation, setup,
+failure controls and teardown; concurrent runs shared host resources.
+Only sanitized evidence JSON was retained in the main checkout. Keys,
+libraries and raw logs remain private. No owned test containers remain.
+Fresh hosted CI image availability remains unverified.
+
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
 interoperability with a second full provider. Add another mock server
@@ -1227,7 +1321,7 @@ version separately.
 | `refresh` | `oidcc-client-refreshtoken-test-plan` | Refresh plus invalid refreshed issuer/subject cases; outside certification. |
 | `extended` | `oidcc-client-test-plan` | Explicit applicable module/variant selection for public clients, other authentication methods and optional supported features. |
 | `fapi-dpop`, `fapi-mtls` | `fapi2-security-profile-final-client-test-plan` | Generic `plain_fapi` authorization-code profiles, with selected client authentication and sender constraint. |
-| `fapi-signing` | `fapi2-message-signing-final-client-test-plan` | Selected JAR/JARM variants after the Security Profile gates work. |
+| `fapi-message-signing` | `fapi2-message-signing-final-client-test-plan` | OIDC/private-key-JWT/DPoP with signed JAR through PAR and query JARM; other variants remain separate. |
 
 The pinned [OIDC client plan
 sources](https://gitlab.com/openid/conformance-suite/-/tree/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/openid/client)
