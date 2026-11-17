@@ -2,26 +2,24 @@
 
 ## shinyOAuth (development version)
 
-- Fixed state authentication while retaining support for
-  `openssl >= 2.1.2`
+- Fixed state authentication
   ([\#26](https://github.com/lukakoning/shinyOAuth/issues/26), thanks to
-  Jeroen Ooms). With openssl 2.6.0 or later, new envelopes use AES-GCM
-  (version 2), passing the ciphertext and authentication tag separately.
-  Older openssl versions use the RFC 7518 AES-256-CBC-HMAC-SHA512
-  construction (version 3), with separate derived encryption and MAC
-  keys and authentication checked before decryption. When this
-  compatibility mode is first used, a warning recommends upgrading
-  openssl to 2.6.0 or later; it appears once per R session across
-  clients. CBC-HMAC envelopes are slightly larger because of the longer
-  IV, tag and padding. No additional package or development repository
-  is required. Both versions can be read with openssl \>= 2.6.0; older
-  openssl can read CBC-HMAC and safely rejects GCM envelopes. Original
-  version-1 envelopes remain rejected: their purported tags were
-  ciphertext bytes, leaving those envelopes unauthenticated. Pending
-  logins from version 1 must restart, and persisted connections must be
-  recreated through authorization. This also applies to old encrypted
-  state-store records, callback handoffs, routing records and SMART
-  launch continuations.
+  Jeroen Ooms). The package now requires `openssl >= 2.6.0` from CRAN.
+  Internal encrypted envelopes use AES-256-GCM (version 2), passing the
+  ciphertext and 16-byte authentication tag separately. The
+  older-openssl CBC-HMAC fallback and its upgrade warning have been
+  removed. Original version-1 envelopes are rejected because their
+  purported tags were ciphertext bytes, leaving those envelopes
+  unauthenticated. Version-3 envelopes from the development CBC-HMAC
+  implementation are also rejected. This applies to encrypted login
+  state, state-store records, callback handoffs, routing records,
+  credentials and SMART launch continuations. Upgrade openssl before
+  deploying and restart every R worker. Interrupted logins must start
+  again; obsolete records in persistent stores should expire or be
+  invalidated. The built-in connection store is memory-only and already
+  resets on R restart. Browser cookies do not contain these encrypted
+  envelopes and do not require manual deletion. CBC-HMAC support for JWE
+  remains available.
 
 - `oauth_client(state_transport = "reference")` sends a short opaque
   state value and keeps the encrypted login payload in the state store.

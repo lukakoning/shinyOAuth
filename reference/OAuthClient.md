@@ -467,8 +467,7 @@ OAuthClient(
   Deployments with multiple R processes use the same key and
   `state_store` across processes. The key is a character string or raw
   vector containing at least 32 cryptographically random bytes. State
-  uses AES-GCM on openssl \>= 2.6.0 and authenticated
-  AES-256-CBC-HMAC-SHA512 on older openssl versions.
+  uses authenticated AES-256-GCM and requires openssl \>= 2.6.0.
 
 - scope_validation:
 

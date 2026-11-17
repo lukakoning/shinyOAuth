@@ -1083,6 +1083,13 @@ Docker containers remain. These are package-owned protocol checks with
 `coverage_complete = false`, and they do not establish external provider
 conformance or OpenID certification.
 
+The subsequent GCM-only state change requires the CRAN R package
+`openssl >= 2.6.0` for all new runs. It removes the older-version
+CBC-HMAC fallback and its startup advisory; the reports above describe
+the earlier configuration. JWE CBC-HMAC support is unchanged. Upgrade
+the dependency and restart every worker before rerunning these protocol
+gates.
+
 C11’s OIDC/mTLS selections are implemented in `564316db`: `fapi-mtls`
 uses private-key-JWT authentication, and `fapi-mtls-auth` uses the
 suite’s mTLS authentication variant. Both resolve all 21 applicable
