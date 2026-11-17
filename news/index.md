@@ -2,57 +2,49 @@
 
 ## shinyOAuth (development version)
 
-- Fixed state authentication
+### Security fix and upgrading
+
+- Encrypted login state and other internal data, including stored
+  credentials, now use authenticated encryption to reject tampering.
+  This fixes a flaw that left these values encrypted but unauthenticated
   ([\#26](https://github.com/lukakoning/shinyOAuth/issues/26), thanks to
-  Jeroen Ooms). The package now requires `openssl >= 2.6.0` from CRAN.
-  Internal encrypted envelopes use AES-256-GCM (version 2), passing the
-  ciphertext and 16-byte authentication tag separately. The
-  older-openssl CBC-HMAC fallback and its upgrade warning have been
-  removed. Original version-1 envelopes are rejected because their
-  purported tags were ciphertext bytes, leaving those envelopes
-  unauthenticated. Version-3 envelopes from the development CBC-HMAC
-  implementation are also rejected. This applies to encrypted login
-  state, state-store records, callback handoffs, routing records,
-  credentials and SMART launch continuations. Upgrade openssl before
-  deploying and restart every R worker. Interrupted logins must start
-  again; obsolete records in persistent stores should expire or be
-  invalidated. The built-in connection store is memory-only and already
-  resets on R restart. Browser cookies do not contain these encrypted
-  envelopes and do not require manual deletion. CBC-HMAC support for JWE
-  remains available.
+  Jeroen Ooms). The package now requires `openssl >= 2.6.0`.
+
+  Update openssl and restart all R workers together when deploying this
+  release. Users must restart pending logins and reconnect saved
+  authorizations. Let old encrypted records in custom persistent stores
+  expire or invalidate them.
+
+### New features
 
 - `oauth_client(state_transport = "reference")` sends a short opaque
-  state value and keeps the encrypted login payload in the state store.
-  It preserves browser binding and single-use checks; shared stores must
-  provide atomic `take()`. The default remains
-  `state_transport = "encrypted"`.
+  state value to support providers that limit the length of the `state`
+  parameter. It keeps the encrypted login details in `state_store`, with
+  the same browser binding and single-use checks as the default
+  encrypted mode. Custom shared stores need an atomic `take()` method.
 
 - [`oauth_provider_oauth_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oauth_discover.md)
-  reads RFC 8414 authorization-server metadata for OAuth-only code
-  flows, with exact issuer matching and the existing transport, endpoint
-  and authentication checks.
+  configures OAuth-only providers from their published server metadata
+  (RFC 8414), avoiding manual endpoint configuration without requiring
+  OpenID Connect support.
 
-- Missing, malformed and expired ID-token expiry errors now identify the
-  `exp` claim in audit events without including its value.
+- `oauth_provider_oidc_discover(id_token_profile = "fapi2")` supports
+  providers that advertise FAPI 2.0 signing algorithms but omit RS256,
+  while respecting your `id_token_allowed_algs` restrictions. Configure
+  the provider’s other FAPI requirements separately.
 
-- OIDC discovery accepts an explicit `id_token_profile = "fapi2"` for
-  providers that advertise FAPI signing algorithms without RS256. It
-  keeps the caller’s algorithm restrictions and permits only implemented
-  FAPI algorithms. The default OIDC discovery policy still requires
-  RS256.
+### Fixes and diagnostics
 
-- Discovery issuer mismatches now identify the failed issuer check in
-  audit events using a claim name and reason code, without including
-  issuer values.
+- Audit events now identify failed ID-token claims and discovery issuer
+  checks, making rejected logins easier to diagnose without recording
+  claim values. Algorithm and signature rejections include reason codes;
+  state authentication failures use `state_auth_failed`.
 
-- ID-token issuer and nonce validation errors now identify the failed
-  claim in audit events. Event context contains the claim name without
-  its value.
-
-- ID-token audience, subject and issued-at errors also identify the
-  failed claim. Algorithm and signature rejections include stable reason
-  codes in audit events. A changed subject during refresh also reports
-  the subject claim name.
+- [`print()`](https://rdrr.io/r/base/print.html) and
+  [`format()`](https://rdrr.io/r/base/format.html) now redact prepared
+  authorization objects correctly when using the installed package,
+  preventing login state and redirect details from appearing in console
+  output and logs.
 
 ## shinyOAuth 0.7.0
 

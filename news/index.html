@@ -46,15 +46,25 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
-<ul><li><p>Fixed state authentication (<a href="https://github.com/lukakoning/shinyOAuth/issues/26" class="external-link">#26</a>, thanks to Jeroen Ooms). The package now requires <code>openssl &gt;= 2.6.0</code> from CRAN. Internal encrypted envelopes use AES-256-GCM (version 2), passing the ciphertext and 16-byte authentication tag separately. The older-openssl CBC-HMAC fallback and its upgrade warning have been removed. Original version-1 envelopes are rejected because their purported tags were ciphertext bytes, leaving those envelopes unauthenticated. Version-3 envelopes from the development CBC-HMAC implementation are also rejected. This applies to encrypted login state, state-store records, callback handoffs, routing records, credentials and SMART launch continuations. Upgrade openssl before deploying and restart every R worker. Interrupted logins must start again; obsolete records in persistent stores should expire or be invalidated. The built-in connection store is memory-only and already resets on R restart. Browser cookies do not contain these encrypted envelopes and do not require manual deletion. CBC-HMAC support for JWE remains available.</p></li>
-<li><p><code>oauth_client(state_transport = "reference")</code> sends a short opaque state value and keeps the encrypted login payload in the state store. It preserves browser binding and single-use checks; shared stores must provide atomic <code>take()</code>. The default remains <code>state_transport = "encrypted"</code>.</p></li>
-<li><p><code><a href="../reference/oauth_provider_oauth_discover.html">oauth_provider_oauth_discover()</a></code> reads RFC 8414 authorization-server metadata for OAuth-only code flows, with exact issuer matching and the existing transport, endpoint and authentication checks.</p></li>
-<li><p>Missing, malformed and expired ID-token expiry errors now identify the <code>exp</code> claim in audit events without including its value.</p></li>
-<li><p>OIDC discovery accepts an explicit <code>id_token_profile = "fapi2"</code> for providers that advertise FAPI signing algorithms without RS256. It keeps the caller’s algorithm restrictions and permits only implemented FAPI algorithms. The default OIDC discovery policy still requires RS256.</p></li>
-<li><p>Discovery issuer mismatches now identify the failed issuer check in audit events using a claim name and reason code, without including issuer values.</p></li>
-<li><p>ID-token issuer and nonce validation errors now identify the failed claim in audit events. Event context contains the claim name without its value.</p></li>
-<li><p>ID-token audience, subject and issued-at errors also identify the failed claim. Algorithm and signature rejections include stable reason codes in audit events. A changed subject during refresh also reports the subject claim name.</p></li>
+<div class="section level3">
+<h3 id="security-fix-and-upgrading-development-version">Security fix and upgrading<a class="anchor" aria-label="anchor" href="#security-fix-and-upgrading-development-version"></a></h3>
+<ul><li>
+<p>Encrypted login state and other internal data, including stored credentials, now use authenticated encryption to reject tampering. This fixes a flaw that left these values encrypted but unauthenticated (<a href="https://github.com/lukakoning/shinyOAuth/issues/26" class="external-link">#26</a>, thanks to Jeroen Ooms). The package now requires <code>openssl &gt;= 2.6.0</code>.</p>
+<p>Update openssl and restart all R workers together when deploying this release. Users must restart pending logins and reconnect saved authorizations. Let old encrypted records in custom persistent stores expire or invalidate them.</p>
+</li>
 </ul></div>
+<div class="section level3">
+<h3 id="new-features-development-version">New features<a class="anchor" aria-label="anchor" href="#new-features-development-version"></a></h3>
+<ul><li><p><code>oauth_client(state_transport = "reference")</code> sends a short opaque state value to support providers that limit the length of the <code>state</code> parameter. It keeps the encrypted login details in <code>state_store</code>, with the same browser binding and single-use checks as the default encrypted mode. Custom shared stores need an atomic <code>take()</code> method.</p></li>
+<li><p><code><a href="../reference/oauth_provider_oauth_discover.html">oauth_provider_oauth_discover()</a></code> configures OAuth-only providers from their published server metadata (RFC 8414), avoiding manual endpoint configuration without requiring OpenID Connect support.</p></li>
+<li><p><code>oauth_provider_oidc_discover(id_token_profile = "fapi2")</code> supports providers that advertise FAPI 2.0 signing algorithms but omit RS256, while respecting your <code>id_token_allowed_algs</code> restrictions. Configure the provider’s other FAPI requirements separately.</p></li>
+</ul></div>
+<div class="section level3">
+<h3 id="fixes-and-diagnostics-development-version">Fixes and diagnostics<a class="anchor" aria-label="anchor" href="#fixes-and-diagnostics-development-version"></a></h3>
+<ul><li><p>Audit events now identify failed ID-token claims and discovery issuer checks, making rejected logins easier to diagnose without recording claim values. Algorithm and signature rejections include reason codes; state authentication failures use <code>state_auth_failed</code>.</p></li>
+<li><p><code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> and <code><a href="https://rdrr.io/r/base/format.html" class="external-link">format()</a></code> now redact prepared authorization objects correctly when using the installed package, preventing login state and redirect details from appearing in console output and logs.</p></li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.7.0" id="shinyoauth-070">shinyOAuth 0.7.0<a class="anchor" aria-label="anchor" href="#shinyoauth-070"></a></h2><p class="text-muted">CRAN release: 2026-10-31</p>
 <ul><li>
