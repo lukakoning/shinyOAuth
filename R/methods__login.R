@@ -209,7 +209,7 @@ prepare_call_internal <- function(
 
         # Create + seal authenticated payload ------------------------------------
 
-        # We seal the payload using CBC-HMAC, which provides confidentiality and
+        # We seal the payload using authenticated encryption for confidentiality and
         #   integrity via an authentication tag, preventing tampering.
         # We will include some details about the provider & client, to prevent
         #   possible mixups if multiple clients/providers are in use
