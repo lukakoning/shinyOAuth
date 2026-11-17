@@ -948,11 +948,84 @@ The reports keep `coverage_complete = false`, and this separate resource
 check does not change the pinned OIDF provider’s HTTP 200 behavior or
 its forced resource-denial coverage limit.
 
-C11 remains partial. Next, add the suite’s mTLS client-authentication
-variant and assess OIDC/mTLS separately. C12 retains Message Signing;
-C13-C14 retain `oidc-provider`. C06 warm-cache, C09 public-client, C15
-callback error-page query cleanup and fresh hosted CI image availability
-remain open.
+C11’s suite client-authentication variant is implemented in `38dd4fd9`
+as the separate `fapi-oauth-mtls-auth` profile. It resolves all nine
+modules for OAuth-only mTLS client authentication plus mTLS sender
+constraint. The suite’s `mtls` variant advertises `tls_client_auth`;
+registration includes the public certificate and omits shared secrets
+and client assertion keys.
+
+The gate requires `client_id` and the actual registered TLS peer at
+PAR/token, with no JWT assertion, shared secret or HTTP Authorization
+credentials. It retains reference state, PAR, S256, the public resource
+connection and isolated resource attacker controls. The no-alias module
+advertises literal mTLS URLs for both PAR and token; the collector now
+requires its PAR setup event and actual mTLS listener. The
+private-key-JWT profile retains its ordinary TLS PAR fallback. Evidence
+checks cover both authentication methods in sync/mirai and reject
+missing or changed credentials, TLS peers and suite setup events.
+
+The pinned provider compares one exact registered certificate. This
+selection does not establish PKI chain/subject-name validation or
+PAR/token authentication failure responses. The checker forces
+`suite_exact_certificate_registration_only` and
+`mtls_client_authentication_denial_not_tested` into the limits,
+alongside the unchanged `mtls_resource_denial_not_established`. Manifest
+edits cannot make this profile’s coverage complete.
+
+Validation on 2026-11-17 passed all four Windows/Linux and sync/mirai
+gates: **36 normal `PASSED` modules and twelve separate expected-failure
+resource controls**, with cleanup verified. All 2,460 evidence
+assertions, Jarl checks and workflow validation passed, with zero test
+warnings or skips. Every non-discovery module observed valid
+64-character reference state and the actual registered PAR peer;
+successful exchanges also verified token and resource peers.
+
+| Environment / transport | Nine-module loop (s) | Private artifact directory |
+|----|---:|----|
+| Windows / sync | 108.16 | `fapi-oauth-mtls-auth-20261117-164503-dc692b256936` |
+| Windows / mirai | 132.13 | `fapi-oauth-mtls-auth-20261117-164913-fe3510079345` |
+| Linux / sync | 63.22 | `fapi-oauth-mtls-auth-20261117-154536-9f3df22ef539` |
+| Linux / mirai | 82.49 | `fapi-oauth-mtls-auth-20261117-154854-6edf2f2c9c6f` |
+
+Windows used R 4.5.1 and Linux used R 4.5.0; both loaded OpenSSL 2.6.0.
+Reports identify collector commit `38dd4fd9`. Windows sync recorded a
+clean checkout; the other runs recorded documentation-only edits. Locked
+images came from the verified cache. Timings exclude setup,
+installation, failure controls and teardown; concurrent runs share host
+resources. Earlier callback collector and app-discovery startup failures
+remain failed reports and receive no pass credit.
+
+The existing private-key-JWT/mTLS profile also passed all nine modules
+and three expected-failure controls in Linux sync. Its report is
+`fapi-oauth-mtls-20261117-155242-ed41c76ae9a6` (62.47 seconds for the
+module loop). This checks the original PAR alias fallback against the
+updated collector.
+
+The concurrent authenticated-state compatibility fix `e8b70286` was then
+integrated in `9d94af4f`. Two fresh complete gates verified the combined
+checkout: Windows mirai with OpenSSL 2.4.0 and Linux sync with OpenSSL
+2.6.0. All eighteen normal modules passed, with six separate
+expected-failure resource controls, verified cleanup and the same forced
+coverage limits. Evidence checks again passed with zero test warnings or
+skips. Both reports record documentation-only edits on `9d94af4f`.
+
+| Environment / transport | OpenSSL | Nine-module loop (s) | Private artifact directory |
+|----|----|---:|----|
+| Windows / mirai | 2.4.0 | 117.69 | `fapi-oauth-mtls-auth-20261117-165756-08cfbdeea48e` |
+| Linux / sync | 2.6.0 | 63.33 | `fapi-oauth-mtls-auth-20261117-155756-dd2eb403bcff` |
+
+The fixture README now follows the restored `openssl >= 2.1.2`
+dependency requirement without a development repository. No owned Docker
+containers remain.
+
+C11 remains partial. Next, extend the independent Python fixture with
+mTLS client-authentication rejection checks, including `invalid_client`
+for wrong or missing certificates and invalid client identity. Assess
+OIDC/mTLS separately. C12 retains Message Signing; C13-C14 retain
+`oidc-provider`. C06 warm-cache, C09 public-client, C15 callback
+error-page query cleanup and fresh hosted CI image availability remain
+open.
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
