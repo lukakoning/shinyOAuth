@@ -1,17 +1,14 @@
 # shinyOAuth (development version)
 
-## Security fix and upgrading
-
-* Encrypted login state and other internal data, including stored credentials,
-  now use authenticated encryption to reject tampering. This fixes a flaw that
-  left these values encrypted but unauthenticated (#26, thanks to Jeroen Ooms).
-  The package now requires `openssl >= 2.6.0`.
+* Fixed encrypted-state decryption errors with `openssl 2.6.0`, which now
+  verifies authentication tags (#26, thanks to Jeroen Ooms). shinyOAuth now
+  supplies these tags correctly, protecting encrypted login state and stored
+  data, including credentials, against tampering. Earlier openssl versions did
+  not verify the tags, so the package now requires `openssl >= 2.6.0`.
 
   Update openssl and restart all R workers together when deploying this release.
   Users must restart pending logins and reconnect saved authorizations. Let old
   encrypted records in custom persistent stores expire or invalidate them.
-
-## New features
 
 * `oauth_client(state_transport = "reference")` sends a short opaque state value
   to support providers that limit the length of the `state` parameter. It keeps
@@ -27,8 +24,6 @@
   that advertise FAPI 2.0 signing algorithms but omit RS256, while respecting
   your `id_token_allowed_algs` restrictions. Configure the provider's other
   FAPI requirements separately.
-
-## Fixes and diagnostics
 
 * Audit events now identify failed ID-token claims and discovery issuer checks,
   making rejected logins easier to diagnose without recording claim values.
