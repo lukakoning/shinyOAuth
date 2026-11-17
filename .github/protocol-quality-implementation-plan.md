@@ -1061,9 +1061,9 @@ HTTP rejection body before the fixture emits sanitized evidence.
 
 The independent Python fixture now also combines JAR, PAR and signed JARM for
 RS256/RS384, over GET/POST authorization requests. Its targeted 458 assertions
-passed on Windows. It remains a separate comparison without OIDC discovery,
-ID tokens or browser login. No package behavior or upstream fixture assertion
-was changed by C12. Full cross-platform validation is recorded below when run.
+passed on each of Windows and Linux. It remains a separate comparison without
+OIDC discovery, ID tokens or browser login. No package behavior or upstream fixture assertion
+was changed by C12. Full cross-platform validation is recorded below.
 
 `coverage_complete=true` is limited to the exact resolved 29-module variant.
 Other authentication methods, mTLS, signing algorithms, encryption, Form Post,
@@ -1072,6 +1072,43 @@ in the main process. JARM rejection occurs at the main-process HTTP boundary;
 mirai does not execute that rejection. C15 retains error-page query cleanup,
 and fresh hosted CI image availability remains unverified. C13-C14 remain the
 next provider interoperability work.
+
+C12 validation (2026-11-18), source `60bb1a3a29bfeb20beb170d52470bb3e5c8e8074`:
+all four gates completed all 29 normal modules with `FINISHED/PASSED`, for 116
+suite passes. The app-stop failure control and browser, app, worker, proxy and
+stack cleanup checks passed in every gate. Reports were revalidated for the
+complete selection, signed-request/response evidence, code redemption, expected
+rejection stages, worker execution, locked images and absence of raw credentials.
+The evidence regression checks passed 6,678 assertions with no test warning or
+skip. Jarl, formatting and workflow validation passed.
+
+| Runtime / transport | Module loop seconds | Local sanitized evidence directory |
+| --- | ---: | --- |
+| Windows / sync | 339.82 | `fapi-message-signing-20261117-235701-9cb11a881c13` |
+| Windows / mirai | 372.33 | `fapi-message-signing-20261118-000458-530fc874d842` |
+| Linux / sync | 222.96 | `fapi-message-signing-20261117-225641-05a64f8441fa` |
+| Linux / mirai | 245.96 | `fapi-message-signing-20261117-230228-0a6027efb908` |
+
+Windows used R 4.5.1 and Linux used R 4.5.0 in a Docker Desktop container;
+both used R openssl 2.6.0. Each independent Python comparison passed 458
+assertions from a fresh installation of the same commit. Python cryptography
+was 46.0.5 on Windows and 50.0.2 on Linux. Comparison evidence:
+
+- Linux: `independent-signing-20261117-225755-2ad68ec2d008`.
+- Windows: `independent-signing-20261117-235805-860b433fa023`.
+
+Windows checkout flags were clean during validation. Linux reported a dirty
+checkout because its default Git configuration interpreted the Windows mount's
+CRLF files differently. A read-only comparison with matching
+`core.autocrlf=true` returned no diff and an empty status; these flags do not
+represent source edits. The flags are preserved in the reports.
+
+Locked service images came from the digest-verified cache. Timings cover module
+loops only, excluding evidence tests, installation, setup, failure controls and
+teardown; concurrent runs shared host resources. Only sanitized evidence JSON
+was retained in the main checkout. Keys, libraries and raw logs remain private.
+No owned test containers remain. Fresh hosted CI image availability remains
+unverified.
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second
