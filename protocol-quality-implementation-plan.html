@@ -365,7 +365,23 @@
 <td align="right">63.33</td>
 <td><code>fapi-oauth-mtls-auth-20261117-155756-dd2eb403bcff</code></td>
 </tr></tbody></table><p>The fixture README now follows the restored <code>openssl &gt;= 2.1.2</code> dependency requirement without a development repository. No owned Docker containers remain.</p>
-<p>C11 remains partial. Next, extend the independent Python fixture with mTLS client-authentication rejection checks, including <code>invalid_client</code> for wrong or missing certificates and invalid client identity. Assess OIDC/mTLS separately. C12 retains Message Signing; C13-C14 retain <code>oidc-provider</code>. C06 warm-cache, C09 public-client, C15 callback error-page query cleanup and fresh hosted CI image availability remain open.</p>
+<p>C11’s independent PKI authentication and denial checks are implemented in <code>2c7273d5</code>. The Python fixture now has a fixed <code>tls_client_auth</code> startup mode. Its TLS library verifies client chains against the temporary CA, and the server compares the actual peer’s subject DN with the registration. Authentication is required at PAR/token independently of the requested scopes; competing secrets, JWT assertions and HTTP Authorization credentials are rejected.</p>
+<p>The public Shiny module and resource connection complete 32 bound grants across RS256/RS384 JAR, direct/PAR authorization, sync/mirai token callbacks, returned/omitted <code>cnf</code> and both eligible certificates. Shared helpers retain the existing private-key-JWT resource matrix. Each callback verifies the expected process, exactly one exchange and the private package installation.</p>
+<p>Raw controls require <strong>80 HTTP 400 denials per platform</strong>: 48 <code>invalid_client</code> responses for wrong subjects, absent peers, forged certificate headers and missing/unknown identities, plus 32 <code>invalid_request</code> responses for competing credentials, including empty credential fields. Eight requests with the correct subject but an untrusted CA must fail during TLS. The same signed Request Object and authorization code remain usable afterward. A new eligible certificate with the same registered subject can authenticate, while its token rejects the certificate used at PAR, including with a forged header.</p>
+<p>Four public callback failures across both algorithms and transports leave no token or connection. Their audit events require an HTTP error from the correct process and installation. Two public PAR preparations also reject the wrong subject with HTTP errors. The fixture covers a single fixed DN and trust anchor; SANs, DN normalization edge cases, revocation, self-signed client authentication and bound refresh remain separate. The pinned OIDF suite’s registration model, verdicts and forced coverage limits remain unchanged.</p>
+<p>The concurrent state-encryption selection fix <code>7f2fa08c</code> was integrated in <code>51c1653f</code>. Its OpenSSL upgrade warning made the older-version fixture gate fail as intended. The runner now explicitly checks the one expected <code>shinyOAuth_openssl_upgrade_warning</code> at startup on OpenSSL below 2.6.0 and records its class, phase and count in sanitized evidence (<code>c8ee6f36</code>). Unexpected warnings from that check and all protocol-test warnings still fail the run. The production warning remains unchanged, and the earlier failed run receives no pass credit.</p>
+<p>Validation on 2026-11-17 passed <strong>3,281 assertions on each platform</strong>, including both sync and mirai callbacks and the existing private-key-JWT, resource, JAR/JARM, refresh and RS384 regressions. Both runs had zero test failures, errors, warnings or skips. The Windows startup advisory was checked and recorded once; Linux required none.</p>
+<table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr><th>Environment</th>
+<th>R / OpenSSL / Python cryptography</th>
+<th>Private artifact directory</th>
+</tr></thead><tbody><tr><td>Windows</td>
+<td>4.5.1 / 2.4.0 / 46.0.5</td>
+<td><code>tests-20261117-163805-37b46d194913</code></td>
+</tr><tr><td>Linux</td>
+<td>4.5.0 / 2.6.0 / 50.0.2</td>
+<td><code>tests-20261117-163805-745fbf7b3</code></td>
+</tr></tbody></table><p>Reports identify <code>c8ee6f36</code> with documentation-only edits and the correct private package installation. Their complete test-file selections, assertion totals, dependency versions and startup-advisory records were revalidated. Only sanitized JSON reports were retained in the main checkout; private libraries, keys and logs were excluded. Earlier setup and assertion failures remain failed reports. No owned Docker containers remain. These are package-owned protocol checks with <code>coverage_complete = false</code>, and they do not establish external provider conformance or OpenID certification.</p>
+<p>C11 remains partial. Next, assess the suite’s OIDC/mTLS variants and add the applicable ID-token, nonce and protected-resource checks. C12 retains Message Signing; C13-C14 retain <code>oidc-provider</code>. C06 warm-cache, C09 public-client, C15 callback error-page query cleanup and fresh hosted CI image availability remain open.</p>
 <p>Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works, extend it to FAPI 2.0, then add <code>oidc-provider</code> for interoperability with a second full provider. Add another mock server only when a remaining test case justifies its maintenance cost. The ranking below reflects the gaps in this repository; it is an engineering assessment, not a benchmark of the tools.</p>
 <p><strong>Starting point.</strong> Keep the existing test layers and their stated limits.</p>
 <table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr><th>Existing layer</th>
@@ -379,7 +395,7 @@
 <td>Full provider and browser interoperability, including attack cases</td>
 <td>Its documented rejection canaries and accepted invalid JAR claims leave gaps in successful advanced combinations.</td>
 </tr><tr><td><a href="../integration/conformance/README.html">Independent Python fixture</a></td>
-<td>Cross-language signatures, strict selected protocol exchanges and mTLS resource denial</td>
+<td>Cross-language signatures, selected protocol exchanges, PKI client authentication and mTLS resource denial</td>
 <td>The live AS fixture omits discovery, login, consent and ID tokens; resource checks cover only mTLS token binding.</td>
 </tr><tr><td><a href="../integration/connections/README.html">Retained connections</a></td>
 <td>Cross-session state, multiple providers, refresh, resource isolation and actual browsers/workers</td>
