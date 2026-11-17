@@ -468,7 +468,37 @@ the manifest omits them. Resource denial remains limited as described above.
 The [independent Python PKI fixture](../conformance/README.md) separately checks
 client-authentication denial, trusted subject matching and untrusted-CA
 rejection. It leaves this suite's outcomes and coverage limits intact.
-OIDC/mTLS and mTLS-bound refresh remain separate work.
+Run the OIDC variants with ID-token and UserInfo validation:
+
+```sh
+Rscript integration/openid/run-tests.R --profile fapi-mtls --transport sync
+Rscript integration/openid/run-tests.R --profile fapi-mtls --transport mirai
+Rscript integration/openid/run-tests.R --profile fapi-mtls-auth --transport sync
+Rscript integration/openid/run-tests.R --profile fapi-mtls-auth --transport mirai
+```
+
+`fapi-mtls` uses private-key-JWT authentication; `fapi-mtls-auth` uses the
+suite's mTLS authentication variant. Both select OIDC discovery, the client's
+`fapi2` ID-token profile, reference state and mTLS token binding. Each resolves
+all 21 applicable modules: five successful resource exchanges, eleven ID-token
+rejections, four callback rejections and one discovery rejection. Every module
+requires `PASSED`, with no warning or skipped nonce cases.
+
+The gate observes the returned ID token and checks the selected issuer,
+audience, expiry or algorithm mutation, alongside nonce matching, mismatch or
+absence. The installed client validates the actual signature and claims.
+Invalid ID tokens must stop before UserInfo and resource requests. Successful
+cases require both, including the same issued Bearer token and the registered
+actual TLS peer. Without aliases, UserInfo must use its advertised literal mTLS
+URL; the suite's corresponding setup event is required. Token values, ID tokens,
+nonces and certificates do not enter the sanitized reports.
+
+These OIDC gates retain the three separate resource attacker controls and the
+forced resource-denial coverage limit. These controls target the accounts
+endpoint. UserInfo's attacker-denial behavior remains outside them. The mTLS
+authentication variant also retains its exact-certificate registration and
+authentication-denial limits.
+mTLS-bound refresh remains separate work.
 
 The discovery helper reads unsigned JSON metadata over verified TLS. Signed
 metadata, refresh, other FAPI variants and certification remain separate. Resource
@@ -480,7 +510,7 @@ API checks and smoke on pull requests affecting the package or this harness.
 Manual dispatch offers `smoke`, `basic`, `config`, `form-post`, `refresh`,
 `auth-post`, `auth-secret-jwt`, `auth-private-jwt`, `shared-pool`, `fapi-dpop`,
 `fapi-dpop-full`, `fapi-oauth-dpop`, `fapi-oauth-dpop-reference`,
-`fapi-oauth-mtls` and `fapi-oauth-mtls-auth`;
+`fapi-oauth-mtls`, `fapi-oauth-mtls-auth`, `fapi-mtls` and `fapi-mtls-auth`;
 larger selections remain manual while GitHub runner timings are unmeasured.
 Manual transport choices are `sync`, `mirai` and the limited `future` parity
 selection. `shared-pool` requires mirai. Pull requests keep synchronous smoke.

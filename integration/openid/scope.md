@@ -374,9 +374,10 @@ and header replacement, while resource denial remains unproven. The gate forces
 `coverage_complete = false` and the resource-denial coverage limit even if the
 manifest's complete flag is changed. The
 [independent Python fixture](../conformance/README.md) now separately checks
-actual resource denial with per-token TLS bindings. Other C11 work includes
-invalid client-authentication rejection and OIDC/mTLS. No suite condition or
-production library default is changed by this fixture.
+actual resource denial with per-token TLS bindings and selected PKI
+client-authentication rejections. The OIDC selections below extend the suite
+coverage. No suite condition or production library default is changed by this
+fixture.
 
 The separate `fapi-oauth-mtls-auth` selection resolves the same nine OAuth-only
 modules with `client_auth_type = mtls`. Discovery advertises `tls_client_auth`.
@@ -395,6 +396,20 @@ the existing resource-denial limit. `coverage_complete` remains false.
 The [independent Python fixture](../conformance/README.md) separately checks
 selected PKI authentication and denial cases; it does not change this suite's
 registration model or coverage limits.
+
+The OIDC selections `fapi-mtls` and `fapi-mtls-auth` resolve 21 modules each for
+private-key-JWT and mTLS client authentication respectively. Both use reference
+state, OIDC discovery, the `fapi2` ID-token profile and certificate-bound Bearer
+tokens. They add issuer/audience/expiry/algorithm and nonce cases to the OAuth
+mTLS selection. The collector checks the actual returned ID-token variant and
+nonce relationship; signature validation runs in the installed client.
+
+Token rejections require zero UserInfo and resource calls. Successful exchanges
+require one of each, with the issued access token and actual TLS peer, including
+UserInfo's no-alias fallback. All 21 modules must pass without warnings or skips.
+The isolated resource controls, partial coverage status and applicable mTLS
+authentication limits remain unchanged. Neither selection covers bound refresh
+or establishes certification.
 
 Baseline references: [OIDC Core](https://openid.net/specs/openid-connect-core-1_0.html),
 [Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html),
