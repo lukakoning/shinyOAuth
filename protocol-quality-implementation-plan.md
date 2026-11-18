@@ -1820,6 +1820,97 @@ scoped interoperability evidence with `coverage_complete = false`. C06
 warm-cache, C09 public-client suite capability and C15 rejection-gap
 review remain separate work.
 
+C14 browser-retention validation (2026-11-18): all four Windows/Linux
+and sync/mirai retention gates passed, followed by four baseline
+regressions and one Linux/mirai resource-indicator regression. These are
+**development results**, not a final release matrix. The steering
+handoff at the top of this file was edited and committed while the runs
+were in progress. Each report retains its actual source revision and
+dirty flag; no flag was changed to make the matrix appear clean.
+
+Sources in the table are `46078c618cd225e426f9e0ff264c3448cd24eca9`
+(`46078c61`) and `434e59830c39ceeaa17df5a73b76683d671926fc`
+(`434e5983`). The latter changes only this plan. Fixture input hashes
+were unchanged across those commits. Windows used R 4.5.1 and Linux used
+R 4.5.0 inside Docker Desktop. Each report records browser/dependency
+versions, the pinned Node 24.22.3 / oidc-provider 9.14.0 runtime, built
+image ID and fixture input hashes.
+
+| Selection / runtime / transport | Case-loop seconds | Source | Dirty | Local sanitized evidence directory |
+|----|---:|----|----|----|
+| Retention / Windows / sync | 160.37 | `46078c61` | false | `retention-20261118-202723-8b65cdf5f597` |
+| Retention / Linux / sync | 142.92 | `46078c61` | false | `retention-20261118-202727-961ee7b5266a` |
+| Retention / Linux / mirai | 134.47 | `46078c61` | false | `retention-20261118-203045-0069d5dd283b` |
+| Retention / Windows / mirai | 173.33 | `46078c61` | true | `retention-20261118-203103-24c5302c00de` |
+| Basic / Linux / sync | 25.59 | `46078c61` | true | `basic-20261118-203352-5fdaf0f2533e` |
+| Basic / Windows / sync | 50.94 | `46078c61` | true | `basic-20261118-203456-5f991fca9d9c` |
+| Basic / Linux / mirai | 33.92 | `46078c61` | true | `basic-20261118-203503-1da30037ddf0` |
+| Basic / Windows / mirai | 58.55 | `434e5983` | false | `basic-20261118-203628-b280140cf1ad` |
+| Resources / Linux / mirai | 24.93 | `434e5983` | false | `resources-20261118-203628-89061f1fa120` |
+
+The eight retention cases completed eight native OIDC logins and
+refreshes, sixteen full-navigation restorations, 32 explicit
+authenticated resource reads and 48 native UserInfo HTTP 200 responses.
+They also verified eight normal-case missing-PKCE rejections, eight
+foreign-owner denials, eight local logout retirements with blocked
+stale-reference token exports, and eight post-logout old-ID denials.
+Four cases used the real Form Post callback and HTTP 303 bridge. All
+four stopped-managed-app canaries and **1,296 altered-report controls**
+passed (324 per retention gate).
+
+Baseline regressions passed sixteen login/refresh flows, sixteen
+normal-case missing-PKCE rejections, four stopped-app canaries and 256
+altered-report controls. The resource regression passed two positive
+login/refresh flows, the unknown-resource rejection, four authenticated
+reads and introspections, six HTTP 401 denials, two local resource-base
+escape rejections, its stopped-app canary and 237 altered-report
+controls. In total, the nine gates passed **1,789 altered-report
+controls**. Serialized reports were independently rechecked with the
+existing scenario validators, actual fixture bytes and the saved built
+image-ID files; missing or false control results were rejected. This
+does not close SA02’s source/acquisition-provenance work. Timings
+exclude installation, build and report controls; concurrent jobs shared
+host resources.
+
+An earlier Linux/sync attempt at
+`43dd6d80488bae74010e3759017034af068fdce6` timed out on the final
+post-logout navigation, with no completed case rows:
+`retention-20261118-200310-33b5e0bf3050`. It receives no coverage
+credit. The fixture was rescanning a growing audit directory every 100
+ms; on the Windows bind mount this starved Shiny’s HTTP handling after
+owner retirement. `46078c61` caches sanitized audit observations per
+session until a result or connection-state change. The browser still
+performs full `Page.navigate` navigation, and no production package
+behavior changed.
+
+A subsequent review found that the Form Post navigation observer
+remained live through logout, whose cookie-clearing redirect could mask
+an incorrect initial bridge status.
+`a3f0c9e8dcb965cf8c802e54fd65ecd5484961df` freezes the callback
+observations immediately after login. A focused Linux/sync Form Post run
+at that revision completed the full retention scenario; its saved row
+passed strict scenario and sanitization checks, including the callback
+POST and captured HTTP 303 evidence. The row is in
+`retention-20261118-204133-e44fc19a603a`. This focused check is separate
+from the nine-gate development matrix and is not a complete release
+gate.
+
+Before the fixture-only fixes, the OIDF evidence regression at
+`43dd6d80` passed **6,682 assertions on each platform**, and
+resource-indicator/binding tests passed **86 assertions on each
+platform**, with zero test warnings or skips. Windows R still emitted
+its existing startup locale warnings. Jarl, formatting, actionlint and
+patch whitespace checks passed. No owned test containers remain. Raw
+logs, keys and installed test libraries remain ignored; only sanitized
+evidence JSON is eligible for workflow upload. Hosted CI was not run for
+retention.
+
+C14’s selected implementation is complete, with
+`coverage_complete = false` and the deployment limits above. Follow the
+steering handoff next: SA01-SA02 take priority before further feature
+expansion. SA01-SA08 remain pending; release-source aggregation and
+durable release evidence are still future work.
+
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
 interoperability with a second full provider. Add another mock server

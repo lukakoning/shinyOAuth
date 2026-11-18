@@ -580,6 +580,64 @@
 <p>Evidence requires exact native events: the missing-PKCE rejection, one code exchange, one refresh and six successful current-token UserInfo calls. This prevents a new authorization from substituting for restoration. It also checks the complete snapshot sequence, new session counters, stable app/process/ID, identity comparisons, live denial outcomes and explicit cleanup. Every report has a stopped-managed-app canary, altered-evidence checks and serialized report validation, including rejection of missing or false control results. Form Post uses the real POST and HTTP 303 bridge.</p>
 <p>The selected sync/mirai transport handles exchange, refresh and validated UserInfo. Explicit resource reads, owner checks and memory-store updates stay in the main process. Both origins use HTTPS localhost on different ports; cross-site cookie deployments, account owners, expiry, multiple clients, sender-bound grants and process restarts remain outside this selection. The existing synthetic retention fixtures continue to cover their own scope. Manual dispatch now offers <code>retention</code>, uploading only sanitized evidence JSON.</p>
 <p>This implements C14’s final planned scenario; committed-source validation is recorded below. The declared C13-C14 selections remain scoped interoperability evidence with <code>coverage_complete = false</code>. C06 warm-cache, C09 public-client suite capability and C15 rejection-gap review remain separate work.</p>
+<p>C14 browser-retention validation (2026-11-18): all four Windows/Linux and sync/mirai retention gates passed, followed by four baseline regressions and one Linux/mirai resource-indicator regression. These are <strong>development results</strong>, not a final release matrix. The steering handoff at the top of this file was edited and committed while the runs were in progress. Each report retains its actual source revision and dirty flag; no flag was changed to make the matrix appear clean.</p>
+<p>Sources in the table are <code>46078c618cd225e426f9e0ff264c3448cd24eca9</code> (<code>46078c61</code>) and <code>434e59830c39ceeaa17df5a73b76683d671926fc</code> (<code>434e5983</code>). The latter changes only this plan. Fixture input hashes were unchanged across those commits. Windows used R 4.5.1 and Linux used R 4.5.0 inside Docker Desktop. Each report records browser/dependency versions, the pinned Node 24.22.3 / oidc-provider 9.14.0 runtime, built image ID and fixture input hashes.</p>
+<table class="table"><colgroup><col width="18%"><col width="25%"><col width="18%"><col width="18%"><col width="18%"></colgroup><thead><tr><th>Selection / runtime / transport</th>
+<th align="right">Case-loop seconds</th>
+<th>Source</th>
+<th>Dirty</th>
+<th>Local sanitized evidence directory</th>
+</tr></thead><tbody><tr><td>Retention / Windows / sync</td>
+<td align="right">160.37</td>
+<td><code>46078c61</code></td>
+<td>false</td>
+<td><code>retention-20261118-202723-8b65cdf5f597</code></td>
+</tr><tr><td>Retention / Linux / sync</td>
+<td align="right">142.92</td>
+<td><code>46078c61</code></td>
+<td>false</td>
+<td><code>retention-20261118-202727-961ee7b5266a</code></td>
+</tr><tr><td>Retention / Linux / mirai</td>
+<td align="right">134.47</td>
+<td><code>46078c61</code></td>
+<td>false</td>
+<td><code>retention-20261118-203045-0069d5dd283b</code></td>
+</tr><tr><td>Retention / Windows / mirai</td>
+<td align="right">173.33</td>
+<td><code>46078c61</code></td>
+<td>true</td>
+<td><code>retention-20261118-203103-24c5302c00de</code></td>
+</tr><tr><td>Basic / Linux / sync</td>
+<td align="right">25.59</td>
+<td><code>46078c61</code></td>
+<td>true</td>
+<td><code>basic-20261118-203352-5fdaf0f2533e</code></td>
+</tr><tr><td>Basic / Windows / sync</td>
+<td align="right">50.94</td>
+<td><code>46078c61</code></td>
+<td>true</td>
+<td><code>basic-20261118-203456-5f991fca9d9c</code></td>
+</tr><tr><td>Basic / Linux / mirai</td>
+<td align="right">33.92</td>
+<td><code>46078c61</code></td>
+<td>true</td>
+<td><code>basic-20261118-203503-1da30037ddf0</code></td>
+</tr><tr><td>Basic / Windows / mirai</td>
+<td align="right">58.55</td>
+<td><code>434e5983</code></td>
+<td>false</td>
+<td><code>basic-20261118-203628-b280140cf1ad</code></td>
+</tr><tr><td>Resources / Linux / mirai</td>
+<td align="right">24.93</td>
+<td><code>434e5983</code></td>
+<td>false</td>
+<td><code>resources-20261118-203628-89061f1fa120</code></td>
+</tr></tbody></table><p>The eight retention cases completed eight native OIDC logins and refreshes, sixteen full-navigation restorations, 32 explicit authenticated resource reads and 48 native UserInfo HTTP 200 responses. They also verified eight normal-case missing-PKCE rejections, eight foreign-owner denials, eight local logout retirements with blocked stale-reference token exports, and eight post-logout old-ID denials. Four cases used the real Form Post callback and HTTP 303 bridge. All four stopped-managed-app canaries and <strong>1,296 altered-report controls</strong> passed (324 per retention gate).</p>
+<p>Baseline regressions passed sixteen login/refresh flows, sixteen normal-case missing-PKCE rejections, four stopped-app canaries and 256 altered-report controls. The resource regression passed two positive login/refresh flows, the unknown-resource rejection, four authenticated reads and introspections, six HTTP 401 denials, two local resource-base escape rejections, its stopped-app canary and 237 altered-report controls. In total, the nine gates passed <strong>1,789 altered-report controls</strong>. Serialized reports were independently rechecked with the existing scenario validators, actual fixture bytes and the saved built image-ID files; missing or false control results were rejected. This does not close SA02’s source/acquisition-provenance work. Timings exclude installation, build and report controls; concurrent jobs shared host resources.</p>
+<p>An earlier Linux/sync attempt at <code>43dd6d80488bae74010e3759017034af068fdce6</code> timed out on the final post-logout navigation, with no completed case rows: <code>retention-20261118-200310-33b5e0bf3050</code>. It receives no coverage credit. The fixture was rescanning a growing audit directory every 100 ms; on the Windows bind mount this starved Shiny’s HTTP handling after owner retirement. <code>46078c61</code> caches sanitized audit observations per session until a result or connection-state change. The browser still performs full <code>Page.navigate</code> navigation, and no production package behavior changed.</p>
+<p>A subsequent review found that the Form Post navigation observer remained live through logout, whose cookie-clearing redirect could mask an incorrect initial bridge status. <code>a3f0c9e8dcb965cf8c802e54fd65ecd5484961df</code> freezes the callback observations immediately after login. A focused Linux/sync Form Post run at that revision completed the full retention scenario; its saved row passed strict scenario and sanitization checks, including the callback POST and captured HTTP 303 evidence. The row is in <code>retention-20261118-204133-e44fc19a603a</code>. This focused check is separate from the nine-gate development matrix and is not a complete release gate.</p>
+<p>Before the fixture-only fixes, the OIDF evidence regression at <code>43dd6d80</code> passed <strong>6,682 assertions on each platform</strong>, and resource-indicator/binding tests passed <strong>86 assertions on each platform</strong>, with zero test warnings or skips. Windows R still emitted its existing startup locale warnings. Jarl, formatting, actionlint and patch whitespace checks passed. No owned test containers remain. Raw logs, keys and installed test libraries remain ignored; only sanitized evidence JSON is eligible for workflow upload. Hosted CI was not run for retention.</p>
+<p>C14’s selected implementation is complete, with <code>coverage_complete = false</code> and the deployment limits above. Follow the steering handoff next: SA01-SA02 take priority before further feature expansion. SA01-SA08 remain pending; release-source aggregation and durable release evidence are still future work.</p>
 <p>Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works, extend it to FAPI 2.0, then add <code>oidc-provider</code> for interoperability with a second full provider. Add another mock server only when a remaining test case justifies its maintenance cost. The ranking below reflects the gaps in this repository; it is an engineering assessment, not a benchmark of the tools.</p>
 <p><strong>Starting point.</strong> Keep the existing test layers and their stated limits.</p>
 <table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr><th>Existing layer</th>
