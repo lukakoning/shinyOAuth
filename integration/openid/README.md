@@ -1,5 +1,10 @@
 **OpenID Foundation client conformance environment**
 
+The [requirement-to-evidence map](requirements.md) relates the FAPI client
+clauses to package behavior, tests and remaining limits. Its OIDC/OAuth and
+Message Signing sections remain future work; the [scope map](scope.md) records
+the separate suite-module outcomes.
+
 Run from the repository root with Docker Engine using Linux containers,
 Compose v2, Git, Chrome/Chromium, and R packages `httr2`, `jsonlite`, `processx`,
 `openssl`, `withr`, `chromote`, `httpuv` and `testthat` installed:

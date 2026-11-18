@@ -175,6 +175,86 @@ test_that("algorithm filtering excludes malformed scalar JWK metadata", {
   )
 })
 
+test_that("same-kid mixed JWKS select eligible keys and try their real signatures", {
+  signing_key <- openssl::ec_keygen("P-256")
+  public <- function(key, alg, use = "sig", operations = "verify") {
+    jwk <- shinyOAuth:::private_key_public_jwk(key)
+    jwk[["kid"]] <- "shared-kid"
+    jwk[["alg"]] <- alg
+    jwk[["use"]] <- use
+    jwk[["key_ops"]] <- as.list(operations)
+    jwk
+  }
+  correct <- public(signing_key, "ES256")
+  wrong_signature <- public(openssl::ec_keygen("P-256"), "ES256")
+  rsa <- public(openssl::rsa_keygen(2048), "RS256")
+  other_curve <- public(openssl::ec_keygen("P-384"), "ES384")
+  encryption <- public(signing_key, "ECDH-ES", "enc", "deriveKey")
+  sign_only <- public(signing_key, "ES256", operations = "sign")
+  other_kid <- correct
+  other_kid[["kid"]] <- "different-kid"
+  token <- shinyOAuth:::encode_asymmetric_jwt_with_header(
+    list(sub = "mixed-jwks", iat = floor(as.numeric(Sys.time()))),
+    signing_key,
+    list(typ = "JWT", alg = "ES256", kid = "shared-kid")
+  )
+  select <- function(keys) {
+    jwks <- jsonlite::fromJSON(
+      jsonlite::toJSON(list(keys = keys), auto_unbox = TRUE),
+      simplifyVector = FALSE
+    )
+    candidates <- shinyOAuth:::select_candidate_jwks(
+      jwks,
+      header_alg = "ES256",
+      kid = "shared-kid"
+    )
+    shinyOAuth:::filter_jwks_for_alg(
+      candidates,
+      "ES256",
+      allowed_algs = "ES256"
+    )
+  }
+  keys <- list(
+    rsa,
+    other_curve,
+    encryption,
+    sign_only,
+    other_kid,
+    wrong_signature,
+    correct
+  )
+  expect_silent(shinyOAuth:::validate_jwks(list(keys = keys)))
+  for (order in list(keys, rev(keys))) {
+    candidates <- select(order)
+    expect_length(candidates, 2L)
+    result <- shinyOAuth:::verify_jwt_with_jwks(token, candidates, "ES256")
+    expect_identical(result[["jwk"]], correct)
+  }
+  expect_null(shinyOAuth:::verify_jwt_with_jwks(
+    token,
+    select(keys[-7L]),
+    "ES256"
+  ))
+
+  wrong_algorithm <- correct
+  wrong_algorithm[["alg"]] <- "ES384"
+  for (ineligible in list(encryption, sign_only, other_kid, wrong_algorithm)) {
+    candidates <- select(list(ineligible, wrong_signature))
+    expect_length(candidates, 1L)
+    expect_null(shinyOAuth:::verify_jwt_with_jwks(token, candidates, "ES256"))
+  }
+  unlabelled <- correct
+  unlabelled[["alg"]] <- NULL
+  expect_identical(
+    shinyOAuth:::verify_jwt_with_jwks(
+      token,
+      select(list(unlabelled)),
+      "ES256"
+    )[["jwk"]],
+    unlabelled
+  )
+})
+
 test_that("select_candidate_jwks honors key_ops field", {
   # Minimal RSA JWK for signing/verification
   rsa_verify <- list(

@@ -1,5 +1,9 @@
 **Coverage scope**
 
+The [requirement-to-evidence map](requirements.md) separately accounts for FAPI
+client, network and cryptography clauses. SA04 remains partial until the
+OIDC/OAuth and Message Signing requirement maps are complete.
+
 The current suite lock selects official `release-v5.3.4`, source
 `23353b36957d6466010de767c812d2c91ed37638`. The [release review](release-review.md)
 records the lock transition and refreshed checks. Older execution records keep
