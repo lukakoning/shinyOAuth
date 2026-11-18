@@ -1436,8 +1436,119 @@ formatting, actionlint and patch whitespace checks passed. Only the nine
 sanitized evidence JSON files were copied into the main checkout; keys,
 client registrations, installed libraries and raw logs remain private.
 No owned test containers remain. Hosted CI has not been run for this
-selection. C14’s resource-indicator and navigation-retention scenarios
-remain pending.
+selection. The resource-indicator follow-up is recorded below;
+navigation retention remains pending.
+
+C14 resource-indicator implementation (2026-11-18): a separate
+`resources` selection adds native RFC 8707 behavior for two API
+audiences and a rejected unknown resource. It uses confidential Basic
+authentication, direct query authorization and S256. PAR is explicitly
+disabled for this selection. Chrome must observe the exact resource
+parameter in the outgoing request; native authorization, code and
+refresh events must confirm the same indicator. Both APIs must obtain
+their own audience and the resource-specific `api.read` scope through
+the provider’s normal resource-indicator processing. Consent uses the
+public Grant API for resource scopes; no protocol handler is patched.
+
+Each positive case validates its ID token, uses `connection$request()`
+at the selected API, refreshes the same connection and uses the
+refreshed credential at that API. Native introspection confirms the
+current token’s audience and scope before and after refresh. The
+original validated identity must survive the native refresh response
+without a replacement ID token. Native UserInfo is disabled because it
+rejects API-audience tokens. The package’s scope policy remains enabled;
+its warning about API access-token scope omitting OIDC/offline scopes is
+expected here. The harness independently requires `api.read` and
+validated ID-token identity.
+
+The resource server is a development fixture on two HTTPS paths sharing
+the provider’s origin. It checks opaque-token validity, audience and
+scope through the provider’s public AccessToken/Grant model API. It is
+not an independent resource-server product or a JWT access-token
+verifier. Native provider handlers validate indicators and mint
+audiences. A real token for the other API, absent credentials and an
+invalid token must receive HTTP 401. The public connection must also
+reject an escaped resource base locally, with no extra server request.
+The unknown indicator must produce native `invalid_target` and the
+matching client callback error before code or token issuance.
+
+Each report requires all three browser cases, the stopped-app canary,
+real sync/mirai exchange and refresh, owned-worker cleanup, complete
+provider events, two authenticated resource reads and introspections per
+positive case, and the three denial probes. Serialized reports and
+altered evidence must also be checked; missing or false control results
+cannot pass. Only sanitized evidence JSON is eligible for upload. Manual
+workflow dispatch now offers `resources` alongside `basic` and
+`advanced`; pull requests keep basic sync.
+
+C14 still retains
+[`oauth_connections_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_server.md)
+navigation retention. This resource selection does not cover other auth
+methods, callback modes, multiple requested resources, JWT access
+tokens, or indicators combined with JAR/PAR, DPoP or mTLS. These limits
+are recorded with `coverage_complete = false`. Resource-indicator
+validation (2026-11-18), source
+`f2f78a2d502817522155837529683e7f4acbd155`: all four Windows/Linux
+sync/mirai resource gates passed with clean checkouts. They completed
+**eight positive logins and refreshes**, **sixteen authenticated API
+reads**, **sixteen native introspections**, **24 resource HTTP 401
+denials**, **eight local resource-base escape rejections** and **four
+unknown-resource callback rejections** before code/token issuance. Every
+authorization/code/refresh request used the expected resource; both
+grants produced the selected audience and `api.read` scope.
+
+All four stopped-app canaries and **948 altered-report controls** passed
+(237 per resource report). Serialized reports were independently
+rechecked against the complete selection, committed source, runtime
+locks, actual fixture input hashes, identity/refresh evidence,
+current-token use, transport and cleanup. Missing or false control
+results were independently rejected too. The resource server returned
+exactly the expected requests, including no extra request from the
+locally blocked escape attempt.
+
+| Runtime / transport | Three-case loop seconds | Local sanitized evidence directory |
+|----|---:|----|
+| Windows / sync | 32.16 | `resources-20261118-193706-6d7c07b36d9d` |
+| Windows / mirai | 34.87 | `resources-20261118-193819-b1107faad01f` |
+| Linux / sync | 18.29 | `resources-20261118-193713-274ae397ecc5` |
+| Linux / mirai | 21.04 | `resources-20261118-193823-2c8682bdea6a` |
+
+The full resource gates took approximately 64-74 seconds. Case-loop
+timings exclude installation, build, stopped-app controls and
+report-mutation checks; concurrent runs shared host resources. Windows
+used R 4.5.1 and Linux used R 4.5.0 inside Docker Desktop. Reports
+record their browser/dependency versions, the pinned Node 24.22.3 /
+oidc-provider 9.14.0 runtime, actual built image IDs and fixture input
+hashes.
+
+The four baseline regression gates also passed all sixteen login/refresh
+flows, sixteen missing-PKCE rejections, four stopped-app canaries and
+256 altered-report controls, with clean checkouts:
+
+| Runtime / transport | Four-case loop seconds | Local sanitized evidence directory |
+|----|---:|----|
+| Windows / sync | 39.76 | `basic-20261118-193930-7bff94e3cbee` |
+| Windows / mirai | 47.45 | `basic-20261118-194047-72232dc7c8bb` |
+| Linux / sync | 21.82 | `basic-20261118-193927-a8d50b7640b1` |
+| Linux / mirai | 26.87 | `basic-20261118-194028-f1923d082616` |
+
+The Linux/mirai advanced regression passed all six
+login/refresh/resource flows, both tampered-JARM callbacks, its
+stopped-app canary and 988 altered-report controls:
+`advanced-20261118-194134-58089eecd536`, with a 66.37-second case loop
+and clean checkout. All nine resource/baseline/advanced serialized
+reports were independently revalidated against the same source and
+current fixture bytes.
+
+On each platform, the existing OIDF evidence regression passed **6,682
+assertions**, and focused resource-indicator/binding tests passed **86
+assertions**, with zero test warnings or skips. All seven Node fixture
+tests, Jarl, formatting, actionlint and patch whitespace checks passed.
+No owned test containers remain. Only sanitized evidence JSON is
+eligible for workflow upload; temporary keys, registrations, libraries
+and raw logs remain ignored locally. Hosted CI has not been run for this
+new selection. C14 navigation retention remains the next implementation
+step.
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
@@ -1891,6 +2002,8 @@ Rscript integration/oidc-provider/run-tests.R --transport sync
 Rscript integration/oidc-provider/run-tests.R --transport mirai
 Rscript integration/oidc-provider/run-advanced.R --transport sync
 Rscript integration/oidc-provider/run-advanced.R --transport mirai
+Rscript integration/oidc-provider/run-resources.R --transport sync
+Rscript integration/oidc-provider/run-resources.R --transport mirai
 ```
 
 `core` expands to Basic, Configuration, Form Post Basic and refresh;
