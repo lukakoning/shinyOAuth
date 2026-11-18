@@ -33,7 +33,7 @@ submission. Record the disposition of each note with implementation
 commits and evidence, or a concrete reason for deferral. All eight notes
 start pending.
 
-**Implementation status (2026-11-18).** SA02’s image, acquisition and
+**Implementation status (2026-11-19).** SA02’s image, acquisition and
 dirty-flag revalidation checks are implemented in the follow-up
 execution record below. SA02 now implements source snapshots, archived
 installation input and a clean release-source check; local and hosted
@@ -41,7 +41,11 @@ acceptance is complete. SA01 now pins the available official
 `release-v5.3.4` server and proxy images after source/digest and live
 plan comparison. SA01 is complete: fresh hosted smoke, Basic and Message
 Signing passed with verified acquisition reports and recorded timings.
-SA03-SA08 remain pending. See the [release
+SA04 is partial: the [requirement
+map](https://lukakoning.github.io/integration/openid/requirements.md)
+accounts for FAPI’s 20 client clauses and relevant network/cryptography
+duties, with remaining OIDC/OAuth and Message Signing mapping work
+named. SA03 and SA05-SA08 remain pending. See the [release
 review](https://lukakoning.github.io/integration/openid/release-review.md).
 
 **SA01 (high): Restore fresh-machine reproducibility; move this part of
@@ -2081,6 +2085,34 @@ complete for the OIDF harness. SA08 retains full matrix completeness,
 other integration layers and durable release evidence. SA04 requirement
 mapping and SA06’s Keycloak warm-cache follow-up are being implemented
 separately.
+
+SA04 FAPI map and candidate-selection regression (2026-11-19):
+[requirements.md](https://lukakoning.github.io/integration/openid/requirements.md)
+now maps all 20 numbered FAPI 2.0 Security Profile client clauses, the
+client clock note and relevant network/cryptography clauses to
+responsible roles, selected configurations, implementation/test
+references and remaining limits. It keeps deployment and AS/RS duties
+separate from client behavior. The map explicitly records that
+`id_token_profile = "fapi2"` is an ID-token policy rather than a
+complete FAPI preset, that issuer-string assertion audiences need
+explicit configuration, and that ES256 live coverage does not establish
+PS256 or RS256 FAPI coverage. Initiation consent, alias-only mTLS
+ecosystems, callback-error URL cleanup and source-qualified lifecycle
+evidence retain named follow-up work. SA04 remains partial until the
+OIDC/OAuth and Message Signing maps are complete.
+
+The map identified a missing mixed same-`kid` candidate combination. A
+new regression in
+[test-jwks.R](https://lukakoning.github.io/tests/testthat/test-jwks.R)
+uses real ES256 signatures with mixed RSA/EC keys, algorithms, uses and
+operations. It verifies both candidate orders, an eligible
+wrong-signature key before the actual signer, failure without an
+eligible signer, and compatible keys with omitted `alg`. Its 15 new
+assertions passed; the full JWKS file passed 66 assertions on each of
+Windows R 4.5.1 and Linux R 4.5.0, with no failures, test warnings or
+skips. Formatting and jarl checks passed. These are focused development
+regressions, not a new source-qualified conformance matrix or
+certification result. Runtime package behavior is unchanged.
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
