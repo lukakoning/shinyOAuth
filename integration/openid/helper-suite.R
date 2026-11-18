@@ -206,6 +206,38 @@ openid_suite_plan <- function(
   )
 }
 
+openid_suite_inventory <- function(stack, manifest, redirect_uri) {
+  setNames(
+    lapply(names(manifest[["plans"]]), function(name) {
+      spec <- manifest[["plans"]][[name]]
+      plan <- openid_suite_plan(stack, manifest, redirect_uri, .spec = spec)
+      module <- openid_suite_module(
+        stack,
+        plan,
+        plan[["modules"]][[1L]][["testModule"]]
+      )
+      openid_suite_cancel(stack, module)
+      if (
+        !identical(openid_suite_info(stack, module)[["status"]], "INTERRUPTED")
+      ) {
+        stop("OpenID inventory probe was not cancelled")
+      }
+      list(
+        plan = spec[["plan"]],
+        plan_variant = spec[["plan_variant"]],
+        module_variant = spec[["module_variant"]],
+        probe_module = module[["name"]],
+        probe_variant = module[["variant"]],
+        probe_cancelled = TRUE,
+        modules = lapply(plan[["modules"]], function(module) {
+          module[["testModule"]]
+        })
+      )
+    }),
+    names(manifest[["plans"]])
+  )
+}
+
 openid_suite_info <- function(stack, module, .request = openid_api) {
   info <- .request(stack, paste0("/api/info/", module[["id"]]))
   if (

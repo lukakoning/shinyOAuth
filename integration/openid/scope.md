@@ -1,5 +1,12 @@
 **Coverage scope**
 
+The current suite lock selects official `release-v5.3.4`, source
+`23353b36957d6466010de767c812d2c91ed37638`. The [release review](release-review.md)
+records the lock transition and refreshed checks. Older execution records keep
+their original suite/source identities; the full release matrix remains SA08
+work. Module and variant metadata is checked independently for every declared
+plan configuration by `--check-api`.
+
 Current stage: all fourteen modules in the pinned Basic RP plan execute in a
 real browser with matching app evidence. The variant uses static registration,
 code flow and `client_secret_basic`, the selected sync/mirai transport and query callbacks.
@@ -43,7 +50,7 @@ neither interruption counts as a client test pass.
 | SMART App Launch | SMART browser fixtures and corrected Inferno simulator | Existing Inferno gate remains separate |
 
 The `basic` selection follows the module order in the pinned
-[Basic plan](https://gitlab.com/openid/conformance-suite/-/blob/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/openid/client/OIDCCClientBasicTestPlan.java).
+[Basic plan](https://gitlab.com/openid/conformance-suite/-/blob/23353b36957d6466010de767c812d2c91ed37638/src/main/java/net/openid/conformance/openid/client/OIDCCClientBasicTestPlan.java).
 All cases use the normal discovery, login and callback APIs. Successful cases
 require validated ID tokens and fetched UserInfo; rejections require no retained
 identity or token and zero successful logins. The suite checks the code request
@@ -68,7 +75,7 @@ that the client sends PKCE S256 and a nonce.
 | `-client-secret-basic` | Core 9; RFC 6749 2.3.1 | Successful code exchange and login | `PASSED` |
 
 The unsigned-token exception follows the pinned
-[module implementation](https://gitlab.com/openid/conformance-suite/-/blob/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/openid/client/OIDCCClientTestIdTokenSigAlgNone.java),
+[module implementation](https://gitlab.com/openid/conformance-suite/-/blob/23353b36957d6466010de767c812d2c91ed37638/src/main/java/net/openid/conformance/openid/client/OIDCCClientTestIdTokenSigAlgNone.java),
 which calls `fireTestSkipped()` if no UserInfo request follows the unsigned
 token. Its comments mention a warning, but the executable implementation yields
 `SKIPPED`; the gate requires that exact verdict and the app's matching reason.
@@ -77,9 +84,9 @@ This exception applies only to that module and never converts its verdict to
 cleanup, the expected app package/run identity, and owned-resource cleanup.
 
 The `form-post` selection follows the pinned
-[Form Post Basic plan](https://gitlab.com/openid/conformance-suite/-/blob/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/openid/client/OIDCCClientFormPostBasicTestPlan.java)
+[Form Post Basic plan](https://gitlab.com/openid/conformance-suite/-/blob/23353b36957d6466010de767c812d2c91ed37638/src/main/java/net/openid/conformance/openid/client/OIDCCClientFormPostBasicTestPlan.java)
 and its
-[response-mode adapter](https://gitlab.com/openid/conformance-suite/-/blob/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/openid/AbstractFormPostTestPlan.java).
+[response-mode adapter](https://gitlab.com/openid/conformance-suite/-/blob/23353b36957d6466010de767c812d2c91ed37638/src/main/java/net/openid/conformance/openid/AbstractFormPostTestPlan.java).
 They select the same fourteen Basic modules with `form_post`, so every row in
 the Basic table above still applies. Each result additionally requires:
 
@@ -99,7 +106,7 @@ transport rejection tests remain in the package's existing tests, with broader
 comprehensive-plan selections deferred to C09.
 
 The `config` selection uses the pinned
-[Configuration plan](https://gitlab.com/openid/conformance-suite/-/blob/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/openid/client/OIDCCClientConfigTestPlan.java).
+[Configuration plan](https://gitlab.com/openid/conformance-suite/-/blob/23353b36957d6466010de767c812d2c91ed37638/src/main/java/net/openid/conformance/openid/client/OIDCCClientConfigTestPlan.java).
 The upstream runner excludes both rotation modules and links
 [issue 837](https://gitlab.com/openid/conformance-suite/-/issues/837), which describes
 its sample client's CI failures. Our driver creates those modules explicitly.
@@ -114,7 +121,7 @@ its sample client's CI failures. Our driver creates those modules explicitly.
 | `-signing-key-rotation` | Two validated ID-token/UserInfo logins with distinct signing-key IDs, local logout between them, same app/cache | `PASSED` |
 
 The suite's JWKS responses include `no-store`. The
-[security configuration](https://gitlab.com/openid/conformance-suite/-/blob/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/security/WebSecurityConfig.java)
+[security configuration](https://gitlab.com/openid/conformance-suite/-/blob/23353b36957d6466010de767c812d2c91ed37638/src/main/java/net/openid/conformance/security/WebSecurityConfig.java)
 leaves dynamic `/test/**` endpoints in the security filter chain; its cache
 headers prevent key storage in this deployment. A live policy probe records
 that condition, and rotation evidence requires zero stored-key updates/hits.
@@ -151,7 +158,7 @@ work. The confidential-client selections cover the additional authentication
 methods in sync and mirai.
 
 The `refresh` selection uses the pinned
-[client refresh plan](https://gitlab.com/openid/conformance-suite/-/blob/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/openid/client/OIDCCClientRefreshTokenProfileTestPlan.java).
+[client refresh plan](https://gitlab.com/openid/conformance-suite/-/blob/23353b36957d6466010de767c812d2c91ed37638/src/main/java/net/openid/conformance/openid/client/OIDCCClientRefreshTokenProfileTestPlan.java).
 It selects static registration, code flow, query callbacks, HTTP Basic client
 authentication and synchronous transport. The plan has no forced per-module
 variants; runtime results must match the full plan variant. Upstream marks
@@ -181,7 +188,7 @@ rotation, concurrency and retained connections have their separate regression
 layers; this selection does not replace them.
 
 The `auth-post`, `auth-secret-jwt` and `auth-private-jwt` selections use the
-pinned [Comprehensive plan](https://gitlab.com/openid/conformance-suite/-/blob/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/openid/client/OIDCCClientTestPlan.java).
+pinned [Comprehensive plan](https://gitlab.com/openid/conformance-suite/-/blob/23353b36957d6466010de767c812d2c91ed37638/src/main/java/net/openid/conformance/openid/client/OIDCCClientTestPlan.java).
 They freeze the resolved code-flow module lists: twenty-nine for shared-secret
 methods and twenty-eight for private-key JWT. Each selects
 `oidcc-client-test` and `oidcc-client-test-invalid-iss` with static registration,
@@ -202,10 +209,10 @@ compares sensitive values only in memory and exports allowlisted flags.
 
 Public-client coverage remains unavailable through normal discovery in this
 deployment. The pinned
-[server-configuration condition](https://gitlab.com/openid/conformance-suite/-/blob/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/condition/as/OIDCCGenerateServerConfiguration.java)
+[server-configuration condition](https://gitlab.com/openid/conformance-suite/-/blob/23353b36957d6466010de767c812d2c91ed37638/src/main/java/net/openid/conformance/condition/as/OIDCCGenerateServerConfiguration.java)
 omits `none` from `token_endpoint_auth_methods_supported`, including when the
 plan selects `client_auth_type=none`. Its
-[public authentication sequence](https://gitlab.com/openid/conformance-suite/-/blob/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/sequence/as/OIDCCValidateClientAuthenticationWithNone.java)
+[public authentication sequence](https://gitlab.com/openid/conformance-suite/-/blob/23353b36957d6466010de767c812d2c91ed37638/src/main/java/net/openid/conformance/sequence/as/OIDCCValidateClientAuthenticationWithNone.java)
 also performs no checks. A separate probe verifies the metadata, observes the
 installed package's typed rejection of unadvertised public authentication and
 ends `INTERRUPTED`. Its identities remain bound to the run, and it cannot count
@@ -214,9 +221,9 @@ this gap needs an appropriate independent-provider scenario or a reviewed suite
 update; the package's discovery validation stays enabled.
 
 The pinned client tests also skip PKCE verifier validation:
-[the client base class](https://gitlab.com/openid/conformance-suite/-/blob/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/openid/client/AbstractOIDCCClientTest.java)
+[the client base class](https://gitlab.com/openid/conformance-suite/-/blob/23353b36957d6466010de767c812d2c91ed37638/src/main/java/net/openid/conformance/openid/client/AbstractOIDCCClientTest.java)
 guards `CheckPkceCodeVerifier` with `env.containsObject("code_challenge")`, while
-[the challenge condition](https://gitlab.com/openid/conformance-suite/-/blob/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/condition/as/EnsureAuthorizationRequestContainsPkceCodeChallenge.java)
+[the challenge condition](https://gitlab.com/openid/conformance-suite/-/blob/23353b36957d6466010de767c812d2c91ed37638/src/main/java/net/openid/conformance/condition/as/EnsureAuthorizationRequestContainsPkceCodeChallenge.java)
 stores it with `putString()`. The companion check computes SHA-256 and base64url
 from the observed verifier, requires equality with the observed challenge and
 requires the suite's successful S256 challenge-presence check. It records
@@ -250,7 +257,7 @@ shared caches and other authentication pairings need separate evidence. The
 public-client metadata and PKCE verifier-enforcement gaps above still apply.
 
 The `fapi-dpop` selection uses the pinned
-[FAPI 2.0 Security Profile client plan](https://gitlab.com/openid/conformance-suite/-/blob/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/fapi2spfinal/FAPI2SPFinalClientTestPlan.java).
+[FAPI 2.0 Security Profile client plan](https://gitlab.com/openid/conformance-suite/-/blob/23353b36957d6466010de767c812d2c91ed37638/src/main/java/net/openid/conformance/fapi2spfinal/FAPI2SPFinalClientTestPlan.java).
 Its generic OIDC, private-key-JWT, DPoP, simple authorization, no-grant-management
 variant resolves twenty-three modules. The plan forces unsigned PAR requests
 and plain authorization responses. This first selection runs only the happy

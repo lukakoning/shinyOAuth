@@ -17,12 +17,12 @@ own containers, network and database volume before recording a pass. Missing
 prerequisites, changed versions and unavailable services fail the command.
 It does not perform client login or establish conformance.
 
-On 2026-11-16 the upstream registry returned `not found` for the locked server
-digest. The verified local cache still supplies the exact image for these runs.
-A fresh machine needs an available verified mirror or a reviewed lock update;
-the runner never substitutes a tag or another digest. Reports record whether
-each image came from the verified cache or a pull. Fresh hosted CI remains
-blocked by that image's availability.
+The lock now selects the official `release-v5.3.4` server and proxy images by
+content digest. Both previous GitLab image digests had become unavailable to
+fresh machines. The [release review](release-review.md) records source and image
+identities, differences from the previous build and validation results. The
+runner never substitutes a tag or another digest. Reports record whether each
+image came from the verified cache or a pull.
 
 Exercise the suite API and evidence validator:
 
@@ -33,7 +33,13 @@ Rscript integration/openid/run-tests.R --check-api
 This checks the pinned Basic plan's complete module/variant list, creates a
 private static registration, waits for a live module, checks its exported
 issuer, rejects an unknown instance and confirms cancellation. The command
-also runs the evidence validator's regression checks with zero skips. Its report keeps
+also creates every declared plan configuration and checks its exact complete
+module list and per-module variants, including the public-client capability
+probe. Its sanitized `plan_inventory` records these module and variant identities.
+For each configuration it also starts one module, verifies the live combined
+variant and exported issuer, then requires cancellation. These interrupted
+inventory probes receive no client-coverage credit.
+The command also runs the evidence validator's regression checks with zero skips. Its report keeps
 `gate_passed = false` and `coverage_complete = false`: API readiness does not
 establish client conformance. Unknown command flags fail.
 
@@ -372,7 +378,7 @@ The discovery and four callback rejection cases retain their separate stages.
 All eleven modules are required; missing results and skips fail.
 
 The three happy-path modules report the upstream
-[`CheckStateLength`](https://gitlab.com/openid/conformance-suite/-/blob/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/condition/as/CheckStateLength.java) advisory:
+[`CheckStateLength`](https://gitlab.com/openid/conformance-suite/-/blob/23353b36957d6466010de767c812d2c91ed37638/src/main/java/net/openid/conformance/condition/as/CheckStateLength.java) advisory:
 the library's encrypted state exceeds 128 characters. Their retained verdict
 is `WARNING`. The gate requires that exact condition and fixed message, a
 measured state length above 128, and no other warning, failure or review event.
@@ -430,7 +436,7 @@ the actual unexpected TLS peer and the suite's certificate-failure verdict.
 The missing-certificate request returns HTTP 400. In this pinned suite, both
 wrong-certificate requests return HTTP 200 and the resource marker even though
 their module verdict is `FAILED`: its
-[`checkMtlsCertificate()`](https://gitlab.com/openid/conformance-suite/-/blob/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/fapi2spfinal/AbstractFAPI2SPFinalClientTest.java)
+[`checkMtlsCertificate()`](https://gitlab.com/openid/conformance-suite/-/blob/23353b36957d6466010de767c812d2c91ed37638/src/main/java/net/openid/conformance/fapi2spfinal/AbstractFAPI2SPFinalClientTest.java)
 continues after a certificate mismatch. These failed instances remain separate
 from the nine normal outcomes. The report always keeps
 `coverage_complete = false` and `mtls_resource_denial_not_established` visible.
@@ -510,7 +516,7 @@ Rscript integration/openid/run-tests.R --profile fapi-message-signing --transpor
 This selection uses the pinned `fapi2-message-signing-final-client-test-plan`:
 OIDC, private-key-JWT authentication, DPoP, signed requests through PAR and
 signed query responses, with grant management disabled. The suite advertises
-[`response_mode=jwt`](https://github.com/openid-certification/conformance-suite/blob/410812ef6bc72a84723c1685725edce3558e31e3/src/main/java/net/openid/conformance/condition/as/AddJARMResponseModeToServerConfiguration.java),
+[`response_mode=jwt`](https://github.com/openid-certification/conformance-suite/blob/23353b36957d6466010de767c812d2c91ed37638/src/main/java/net/openid/conformance/condition/as/AddJARMResponseModeToServerConfiguration.java),
 which the client sends and handles through its query JARM transport. No suite
 assertions or discovery metadata are patched.
 
@@ -615,7 +621,7 @@ Host header; the callback resolver checks that host and the loopback peer before
 reconstructing the fixed public origin, without trusting forwarded headers.
 
 The [lock](suite-lock.json) pins OIDF source
-`410812ef6bc72a84723c1685725edce3558e31e3`, its unmodified server image, the
+`23353b36957d6466010de767c812d2c91ed37638`, its unmodified server image, the
 upstream proxy image and MongoDB 6.0.13. The server image's `git.properties`
 records the exact clean commit; `/api/server` independently reports its short
 revision. Dependency changes need a separate reviewed lock update.

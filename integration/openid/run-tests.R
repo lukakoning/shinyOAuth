@@ -222,6 +222,13 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
     return(invisible(report))
   }
   stack <- openid_start(".", output)
+  report[["plan_inventory"]] <- openid_suite_inventory(
+    stack,
+    manifest,
+    "https://localhost:58100/"
+  )
+  report[["images"]] <- stack[["lock"]][["images"]]
+  report[["image_sources"]] <- stack[["image_sources"]]
   plan <- openid_suite_plan(stack, manifest, "https://localhost:58100/")
   module <- openid_suite_module(stack, plan, "oidcc-client-test")
   stopifnot(identical(openid_suite_info(stack, module)[["status"]], "WAITING"))

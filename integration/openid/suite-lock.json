@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
   "source_repository": "https://gitlab.com/openid/conformance-suite",
-  "source_revision": "410812ef6bc72a84723c1685725edce3558e31e3",
-  "source_description": "release-v5.3.4-47-g410812e",
+  "source_revision": "23353b36957d6466010de767c812d2c91ed37638",
+  "source_description": "release-v5.3.4",
   "images": {
-    "server": "registry.gitlab.com/openid/conformance-suite@sha256:a84e164e59bba31bbca83732a8506f522a746660864da7221428bab4e3157225",
-    "proxy": "registry.gitlab.com/openid/conformance-suite/nginx@sha256:bd5b238130cdfbc1847493c2273ba27e8a5088deca6fb42030ace906315f62cd",
+    "server": "registry.gitlab.com/openid/conformance-suite@sha256:dcc4bd1fb7e9c00f048a67373fe2bec5ecf9feb45a6b5d55e237e5c30e5312c6",
+    "proxy": "registry.gitlab.com/openid/conformance-suite/nginx@sha256:9a7850826fcc8690cd43373528f50e9551ba33bf8e4a40b67b13267b0aca3675",
     "database": "mongo:6.0.13@sha256:b415b12f638e2685d06c58ab7fb5943577c50fadec6d9340ef67d21aeac72070"
   },
   "required_plans": [
@@ -18,7 +18,8 @@
     "fapi2-message-signing-final-client-test-plan"
   ],
   "provenance": {
-    "checked_on": "2026-11-12",
+    "checked_on": "2026-11-18",
+    "release_tag": "release-v5.3.4",
     "method": "Extracted BOOT-INF/classes/git.properties from the digest-pinned server jar; git.commit.id matches source_revision and git.dirty is false.",
     "upstream_verification_modified": false,
     "proxy_configuration": "Local transport configuration; temporary certificate and mapped loopback ports. No suite assertions are changed."

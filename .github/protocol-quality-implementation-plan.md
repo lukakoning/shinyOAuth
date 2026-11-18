@@ -31,9 +31,10 @@ All eight notes start pending.
 **Implementation status (2026-11-18).** SA02's image, acquisition and dirty-flag
 revalidation checks are implemented in the follow-up execution record below.
 SA02 remains partial: identifying installed source content and enforcing release
-source policy remain pending. SA01's anonymous manifest check was repeated with
-HTTP 200 from the token endpoint and HTTP 404 for the locked server digest;
-the lock remains unchanged. SA01 and SA03-SA08 remain pending.
+source policy remain pending. SA01 now pins the available official
+`release-v5.3.4` server and proxy images after source/digest and live plan
+comparison; its fresh-runner validation is in progress. SA01 remains partial,
+and SA03-SA08 remain pending. See the [release review](../integration/openid/release-review.md).
 
 **SA01 (high): Restore fresh-machine reproducibility; move this part of C16
 forward.** The review independently obtained an anonymous registry token and
