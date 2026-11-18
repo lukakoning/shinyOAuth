@@ -2025,6 +2025,29 @@ patch stays limited to authentication/PKCE; response-mode metadata folding is
 a separate named audit/fix follow-up. These are development regressions, not new
 OIDF module results or a complete metadata-field compliance claim.
 
+SA04 JWT regression G1 (2026-11-19): the new encrypted-JARM regression covers
+both `query.jwt` module callbacks and the `form_post.jwt` admission bridge. It
+encrypts a correctly formed inner response whose real RS256 signature has one
+altered byte, or whose inner algorithm/signature has been changed to `none`.
+Each case first proves successful authenticated outer decryption, then requires
+the specific inner rejection, no authenticated session/token, zero token-endpoint
+HTTP calls and the exact pending state record/keys unchanged. The original
+correctly signed response then completes one exchange and consumes that same
+state. The 68 new assertions exercise actual decryption, JWKS selection,
+signature verification and module/bridge handling; only HTTP responses are
+stubbed. This is unit/module coverage with an explicit browser-marker bypass,
+not a real browser or encrypted OIDF profile result. No runtime defect was found.
+
+The new cases plus existing JARM response/compression regressions passed 864
+assertions on each of Windows and Linux, including the 68 new assertions, with
+zero failures, test warnings or skips. The first Linux check correctly failed
+its zero-skip requirement when an existing Ed25519 case lacked optional
+`sodium`; the accepted disposable container supplied the system library and
+private R package without changing the base image or package dependencies.
+Formatting, jarl, whitespace and independent review passed. G1 is complete as
+a focused regression; G2-G4 and the broader source-qualified release matrix
+remain open.
+
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second
