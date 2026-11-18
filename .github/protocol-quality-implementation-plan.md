@@ -33,8 +33,9 @@ revalidation checks are implemented in the follow-up execution record below.
 SA02 remains partial: identifying installed source content and enforcing release
 source policy remain pending. SA01 now pins the available official
 `release-v5.3.4` server and proxy images after source/digest and live plan
-comparison; its fresh-runner validation is in progress. SA01 remains partial,
-and SA03-SA08 remain pending. See the [release review](../integration/openid/release-review.md).
+comparison. SA01 is complete: fresh hosted smoke, Basic and Message Signing
+passed with verified acquisition reports and recorded timings. SA03-SA08 remain
+pending. See the [release review](../integration/openid/release-review.md).
 
 **SA01 (high): Restore fresh-machine reproducibility; move this part of C16
 forward.** The review independently obtained an anonymous registry token and
@@ -1768,6 +1769,54 @@ The committed lock remains unchanged. Next, compare the candidate's complete
 plan/module/variant lists and relevant source changes before an explicit lock
 update; fresh GitHub acquisition, preflight, API, browser smoke and larger-job
 timings remain SA01 acceptance work.
+
+SA01 reviewed lock implementation (2026-11-18), harness source
+`65fbdc8e49d70e85f99cbccc527428c91a785992`: both old GitLab digests proved
+unavailable, including the proxy. The lock now pins the official
+`release-v5.3.4` server and proxy indices; MongoDB's available digest is retained.
+The [release review](../integration/openid/release-review.md) records both new
+digests, the exact clean suite source, the 47-commit source comparison and the
+unchanged module/variant mapping for all 17 declared selections. The public API
+check now verifies all 15 plan configurations, including one live combined-
+variant/issuer probe and cancellation per configuration. Those interrupted
+probes receive no client-coverage credit.
+
+Local preflight and API checks passed. At the clean harness source above,
+Windows/sync Configuration passed all six cases, and Linux/mirai Message Signing
+passed all 29 modules. Evidence regression checks passed 6,808 assertions on
+each platform. Serialized reports were independently checked against the new
+lock. Configuration retains its `no-store` warm-cache limitation. The initial
+Message Signing attempt remains failed after a Chrome startup timeout; the
+release review preserves its identity and the successful complete rerun.
+Environment/API reports currently omit checkout-identity fields; their local
+execution context is documented without inventing report fields. SA02 source
+identity and SA08 release aggregation remain pending.
+
+Fresh hosted smoke was dispatched at that exact commit:
+[run 44399653873](https://github.com/lukakoning/shinyOAuth/actions/runs/44399653873).
+Its complete preflight/API/browser sequence passed. The downloaded archive's
+SHA-256 matched GitHub's artifact digest, and its preflight records all three
+images as `pulled`. The client report matched the new lock and clean harness
+source. The job took 729 seconds, including 422 seconds of dependency setup;
+the three-case browser loop took 19.85 seconds. Queue time was another 550 seconds.
+Hosted Basic
+[44403591230](https://github.com/lukakoning/shinyOAuth/actions/runs/44403591230)
+and Message Signing
+[44403727783](https://github.com/lukakoning/shinyOAuth/actions/runs/44403727783)
+also passed at that same clean source. Basic completed all fourteen cases
+(thirteen suite `PASSED` verdicts and the documented unsigned-token `SKIPPED`
+outcome); Message Signing completed all 29 with suite `PASSED`. Both preflights
+record all three images as `pulled`, both API inventories cover all 15 plan
+configurations, and both downloaded ZIP hashes matched GitHub's artifact digests.
+Their serialized reports were independently revalidated against the lock and
+known harness source. Basic took 412 seconds overall with an 81.44-second module
+loop; Message Signing took 581 seconds overall with a 245.08-second loop.
+SA01's reproducibility and selected timing acceptance is complete. These initial
+measurements support retaining PR smoke and manual larger selections while SA08
+retains the final release matrix and durable evidence work. SA02 source identity
+is next; SA03-SA08 retain their existing status.
+Only sanitized evidence JSON is eligible for upload; raw diagnostics and test
+credentials remain ignored locally.
 
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
