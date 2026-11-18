@@ -361,17 +361,17 @@ openid_check_shared_report <- function(report, context, manifest) {
       ) {
         stop("Missing distinct shared-pool selections")
       }
+      selection_checks <- vector("list", length(profiles))
       for (i in seq_along(profiles)) {
         trusted <- context
         trusted[["profile"]] <- profiles[[i]]
         trusted[["plan_id"]] <- context[["plan_ids"]][[i]]
-        if (
-          !isTRUE(openid_check_report(
-            report[["selections"]][[i]],
-            trusted,
-            manifest
-          )[["gate_passed"]])
-        ) {
+        selection_checks[[i]] <- openid_check_report(
+          report[["selections"]][[i]],
+          trusted,
+          manifest
+        )
+        if (!isTRUE(selection_checks[[i]][["gate_passed"]])) {
           stop(
             "A shared-pool client selection failed its protocol evidence gate"
           )
@@ -469,7 +469,7 @@ openid_check_shared_report <- function(report, context, manifest) {
           stop("Shared-pool isolation or cleanup proof is missing")
         }
       }
-      list(
+      check <- list(
         gate_passed = TRUE,
         selection_complete = TRUE,
         coverage_complete = FALSE,
@@ -481,13 +481,67 @@ openid_check_shared_report <- function(report, context, manifest) {
         ),
         reason = NULL
       )
+      sums <- function(name) {
+        fields <- names(selection_checks[[1L]][["assessment"]][[name]])
+        setNames(
+          lapply(fields, function(field) {
+            sum(vapply(
+              selection_checks,
+              function(selection) {
+                selection[["assessment"]][[name]][[field]]
+              },
+              numeric(1)
+            ))
+          }),
+          fields
+        )
+      }
+      c(
+        check,
+        list(
+          upstream_plan_complete = all(vapply(
+            selection_checks,
+            function(selection) selection[["upstream_plan_complete"]],
+            logical(1)
+          )),
+          assessment = list(
+            schema_version = 1L,
+            status = "validated",
+            certification_status = "not_assessed",
+            plan_count = length(selection_checks),
+            module_counts = sums("module_counts"),
+            suite_verdict_counts = sums("suite_verdict_counts"),
+            accepted_non_passed_results = as.list(unlist(
+              lapply(
+                selection_checks,
+                function(selection) {
+                  selection[["assessment"]][["accepted_non_passed_results"]]
+                }
+              ),
+              recursive = FALSE
+            )),
+            limitations = openid_assessment_limitations(c(
+              check[["coverage_limitations"]],
+              unlist(
+                lapply(selection_checks, function(selection) {
+                  selection[["assessment"]][["limitations"]]
+                }),
+                use.names = FALSE
+              )
+            ))
+          )
+        )
+      )
     },
     error = function(error) {
-      list(
-        gate_passed = FALSE,
-        selection_complete = FALSE,
-        coverage_complete = FALSE,
-        reason = conditionMessage(error)
+      c(
+        list(
+          gate_passed = FALSE,
+          selection_complete = FALSE,
+          coverage_complete = FALSE,
+          reason = conditionMessage(error)
+        ),
+        openid_failed_assessment()
       )
     }
   )

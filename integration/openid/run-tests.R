@@ -69,7 +69,9 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
     status = "failed",
     application_flow = "not_attempted",
     gate_passed = FALSE,
-    coverage_complete = FALSE
+    coverage_complete = FALSE,
+    upstream_plan_complete = FALSE,
+    assessment = openid_failed_assessment()[["assessment"]]
   )
   source <- openid_source_identity(".")
   report[["checkout_source"]] <- source
@@ -236,7 +238,9 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
     cat(
       "OpenID ",
       profile,
-      " selection passed; coverage_complete = ",
+      " selection passed; upstream_plan_complete = ",
+      check[["upstream_plan_complete"]],
+      "; coverage_complete = ",
       check[["coverage_complete"]],
       ".\n",
       sep = ""

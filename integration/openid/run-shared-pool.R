@@ -223,7 +223,12 @@ run_openid_shared_pool <- function() {
   }
   report[["status"]] <- "passed"
   cat(
-    "Shared mirai pool passed eight alternating client cases; coverage_complete = FALSE.\n"
+    "Shared mirai pool passed eight alternating client cases; upstream_plan_complete = ",
+    check[["upstream_plan_complete"]],
+    "; coverage_complete = ",
+    check[["coverage_complete"]],
+    ".\n",
+    sep = ""
   )
   invisible(report)
 }

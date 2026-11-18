@@ -628,6 +628,106 @@ openid_check_provenance <- function(report, context, lock) {
   invisible(TRUE)
 }
 
+openid_assessment_limitations <- function(limitations) {
+  categories <- list(
+    selection_scope = c(
+      "upstream_module_selection_only",
+      "comprehensive_plan_selection_only",
+      "fapi_security_profile_selection_only",
+      "fapi_oauth_private_key_jwt_dpop_only",
+      "fapi_oidc_private_key_jwt_dpop_only",
+      "message_signing_oidc_private_key_jwt_dpop_query_only",
+      "oidc_mtls_mtls_only",
+      "oidc_private_key_jwt_mtls_only",
+      "private_key_jwt_mtls_oauth_only",
+      "tls_client_auth_mtls_oauth_only",
+      "mtls_client_authentication_not_selected",
+      "resource_request_in_main_process",
+      "unsigned_authorization_server_metadata_only",
+      "shared_pool_sequential_reuse_only"
+    ),
+    interoperability_advisories = "oauth_state_length_over_128_warning",
+    provider_limitations = c(
+      "mtls_resource_denial_not_established",
+      "suite_exact_certificate_registration_only",
+      "mtls_client_authentication_denial_not_tested",
+      "suite_jwks_no_store_prevents_cached_key_refresh_test",
+      "suite_public_variant_omits_none_in_discovery",
+      "suite_skips_pkce_verifier_check_companion_verifies_requests"
+    ),
+    client_limitations = "http_callback_rejection_retains_query"
+  )
+  limitations <- unique(unlist(limitations, use.names = FALSE))
+  if (length(setdiff(limitations, unlist(categories, use.names = FALSE)))) {
+    stop("Unclassified assessment limitation")
+  }
+  lapply(categories, function(codes) as.list(intersect(limitations, codes)))
+}
+
+openid_result_assessment <- function(report, expected, available, limitations) {
+  results <- report[["results"]]
+  modules <- vapply(results, function(row) row[["module"]], character(1))
+  verdicts <- vapply(results, function(row) row[["suite_result"]], character(1))
+  complete <- setequal(modules, unlist(available, use.names = FALSE))
+  exceptions <- lapply(which(verdicts != "PASSED"), function(i) {
+    row <- results[[i]]
+    expectation <- expected[[match(
+      row[["module"]],
+      vapply(
+        expected,
+        function(e) e[["module"]],
+        character(1)
+      )
+    )]]
+    list(
+      profile = report[["profile"]],
+      module = row[["module"]],
+      suite_id = row[["suite_id"]],
+      suite_result = row[["suite_result"]],
+      policy = if (identical(row[["suite_result"]], "WARNING")) {
+        expectation[["advisory_policy"]]
+      } else {
+        expectation[["optional_policy"]]
+      }
+    )
+  })
+  list(
+    upstream_plan_complete = complete,
+    assessment = list(
+      schema_version = 1L,
+      status = "validated",
+      certification_status = "not_assessed",
+      module_counts = list(
+        available = length(available),
+        selected = length(expected),
+        finished = length(results)
+      ),
+      suite_verdict_counts = setNames(
+        lapply(c("PASSED", "WARNING", "SKIPPED"), function(verdict) {
+          sum(verdicts == verdict)
+        }),
+        c("PASSED", "WARNING", "SKIPPED")
+      ),
+      accepted_non_passed_results = exceptions,
+      limitations = openid_assessment_limitations(c(
+        limitations,
+        if (!complete) "upstream_module_selection_only"
+      ))
+    )
+  )
+}
+
+openid_failed_assessment <- function() {
+  list(
+    upstream_plan_complete = FALSE,
+    assessment = list(
+      schema_version = 1L,
+      status = "unavailable",
+      certification_status = "not_assessed"
+    )
+  )
+}
+
 openid_check_report <- function(report, context, manifest) {
   tryCatch(
     {
@@ -939,7 +1039,7 @@ openid_check_report <- function(report, context, manifest) {
         function(e) identical(e[["advisory_policy"]], "state_length_over_128"),
         logical(1)
       ))
-      list(
+      check <- list(
         gate_passed = TRUE,
         selection_complete = TRUE,
         coverage_complete = isTRUE(profile[["complete_profile"]]) &&
@@ -965,13 +1065,25 @@ openid_check_report <- function(report, context, manifest) {
         cached_key_refresh_tested = if (cache_limited) FALSE else NULL,
         reason = NULL
       )
+      c(
+        check,
+        openid_result_assessment(
+          report,
+          expected,
+          spec[["available_modules"]],
+          check[["coverage_limitations"]]
+        )
+      )
     },
     error = function(e) {
-      list(
-        gate_passed = FALSE,
-        selection_complete = FALSE,
-        coverage_complete = FALSE,
-        reason = conditionMessage(e)
+      c(
+        list(
+          gate_passed = FALSE,
+          selection_complete = FALSE,
+          coverage_complete = FALSE,
+          reason = conditionMessage(e)
+        ),
+        openid_failed_assessment()
       )
     }
   )
@@ -1017,6 +1129,8 @@ openid_report_context <- function(root, profile, transport, package_version) {
     cleanup_verified = FALSE,
     gate_passed = FALSE,
     selection_complete = FALSE,
-    coverage_complete = FALSE
+    coverage_complete = FALSE,
+    upstream_plan_complete = FALSE,
+    assessment = openid_failed_assessment()[["assessment"]]
   )
 }

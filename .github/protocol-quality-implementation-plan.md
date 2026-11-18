@@ -39,7 +39,9 @@ the [requirement map](../integration/openid/requirements.md) accounts for FAPI's
 20 client clauses and relevant network/cryptography duties, with remaining
 OIDC/OAuth and Message Signing mapping work named. SA06's Keycloak follow-up now
 proves no-cache revalidation and rotation; C06 warm-cache acceptance remains
-open. SA03 and SA05-SA08 remain pending. See the
+open. SA05 now separates upstream execution from local coverage and categorized
+limits, with regression and retained-report validation. SA03 and SA06-SA08 remain
+pending. See the
 [release review](../integration/openid/release-review.md).
 
 **SA01 (high): Restore fresh-machine reproducibility; move this part of C16
@@ -1906,6 +1908,36 @@ removed. This is development revalidation/rotation evidence; C06 remains open
 until a real cacheable-provider test proves a pre-rotation cache hit and
 unknown-key refresh from that still-fresh entry. SA06's remaining status
 reconciliation is separate from this correction.
+
+SA05 independent completion accounting (2026-11-19): client and shared-pool
+checks now return `upstream_plan_complete` separately from the existing
+`selection_complete` and conservative `coverage_complete`. The new assessment
+counts available/selected/finished modules, preserves raw verdict counts and
+lists each accepted non-passing module with its exact policy. It categorizes
+selection scope, interoperability advisories, provider limitations and client
+limitations. Unsigned TLS-discovered metadata is a scope description; the
+state-length warning remains an advisory; mTLS simulation/registration limits
+remain provider-evidence limits. The unsigned-ID-token `SKIPPED` result retains
+its stricter local policy and rejection proof.
+
+No verdict allowlist or protocol evidence requirement was broadened. Assessment
+runs after the full existing gate, recomputes stored summaries, rejects
+unclassified limitation codes and resets completion on failure. Shared totals
+come from individually revalidated selections. Certification is always
+`not_assessed`; source qualification and release completeness remain separate.
+See [interpreting client evidence](../integration/openid/assessment.md).
+
+All 7,059 evidence assertions passed on Windows R 4.5.1 and Linux R 4.5.0,
+including 121 new assessment assertions; there were no failures, test warnings
+or skips. R startup retained the known Windows locale warnings. Formatting,
+jarl and independent code review found no actionable defects. Genuine retained
+schema-3 Basic/Configuration and schema-4 smoke/shared-pool reports passed
+revalidation with the new accounting: Basic and Configuration establish full
+upstream module execution, smoke and shared-pool do not. Their original files
+were hash-checked unchanged; derived assessments were saved separately. Removing
+a case while forging passing summary fields failed revalidation. These checks
+are development acceptance of the report semantics, not new live client runs
+or a complete source-qualified release matrix.
 
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,

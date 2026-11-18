@@ -4,6 +4,10 @@ The [requirement-to-evidence map](requirements.md) separately accounts for FAPI
 client, network and cryptography clauses. SA04 remains partial until the
 OIDC/OAuth and Message Signing requirement maps are complete.
 
+Reports separately assess [upstream module completion](assessment.md), local
+coverage and categorized scope/advisory/provider/client limits. A complete
+upstream selection does not remove those limits or establish certification.
+
 The current suite lock selects official `release-v5.3.4`, source
 `23353b36957d6466010de767c812d2c91ed37638`. The [release review](release-review.md)
 records the lock transition and refreshed checks. Older execution records keep
