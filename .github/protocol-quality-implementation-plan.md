@@ -2048,6 +2048,27 @@ Formatting, jarl, whitespace and independent review passed. G1 is complete as
 a focused regression; G2-G4 and the broader source-qualified release matrix
 remain open.
 
+SA04 JWT regression G4 (2026-11-19): a new real-signature corpus exercises
+ID-token/JARM module callbacks and public signed-UserInfo retrieval. Eight
+cases per context include ordinary signed positives, valid optional `jku`/`x5u`
+headers, attacker-signed JWTs pointing to attacker keys, unmatched SQL/path-shaped
+key IDs and correctly registered literal unusual-key-ID positives. The only
+mock is `httr2::req_perform()`; every HTTP destination is recorded, and attacker
+locations would supply matching attacker keys if requested. No header-selected
+location is contacted. Trusted provider JWKS still supplies the verification
+keys, unknown IDs fail and registered literal IDs remain usable.
+
+Rejected JARM keeps the pending state and makes no token request. Rejected ID
+tokens stop UserInfo/authentication after the required token response. Invalid
+signed UserInfo returns no claims. Windows and Linux each passed 274 focused
+locator/JWKS/JOSE assertions, including 171 new assertions, with zero failures,
+test warnings or skips; formatting, jarl and whitespace checks passed. Private
+result CSVs/RDS remain under ignored `codex/jwt-untrusted-locators/`. This is
+unit/module evidence with an explicit browser-marker bypass, not a browser,
+filesystem/SQL audit or new OIDF execution. No runtime defect was found. G1/G4
+are now covered; G2/G3 and the complete source-qualified release matrix remain
+open.
+
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second
