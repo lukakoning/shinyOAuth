@@ -1326,7 +1326,62 @@ C14 still retains `oauth_connections_server()` navigation retention. This
 resource selection does not cover other auth methods, callback modes, multiple
 requested resources, JWT access tokens, or indicators combined with JAR/PAR,
 DPoP or mTLS. These limits are recorded with `coverage_complete = false`.
-Validation of the committed implementation will be recorded below.
+Resource-indicator validation (2026-11-18), source
+`f2f78a2d502817522155837529683e7f4acbd155`: all four Windows/Linux sync/mirai
+resource gates passed with clean checkouts. They completed **eight positive
+logins and refreshes**, **sixteen authenticated API reads**, **sixteen native
+introspections**, **24 resource HTTP 401 denials**, **eight local resource-base
+escape rejections** and **four unknown-resource callback rejections** before
+code/token issuance. Every authorization/code/refresh request used the expected
+resource; both grants produced the selected audience and `api.read` scope.
+
+All four stopped-app canaries and **948 altered-report controls** passed
+(237 per resource report). Serialized reports were independently rechecked
+against the complete selection, committed source, runtime locks, actual fixture
+input hashes, identity/refresh evidence, current-token use, transport and cleanup.
+Missing or false control results were independently rejected too. The resource
+server returned exactly the expected requests, including no extra request from
+the locally blocked escape attempt.
+
+| Runtime / transport | Three-case loop seconds | Local sanitized evidence directory |
+| --- | ---: | --- |
+| Windows / sync | 32.16 | `resources-20261118-193706-6d7c07b36d9d` |
+| Windows / mirai | 34.87 | `resources-20261118-193819-b1107faad01f` |
+| Linux / sync | 18.29 | `resources-20261118-193713-274ae397ecc5` |
+| Linux / mirai | 21.04 | `resources-20261118-193823-2c8682bdea6a` |
+
+The full resource gates took approximately 64-74 seconds. Case-loop timings
+exclude installation, build, stopped-app controls and report-mutation checks;
+concurrent runs shared host resources. Windows used R 4.5.1 and Linux used
+R 4.5.0 inside Docker Desktop. Reports record their browser/dependency versions,
+the pinned Node 24.22.3 / oidc-provider 9.14.0 runtime, actual built image IDs
+and fixture input hashes.
+
+The four baseline regression gates also passed all sixteen login/refresh flows,
+sixteen missing-PKCE rejections, four stopped-app canaries and 256 altered-report
+controls, with clean checkouts:
+
+| Runtime / transport | Four-case loop seconds | Local sanitized evidence directory |
+| --- | ---: | --- |
+| Windows / sync | 39.76 | `basic-20261118-193930-7bff94e3cbee` |
+| Windows / mirai | 47.45 | `basic-20261118-194047-72232dc7c8bb` |
+| Linux / sync | 21.82 | `basic-20261118-193927-a8d50b7640b1` |
+| Linux / mirai | 26.87 | `basic-20261118-194028-f1923d082616` |
+
+The Linux/mirai advanced regression passed all six login/refresh/resource flows,
+both tampered-JARM callbacks, its stopped-app canary and 988 altered-report
+controls: `advanced-20261118-194134-58089eecd536`, with a 66.37-second case loop
+and clean checkout. All nine resource/baseline/advanced serialized reports were
+independently revalidated against the same source and current fixture bytes.
+
+On each platform, the existing OIDF evidence regression passed **6,682
+assertions**, and focused resource-indicator/binding tests passed **86
+assertions**, with zero test warnings or skips. All seven Node fixture tests,
+Jarl, formatting, actionlint and patch whitespace checks passed. No owned test
+containers remain. Only sanitized evidence JSON is eligible for workflow upload;
+temporary keys, registrations, libraries and raw logs remain ignored locally.
+Hosted CI has not been run for this new selection. C14 navigation retention
+remains the next implementation step.
 
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
@@ -1728,6 +1783,8 @@ Rscript integration/oidc-provider/run-tests.R --transport sync
 Rscript integration/oidc-provider/run-tests.R --transport mirai
 Rscript integration/oidc-provider/run-advanced.R --transport sync
 Rscript integration/oidc-provider/run-advanced.R --transport mirai
+Rscript integration/oidc-provider/run-resources.R --transport sync
+Rscript integration/oidc-provider/run-resources.R --transport mirai
 ```
 
 `core` expands to Basic, Configuration, Form Post Basic and refresh; report

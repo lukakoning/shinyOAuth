@@ -99,7 +99,8 @@ The explicit connection resource request, misuse probes, introspection and
 revocation run in the Shiny main process; reports identify that boundary. Invalid
 JARM is rejected at the HTTP callback boundary before a replacement Shiny session.
 
-The [resource selection](resource-profiles.json) exercises RFC 8707 with two
+The [resource selection](resource-profiles.json) exercises
+[RFC 8707](https://www.rfc-editor.org/rfc/rfc8707.html) with two
 API audiences and a rejected unknown resource. It uses confidential Basic
 authentication, direct query requests and S256. Chrome must observe the exact
 resource parameter in the outgoing request; native provider events must observe
