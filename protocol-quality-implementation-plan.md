@@ -2,6 +2,226 @@
 
 **shinyOAuth protocol quality: implementation plan**
 
+**Steering-agent review and handoff (2026-11-18).** Author: the separate
+Codex steering/review agent, at the user’s request. Reviewed clean
+checkout `43dd6d80488bae74010e3759017034af068fdce6`, the implementation,
+retained reports, pinned upstream plan sources and current OIDF
+instructions. The user asked this agent to evaluate the implementation
+agent’s work and add these notes so the implementation agent can pick
+them up. This section preserves the execution history below; it records
+recommendations and review evidence, not completed implementation
+changes.
+
+The existing approach should continue: real browser flows through public
+package APIs, exact suite module/variant matching, specific application
+rejection evidence, verified worker execution and explicit fixture
+limitations. Keep the separate suite verdict and application checks.
+During this review, all 6,682 evidence regression assertions passed with
+no test failures, warnings or skips; R startup emitted the already
+documented locale warnings. The steering agent did not run a new
+browser/Docker conformance matrix or contact the implementation agent.
+The checks described under SA01 and SA02 were read-only.
+
+**Recommended execution order.** Finish recording any validation already
+in flight, then prioritize SA01-SA02 before expanding the feature
+matrix. Reconcile the requirement map and milestone status through
+SA04-SA06; use that map to select the remaining C15 work in SA07. SA08
+defines the final release-evidence gate. SA03 is a separate conditional
+certification milestone, because the existing local implementation scope
+does not authorize account creation, publication or certification
+submission. Record the disposition of each note with implementation
+commits and evidence, or a concrete reason for deferral. All eight notes
+start pending.
+
+**SA01 (high): Restore fresh-machine reproducibility; move this part of
+C16 forward.** The review independently obtained an anonymous registry
+token and checked the locked server-image manifest. The token endpoint
+returned HTTP 200; the manifest for
+`sha256:a84e164e59bba31bbca83732a8506f522a746660864da7221428bab4e3157225`
+returned HTTP 404. Existing cached-image runs retain their evidence, but
+the documented path cannot currently reproduce them on a fresh CI
+runner.
+
+Provide an available verified image source, a pinned reproducible source
+build, or a separately reviewed lock update. Retain digest/source
+correspondence checks and resolve changed modules and variants
+explicitly if updating the suite. Do not silently substitute a tag.
+Acceptance: demonstrate image acquisition and a successful
+preflight/API/browser smoke run on a fresh GitHub runner, then measure
+the selected larger jobs there. See
+[`openid_prepare_image()`](https://lukakoning.github.io/integration/openid/helper-environment.R)
+and the registry limitation in the [environment
+README](https://lukakoning.github.io/integration/openid/README.md).
+
+**SA02 (high): Check report provenance during revalidation and identify
+the tested source precisely.** In a retained passing Message Signing
+report, the review changed `images.server` to `unrelated-image`, deleted
+`image_sources` and changed `checkout_dirty` from false to true. Calling
+`openid_check_report(changed, original, manifest)` still returned both
+`gate_passed = true` and `coverage_complete = true`. The reviewed input
+was
+`integration/openid/.artifacts/fapi-message-signing-20261117-235701-9cb11a881c13/evidence.json`.
+The live runner verifies the image at startup; this finding concerns the
+later report validator’s incomplete provenance checks, not evidence that
+those live runs used a different image.
+
+Bind report image identities to the lock and expected run context,
+validate the required acquisition metadata and add mutation checks for
+absent or substituted provenance. Define source identity for release
+evidence: require a clean checkout or record a reproducible
+source-content identity tied to the installed package and fixture bytes.
+A parent SHA plus a dirty flag cannot reconstruct the tested changes.
+Development runs may remain dirty when labeled accordingly. Acceptance:
+the reproduction above fails revalidation, genuine serialized reports
+still pass, and release aggregation rejects unidentified source changes.
+See [`openid_check_report()` and
+`openid_report_context()`](https://lukakoning.github.io/integration/openid/helper-evidence.R).
+
+**SA03 (conditional, high if certification is intended): Add a concrete
+certification-readiness milestone after the local path.** C16 currently
+leaves hosted comparison optional, and the closing scope statement
+deliberately defers formal certification. Keep that boundary explicit.
+If certification becomes the goal, add a separate milestone with the
+selected official certification profile names, hosted execution, actual
+hosted suite version and plan/module identities, per-test client
+evidence, suite exports and a reviewed submission bundle. Resolve the
+hosted module lists independently; never reuse pinned-local results as
+hosted results or assume the hosted deployment runs the pinned revision.
+
+OIDF’s [RP submission
+instructions](https://openid.net/certification/connect_rp_submission/)
+require suite logs, client evidence under `client-data` with test-name
+prefixes, and a signed Certification of Conformance naming the software
+version and official profile. They prescribe the suite’s “Publish for
+certification” path. The [FAPI RP testing
+instructions](https://openid.net/certification/fapi_rp_testing/)
+explicitly exclude local-instance results from certification
+submissions. The sanitized CI JSON remains useful; implement a separate
+evidence-generation and review path for certification packaging. Use
+ephemeral credentials and account for the publication of submitted logs.
+Acceptance for readiness: a documented, reviewable bundle-generation
+procedure and complete evidence mapping for every selected test. Keep
+account actions, publication, attestation and submission outside the
+currently authorized local work. Formal certification remains optional
+until the user chooses it.
+
+**SA04 (high): Complete the requirement-to-evidence map before expanding
+C15.** The current [scope
+map](https://lukakoning.github.io/integration/openid/scope.md) maps
+suite modules and application outcomes well, but does not yet account
+for every applicable normative client requirement behind the intended
+claims. Add rows containing the specification clause, responsible role,
+selected configuration, existing test/report and remaining limitation.
+Distinguish client duties, AS/resource server duties, deployment duties,
+optional features and stricter package policy.
+
+For FAPI, review the [client
+requirements](https://openid.net/specs/fapi-security-profile-2_0-final.html#section-5.3.3)
+and applicable network/cryptography sections explicitly. Include refresh
+and rotation support, assertion audience, browser-bound per-request
+PKCE, authorization-initiation protection, endpoint aliases and signing
+restrictions. Several already have Keycloak or unit-test evidence; link
+and reuse it before adding scenarios. Keep RS256-based general
+interoperability selections separate from claims about FAPI’s permitted
+signing algorithms. Acceptance: every applicable requirement for each
+declared claim has evidence or a named remaining gap. This matrix is an
+engineering safeguard, not an extra OIDF submission rule.
+
+**SA05 (medium): Separate plan completion from policy and fixture
+limitations.** `coverage_complete` currently combines upstream-plan
+completion, stricter local policy, interoperability advisories and
+simulated-server limitations. Retain the raw verdicts and exact
+exception allowlists, but give these judgments distinct meanings in
+reports and documentation. In particular, consider an explicit
+upstream-plan-completion field alongside selected-scenario completion
+and additional security limitations; certification status needs its own
+accounting.
+
+The encrypted-state OAuth selection executes all eleven modules but
+remains incomplete because of the 128-character advisory. FAPI Security
+Profile section 5.3.2.2 note 4 anticipates encoded state exceeding 1,000
+characters, and the [OIDF RP testing
+guide](https://openid.net/certification/connect_rp_testing/) allows
+explained WARNING, REVIEW and SKIPPED results as well as PASSED. Keep
+the reference-state feature and the advisory evidence without implying
+that the advisory alone establishes protocol nonconformance. Likewise,
+the mTLS checker forces incomplete coverage partly because the simulated
+resource server fails to deny certificate misuse; preserve that finding
+while separating it from client-plan completion and client obligations.
+Unsigned metadata over verified TLS is also a scope description, not
+automatically a missing generic-FAPI requirement. Acceptance: explain
+each flag and report complete upstream module execution independently of
+additional policy or server-enforcement findings. Changes here must
+preserve validation and evidence requirements.
+
+**SA06 (medium): Reconcile milestone status with the newer evidence.**
+C09 still broadly describes public-client/S256 coverage as outstanding,
+although C13 now exercises public clients through discovery, browser
+login, S256, UserInfo and refresh. Compare C13 with C09’s precise
+positive/negative acceptance criteria, close the overlap it satisfies
+and name only the remaining cases. Preserve the pinned suite’s broken
+public-client variant as an upstream limitation. Update C10’s opening
+status after the compact-state work, and reconcile the older scope table
+with completed mTLS and Message Signing selections. Add a short current
+status table at the top; retain the dated execution record as history.
+Current command documentation should also distinguish implemented
+profile names from earlier proposed aliases such as `core`, `extended`
+and `fapi-signing`.
+
+C06’s warm-cache gap remains real. The [existing Keycloak rotation
+test](https://lukakoning.github.io/integration/keycloak/test_integration_keycloak_jwks_rotation.R)
+is a candidate for closing it without adding another provider fixture.
+Require observed cache population/use before rotation, retained cache
+identity and refresh after rotation, with required setup failures
+producing failures rather than skips. Reuse its existing rogue-signature
+controls. Acceptance: link the actual cacheable-provider result and its
+scope to C06; preserve the separate OIDF no-store results and their
+limitation. Do not claim closure from two fresh JWKS fetches.
+
+**SA07 (medium): Give C15 explicit browser acceptance criteria.**
+Rejected HTTP callbacks currently retain callback query material in the
+address bar, and `openid_http_callback_matches()` requires
+`callback_cleaned = false` for those cases. Improve cleanup while
+preserving rejection semantics, the specific error category and
+credential-nonreflection checks. Update the evidence predicate with the
+product change and verify the resulting browser URL. See the [HTTP
+callback collector and
+matcher](https://lukakoning.github.io/integration/openid/helper-fapi.R).
+
+The new HTTPS Form Post environments are same-site. Existing cross-site
+tests add useful evidence but include HTTP loopback development
+exceptions. Add a successful HTTPS cross-site flow and its relevant
+error path, or explicitly retain that deployment limitation. Reconcile
+the separately deferred `oidcc-client-test-form-post-error` module with
+the actual selected plan variants and existing tests. These are targeted
+browser improvements, not new mandatory OIDF certification profiles. Use
+SA04 to decide which other C15 cases remain; reuse existing fixtures
+before adding a mock-server dependency.
+
+**SA08 (medium): Require one identifiable final revision and durable
+release evidence in C16.** Historical runs span different package
+revisions, including dirty development checkouts. They document progress
+but cannot collectively establish the final implementation’s full
+declared matrix. Choose and publish that matrix, run it against one
+identifiable final revision and check its aggregate completeness
+automatically. Preserve exact variant limits and failed attempts; a
+smoke selection cannot substitute for a required full plan.
+
+The current workflows retain uploaded reports for seven days. Define
+durable retention for release evidence and its source/lock identities,
+while keeping private diagnostics and certification exports out of broad
+artifact uploads. Use actual GitHub runner timings to choose PR,
+scheduled and release tiers. Acceptance: a machine-checked aggregate
+report rejects missing matrix entries, mixed or unidentified source
+revisions and missing required evidence, and the declared release
+reports remain available beyond ordinary CI retention. This implements
+C16’s existing prohibition on merging results from different commits
+into a complete release claim.
+
+**End of steering-agent handoff.** The original plan and implementation
+agent’s execution record follow unchanged. Update the status of
+SA01-SA08 as work lands.
+
 Prepared 2026-11-12 against shinyOAuth commit
 `25318cc6488a2a98bfc83d484cbbdb3190854967` (version `0.7.0.9000`).
 Status: implementation started. The original investigation ran no
