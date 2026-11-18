@@ -1327,10 +1327,117 @@ evidence JSON was retained in the main checkout; keys, registrations,
 libraries and raw logs remain private. No owned test containers remain.
 Hosted CI has not been run for this new gate.
 
-C13’s selected baseline is implemented. C14 is next; its advanced
-combinations remain untested against this provider. C06 warm-cache, C09
-public-client suite capability and C15 rejection/query-cleanup work
-remain separate.
+C14 first selection (2026-11-18): the advanced runner adds six explicit
+confidential Basic-auth cases: JAR + DPoP, JAR + mTLS token binding and
+JAR + signed JARM, each directly and through PAR. Request Objects, ID
+tokens, JARM and signed UserInfo use RS256; DPoP uses ES256. Each
+positive case must finish browser login, refresh, validated UserInfo, a
+real public connection request at native UserInfo, introspection and
+access-token revocation. The revoked credential must become inactive and
+receive HTTP 401 at UserInfo.
+
+The published provider package and its native claim/signature validation
+remain unmodified. Public configuration enables the selected features
+and mTLS discovery aliases. Independent observers verify actual Request
+Object and response signatures, selected claims, PAR-only browser
+parameters, grant sender binding and use of the current credential.
+Client private keys are excluded from the provider configuration and
+mounted directories. The shared Shiny fixture enables these modes
+without changing package production code.
+
+DPoP probes require native HTTP 401 for Bearer fallback, a different
+proof key and replay, with HTTP 200 for the first use of the same proof.
+mTLS probes require 401 for a missing certificate, a different
+certificate with the same subject, and that wrong certificate carrying a
+forged certificate header. Binding evidence comes from the actual TLS
+peer, not the header. Two further browser cases tamper with real JARM
+signatures and require HTTP 400 before any token or UserInfo exchange.
+Each report includes the app-stop canary, mutated evidence controls and
+serialized report validation.
+
+The mTLS listener is separate from the normal browser listener; normal
+discovery configuration supplies token, UserInfo, introspection,
+revocation and PAR aliases. This selection tests certificate binding
+with Basic authentication and temporary self-signed peers, not PKI
+client authentication. Opaque mTLS tokens do not require a locally
+observed cnf claim; provider binding and live denial evidence are
+required. Refresh evidence requires sender-constrained credentials to
+remain blocked from raw export while the connection stays usable.
+
+The advanced selection is available by manual workflow dispatch with
+sync or mirai; pull requests retain the four-case basic sync gate. Only
+sanitized JSON is uploaded. The new README records the commands and
+scope. Token exchange, refresh and validated UserInfo use the selected
+transport. Explicit resource/probe/introspection/revocation actions run
+in the Shiny main process, and JARM rejection occurs at the pre-session
+HTTP boundary.
+
+C14 remains partial. RFC 8707 resource indicators and
+oauth_connections_server() retention across navigation are next. This
+first selection uses native UserInfo as its resource; it does not
+establish separate resource-server audience enforcement, encryption,
+other algorithms/auth methods or JAR + DPoP + JARM together. C06
+warm-cache, C09 public-client suite capability and C15
+rejection/query-cleanup work remain separate.
+
+C14 first-selection validation (2026-11-18), source
+`c615cdda526a796112028f374b93317e567f3113`: all four Windows/Linux
+sync/mirai advanced gates passed. Together they completed **24 positive
+browser logins and refreshes**, **eight tampered-JARM HTTP 400
+rejections**, **80 successful signed UserInfo responses** and **72
+native UserInfo HTTP 401 denials**. The denials comprise 24 DPoP misuse
+requests, 24 mTLS misuse requests and 24 revoked-token requests. All
+eight first-use replay controls returned HTTP 200. Each positive case
+completed public connection resource use, introspection and revocation;
+sender binding and refresh rotation were checked on both grants.
+
+All four advanced stopped-app canaries and **3,952 report-mutation
+controls** passed (988 per report). Serialized reports were
+independently revalidated against the complete eight-case selection,
+source revision, runtime lock, actual fixture input hashes,
+sender/signature/resource/lifecycle observations, transport evidence and
+cleanup. Removing the control results or changing one to false was also
+rejected. All four runtime checkouts were clean.
+
+| Runtime / transport | Eight-case loop seconds | Local sanitized evidence directory |
+|----|---:|----|
+| Windows / sync | 99.04 | `advanced-20261118-185929-1d129ddc66e9` |
+| Windows / mirai | 115.38 | `advanced-20261118-190324-39b58e537a8a` |
+| Linux / sync | 68.65 | `advanced-20261118-185937-5142681ec24e` |
+| Linux / mirai | 76.81 | `advanced-20261118-190302-7f93dd694d96` |
+
+The four baseline regressions also passed all sixteen login/refresh
+flows, sixteen live missing-PKCE rejections, four stopped-app canaries
+and 256 report-mutation controls. Their serialized reports received the
+same independent revalidation, with clean checkouts:
+
+| Runtime / transport | Four-case loop seconds | Local sanitized evidence directory |
+|----|---:|----|
+| Windows / sync | 41.47 | `basic-20261118-190744-cc0be7fbe64a` |
+| Windows / mirai | 51.43 | `basic-20261118-190906-4547f4b223c2` |
+| Linux / sync | 23.75 | `basic-20261118-190630-a8966c3c99ad` |
+| Linux / mirai | 29.99 | `basic-20261118-190736-d80b894b307d` |
+
+Windows used R 4.5.1, httr2 1.2.2 and mirai 2.7.1; Linux used R 4.5.0,
+httr2 1.3.0 and mirai 2.7.4 inside Docker Desktop. Both used R openssl
+2.6.0 and chromote 0.5.1, against the pinned Node 24.22.3 /
+oidc-provider 9.14.0 runtime. All eight reports record the same fixture
+input hashes and their actual immutable built image IDs. Case-loop
+timings exclude installation, build, stopped-app controls and
+report-mutation checks; concurrent runs shared host resources. Full
+advanced gates took approximately 205-259 seconds.
+
+The OIDF evidence regression passed **6,682 assertions on each
+platform**, with zero test warnings or skips. The Linux/sync OIDF smoke
+regression passed all three modules, the stopped-app control and
+cleanup: `smoke-20261118-190929-f45cfc12aa58`. Its serialized report was
+independently rechecked and sanitized. Node’s six fixture tests, Jarl, R
+formatting, actionlint and patch whitespace checks passed. Only the nine
+sanitized evidence JSON files were copied into the main checkout; keys,
+client registrations, installed libraries and raw logs remain private.
+No owned test containers remain. Hosted CI has not been run for this
+selection. C14’s resource-indicator and navigation-retention scenarios
+remain pending.
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
@@ -1780,10 +1887,10 @@ Rscript integration/openid/run-tests.R --profile fapi-mtls --transport sync
 Rscript integration/openid/run-tests.R --profile fapi-mtls --transport mirai
 Rscript integration/openid/run-tests.R --profile fapi-signing --transport sync
 Rscript integration/openid/run-tests.R --profile fapi-signing --transport mirai
-Rscript integration/oidc-provider/run-tests.R --profile core --transport sync
-Rscript integration/oidc-provider/run-tests.R --profile core --transport mirai
-Rscript integration/oidc-provider/run-tests.R --profile advanced --transport sync
-Rscript integration/oidc-provider/run-tests.R --profile advanced --transport mirai
+Rscript integration/oidc-provider/run-tests.R --transport sync
+Rscript integration/oidc-provider/run-tests.R --transport mirai
+Rscript integration/oidc-provider/run-advanced.R --transport sync
+Rscript integration/oidc-provider/run-advanced.R --transport mirai
 ```
 
 `core` expands to Basic, Configuration, Form Post Basic and refresh;

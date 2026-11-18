@@ -2,6 +2,8 @@
 
 ## shinyOAuth 0.8.0
 
+CRAN release: 2026-11-17
+
 - Fixed encrypted-state decryption errors with openssl 2.6.0, which now
   verifies authentication tags. shinyOAuth now supplies these tags
   correctly, protecting encrypted login state and stored data, including
