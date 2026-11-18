@@ -1,9 +1,9 @@
 **OpenID Foundation client conformance environment**
 
-The [requirement-to-evidence map](requirements.md) relates the FAPI client
-clauses to package behavior, tests and remaining limits. Its OIDC/OAuth and
-Message Signing sections remain future work; the [scope map](scope.md) records
-the separate suite-module outcomes.
+The [requirement-to-evidence maps](requirements.md) relate FAPI, OIDC, OAuth and
+JWT/Message Signing client clauses to package behavior, tests and remaining
+limits. Optional OAuth extension maps remain partial; the [scope map](scope.md)
+records the separate suite-module outcomes.
 
 See [interpreting client evidence](assessment.md) for the independent
 `selection_complete`, `upstream_plan_complete` and legacy `coverage_complete`

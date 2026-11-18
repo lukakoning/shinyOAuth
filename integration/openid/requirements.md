@@ -1,10 +1,18 @@
 # Requirement-to-evidence map
 
-SA04 is partial. This first slice accounts for the client clauses in the final
+SA04 is partial. This page accounts for the client clauses in the final
 [FAPI 2.0 Security Profile](https://openid.net/specs/fapi-security-profile-2_0-final.html),
-including relevant network and cryptography clauses. OIDC Core, Discovery and
-the underlying OAuth specifications still need their own maps before SA04 can
-close. Message Signing's additional requirements also need a separate review.
+including relevant network and cryptography clauses. The companion maps cover
+the supported OIDC/OAuth paths and JWT/Message Signing duties:
+
+| Map | Coverage and remaining boundary |
+| --- | --- |
+| [OIDC](requirements-oidc.md) | Discovery, authorization code, all 13 ID-token validation steps, UserInfo and refresh; optional features and deployment duties are named separately. |
+| [OAuth](requirements-oauth.md) | Code/refresh, client authentication, bearer transport, S256, metadata and callback issuer; PAR, mTLS, DPoP and resource-indicator extension maps remain partial. |
+| [JWT and Message Signing](requirements-jwt-signing.md) | Final Message Signing client clauses, JAR, JARM and all 12 JWT BCP sections; unsupported optional features and specific regression gaps remain explicit. |
+
+These are requirement accounts, not blanket compliance results. Finish the
+remaining extension/security-clause accounting before declaring SA04 complete.
 
 This map describes the implementation at `8d2ec4d90e9645f546f2186f9bb6f0acd3fa2b6f`.
 The follow-up mixed-key regression adds evidence without changing that runtime
@@ -110,7 +118,7 @@ topic column is an index, not a replacement for the normative text.
 
 | Clause / topic | Responsible role and configuration | Concrete evidence | Remaining limit or action |
 | --- | --- | --- | --- |
-| [5.4.1(1)(1)](https://openid.net/specs/fapi-security-profile-2_0-final.html#section-5.4.1-2.1.2.1), JWT BCP | Client, AS and RS for their respective JWT processing | E10 rejects duplicate members/unsupported critical headers, validates claims/signatures and binds key material to trusted algorithms | This supplies specific RFC 8725 controls, not a completed requirement-by-requirement RFC 8725 audit. Add that underlying-spec map to finish SA04. |
+| [5.4.1(1)(1)](https://openid.net/specs/fapi-security-profile-2_0-final.html#section-5.4.1-2.1.2.1), JWT BCP | Client, AS and RS for their respective JWT processing | E10 rejects duplicate members/unsupported critical headers, validates claims/signatures and binds key material to trusted algorithms; the [JWT map](requirements-jwt-signing.md) accounts for all 12 RFC 8725 sections | The map retains specific missing regressions and backend/deployment limits; listing a control does not establish every JWT purpose or algorithm combination. |
 | [5.4.1(1)(2)](https://openid.net/specs/fapi-security-profile-2_0-final.html#section-5.4.1-2.1.2.2), signing choice | Client; current FAPI live fixtures use ES256 throughout | E1 verifies ES256 assertions/proofs; E10's `fapi2` discovery restricts negotiated ID-token algorithms to ES256 and implemented Ed25519 choices; `jwk_to_pubkey()` rejects other OKP signing curves | PS256 is not implemented. Ed25519/legacy EdDSA has package regression support but these live FAPI fixtures exercise ES256. The `fapi2` ID-token option does not constrain independent UserInfo/JARM/assertion settings; configure and test those separately. General RS256/RS384 interoperability, including the independent mTLS fixture, earns no FAPI algorithm credit. |
 | [5.4.1(1)(3)](https://openid.net/specs/fapi-security-profile-2_0-final.html#section-5.4.1-2.1.2.3), unsigned JWTs | Client; normal signature validation and FAPI selection | E10; FAPI invalid-algorithm module; Basic's unsigned-token case requires client rejection with its original suite `SKIPPED` verdict | Signature-skipping escape hatches earn no FAPI validation credit. The package's broader signed-ID-token requirement is also stricter than the Basic module's optional unsigned-token behavior. |
 | [5.4.1(2)](https://openid.net/specs/fapi-security-profile-2_0-final.html#section-5.4.1-2.2), RSA size | Client where RSA material is processed | E10 `validate_jwk_rsa_public_key()` rejects sub-2048-bit modulus values; outgoing `private_key_jws_alg_compatibility()` also checks key size; [test-jwt-jwe-roundtrip.R](../../tests/testthat/test-jwt-jwe-roundtrip.R) covers small RSA encryption keys | ES256 fixture keys are EC. General RSA size tests do not supply an implemented PS256 FAPI branch. |
@@ -142,6 +150,7 @@ topic column is an index, not a replacement for the normative text.
    assertions. TLS deployment/cipher/DNS policy needs operator evidence, not
    another simulated OAuth flow.
 
-Finish the OIDC/OAuth and Message Signing maps before declaring SA04 complete.
-SA05 still needs to separate upstream-plan completion from local policy and
-server-fixture limitations; SA08 still owns the complete release evidence set.
+Finish the remaining extension/security-clause maps before declaring SA04
+complete. [Assessment accounting](assessment.md) now separates upstream-plan
+completion from local policy and server-fixture limitations; SA08 still owns
+the complete release evidence set.

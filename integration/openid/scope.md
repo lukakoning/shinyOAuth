@@ -1,8 +1,9 @@
 **Coverage scope**
 
 The [requirement-to-evidence map](requirements.md) separately accounts for FAPI
-client, network and cryptography clauses. SA04 remains partial until the
-OIDC/OAuth and Message Signing requirement maps are complete.
+client, network and cryptography clauses alongside OIDC, OAuth and JWT/Message
+Signing companion maps. SA04 retains partial OAuth extension/security-clause
+accounting and the concrete regression gaps recorded in those maps.
 
 Reports separately assess [upstream module completion](assessment.md), local
 coverage and categorized scope/advisory/provider/client limits. A complete

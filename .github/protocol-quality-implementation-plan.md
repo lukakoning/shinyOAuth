@@ -35,9 +35,10 @@ release-source check; local and hosted acceptance is complete. SA01 now pins the
 `release-v5.3.4` server and proxy images after source/digest and live plan
 comparison. SA01 is complete: fresh hosted smoke, Basic and Message Signing
 passed with verified acquisition reports and recorded timings. SA04 is partial:
-the [requirement map](../integration/openid/requirements.md) accounts for FAPI's
-20 client clauses and relevant network/cryptography duties, with remaining
-OIDC/OAuth and Message Signing mapping work named. SA06's Keycloak follow-up now
+the [requirement maps](../integration/openid/requirements.md) account for FAPI's
+20 client clauses, relevant network/cryptography duties, OIDC code/discovery,
+OAuth code/refresh/metadata and JWT/Message Signing. OAuth extension and security
+clauses retain explicit partial accounting. SA06's Keycloak follow-up now
 proves no-cache revalidation and rotation; C06 warm-cache acceptance remains
 open. SA05 now separates upstream execution from local coverage and categorized
 limits, with regression and retained-report validation. SA03 and SA06-SA08 remain
@@ -1938,6 +1939,30 @@ were hash-checked unchanged; derived assessments were saved separately. Removing
 a case while forging passing summary fields failed revalidation. These checks
 are development acceptance of the report semantics, not new live client runs
 or a complete source-qualified release matrix.
+
+SA04 companion requirement maps (2026-11-19): three maps now accompany the
+FAPI Security Profile page. The [OIDC map](../integration/openid/requirements-oidc.md)
+accounts for Discovery, code requests/callbacks, all 13 ID-token validation
+steps, UserInfo and the eight refresh response conditions. The
+[OAuth map](../integration/openid/requirements-oauth.md) indexes code/refresh,
+authentication/errors, bearer transport, S256, RFC 8414 and RFC 9207, with
+partial PAR/mTLS/DPoP/resource-indicator extension accounting. The
+[JWT/Message Signing map](../integration/openid/requirements-jwt-signing.md)
+accounts for final Message Signing client clauses, JAR, JARM and all 12 JWT BCP
+sections. Each links concrete code/assertion definitions and separates client,
+AS/RS, application and deployment duties, unsupported options and retained
+live evidence. The maps do not turn historical results into a source-qualified
+release matrix or establish certification.
+
+All 286 local link occurrences across the four requirement maps resolved;
+the three investigations also checked their official specification anchors.
+The maps identify focused gaps, including Unicode comparison, encrypted JARM
+inner-signature rejection, JWT cross-purpose substitution and Message Signing
+profile boundaries. The OAuth investigation reproduced case folding of
+provider-advertised authentication/PKCE method identifiers; MD04 names that
+runtime defect separately from the evidence-only gaps. Its narrow fix follows
+as a separate implementation change. SA04 remains partial until remaining
+OAuth grant/authentication/extension/security-clause accounting is finished.
 
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
