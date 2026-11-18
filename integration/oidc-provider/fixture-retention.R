@@ -83,6 +83,8 @@ interop_retention_app <- function(config) {
     )
     result <- shiny::reactiveVal(NULL)
     revision <- shiny::reactiveVal(0L)
+    audit_stamp <- NULL
+    audit_snapshot <- NULL
     complete <- function(value) {
       result(value)
       revision(shiny::isolate(revision()) + 1L)
@@ -224,12 +226,24 @@ interop_retention_app <- function(config) {
       } else {
         NULL
       }
-      observed <- openid_fixture_audit(
-        config[["audit_directory"]],
-        config[["run_id"]],
-        as.character(utils::packageVersion("shinyOAuth")),
-        config[["worker_probes"]]
+      stamp <- list(
+        revision = revision(),
+        connections = lapply(rows, function(row) {
+          row[c("connection_id", "status")]
+        })
       )
+      # Repeated scans of bind-mounted audit files can starve HTTP processing
+      # after logout. Completed actions and connection changes require fresh data.
+      if (!identical(stamp, audit_stamp)) {
+        audit_snapshot <<- openid_fixture_audit(
+          config[["audit_directory"]],
+          config[["run_id"]],
+          as.character(utils::packageVersion("shinyOAuth")),
+          config[["worker_probes"]]
+        )
+        audit_stamp <<- stamp
+      }
+      observed <- audit_snapshot
       observed[["transport"]][["backend"]] <- config[["transport"]]
       observed[["transport"]][["backend_verified"]] <- config[[
         "backend_verified"
