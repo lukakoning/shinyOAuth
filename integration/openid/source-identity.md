@@ -15,7 +15,7 @@ comparison succeeds. Preflight and API reports now include checkout identity
 as well as the suite's independently verified source revision.
 
 A clean run installs from an uncompressed `git archive` of the exact commit,
-with a fixed package prefix and `tar.umask`. This omits ignored files from the
+with a fixed package prefix, `tar.umask` and LF line endings. This omits ignored files from the
 installation input. Development runs build a private source package from the
 working tree with vignettes disabled. Both paths record the actual installation
 archive's SHA-256, package version and hashes of the installed package files.

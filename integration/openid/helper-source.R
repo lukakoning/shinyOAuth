@@ -89,6 +89,10 @@ openid_git_archive <- function(root, archive, revision) {
     c(
       "-c",
       "tar.umask=0002",
+      "-c",
+      "core.autocrlf=false",
+      "-c",
+      "core.eol=lf",
       "archive",
       "--format=tar",
       "--prefix=shinyOAuth/",

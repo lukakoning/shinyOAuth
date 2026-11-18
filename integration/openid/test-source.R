@@ -280,6 +280,16 @@ testthat::test_that("schema 4 binds serialized source and installation evidence 
   changed <- report
   changed[["schema_version"]] <- 3L
   testthat::expect_false(check(changed))
+  for (version in list("4", "3", 4, 3, c(4L, 4L), NA_integer_)) {
+    changed <- report
+    context <- f[["context"]]
+    changed[["schema_version"]] <- context[["schema_version"]] <- version
+    testthat::expect_false(openid_check_report(
+      changed,
+      context,
+      f[["manifest"]]
+    )[["gate_passed"]])
+  }
   development <- source_evidence_fixture(dirty = TRUE)
   testthat::expect_true(openid_check_report(
     development[["report"]],

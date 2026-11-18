@@ -632,7 +632,8 @@ openid_check_report <- function(report, context, manifest) {
   tryCatch(
     {
       if (
-        !report[["schema_version"]] %in% c(3L, 4L) ||
+        !(identical(report[["schema_version"]], 3L) ||
+          identical(report[["schema_version"]], 4L)) ||
           !identical(report[["schema_version"]], context[["schema_version"]])
       ) {
         stop("Unsupported evidence schema")
