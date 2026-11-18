@@ -41,9 +41,26 @@ OAuth code/refresh/metadata and JWT/Message Signing. OAuth extension and securit
 clauses retain explicit partial accounting. SA06's Keycloak follow-up now
 proves no-cache revalidation and rotation; C06 warm-cache acceptance remains
 open. SA05 now separates upstream execution from local coverage and categorized
-limits, with regression and retained-report validation. SA03 and SA06-SA08 remain
+limits, with regression and retained-report validation. SA06's milestone status
+now distinguishes completed public/S256 interoperability from the OIDF public
+variant limit; C06 warm-cache acceptance remains open. SA03 and SA07-SA08 remain
 pending. See the
 [release review](../integration/openid/release-review.md).
+
+| Milestone | Current implemented scope | Remaining boundary |
+| --- | --- | --- |
+| C01-C05, C07-C08 | Environment/API/browser rig, all Basic/Form Post modules and refresh identity continuity | Exact variants and same-site Form Post deployment limits remain recorded. |
+| C06 | All six Configuration modules and separate Keycloak revalidation/rotation | Neither provider fixture proves rotation from a warm key cache. |
+| C09 | Sync/mirai core profiles, future smoke/refresh parity, confidential authentication pairs and shared-pool isolation; C13 supplies public/S256 interoperability | The pinned OIDF public variant cannot complete because its metadata omits `none`; no public-client OIDF verdict is claimed. |
+| C10 | All 23 OIDC DPoP modules and all 11 OAuth DPoP modules with encrypted/reference state | The encrypted-state advisory and FAPI configuration/requirement limits remain distinct from module execution. |
+| C11-C12 | Four full mTLS selections and the 29-module Message Signing selection | mTLS simulated-server enforcement/registration limits and exact signing/callback configurations remain explicit. |
+| C13-C14 | Pinned second-provider public/confidential code/refresh/browser flows and the declared advanced-flow/lifecycle selections | These are interoperability evidence, not additional OIDF certification profiles. |
+| C15 | Existing rejection/browser controls plus requirement-selected follow-ups | Callback-error URL cleanup, HTTPS cross-site acceptance and named cryptographic regressions remain. |
+| C16 / SA08 | CI smoke, manual larger selections, acquisition/source checks | One final revision's declared aggregate matrix and durable release evidence remain. |
+
+Use the implemented commands in the [environment README](../integration/openid/README.md).
+`core`, `extended` and `fapi-signing` below are historical planning aliases,
+not accepted current CLI profile names.
 
 **SA01 (high): Restore fresh-machine reproducibility; move this part of C16
 forward.** The review independently obtained an anonymous registry token and
@@ -238,11 +255,18 @@ C08 covers all three client refresh modules, including identity substitution
 and the module's default credential-retirement policy.
 C09 adds verified mirai transport for the core selections, future multisession
 smoke/refresh parity, confidential-client authentication selections and sequential
-shared-pool issuer isolation. Public-client discovery coverage remains
-outstanding, so C09 is not complete.
+shared-pool issuer isolation. C13 now supplies public-client discovery,
+S256/browser login, ID token, UserInfo and refresh interoperability, including
+live missing-PKCE rejection. That closes the overlapping public/S256 baseline
+work; the pinned suite's broken public variant remains an OIDF capability limit.
 C10 includes the complete twenty-three-module OIDC/private-key-JWT/DPoP
-variant and an eleven-module OAuth-only selection. The OAuth-only state-length
-advisory keeps that selection's coverage incomplete and C10 open.
+variant and eleven-module OAuth-only selections with both encrypted and
+reference state. All reference-state outcomes are `PASSED`; encrypted state
+retains its exact advisory. Both execute the full upstream module list, while
+the conservative coverage field retains the advisory separately. C11's mTLS
+and C12's Message Signing selections are implemented with the scope limits in
+the current table above. C13-C14 supply the second-provider scenarios recorded
+below; C15 browser/cryptographic follow-ups and C16 release aggregation remain.
 
 Execution record (2026-11-12): C00 is `d0b62ff`; C01 is `4dee03d`. C01 validated the exact server
 image/source correspondence, required plans, R certificate/hostname validation,
@@ -1963,6 +1987,21 @@ provider-advertised authentication/PKCE method identifiers; MD04 names that
 runtime defect separately from the evidence-only gaps. Its narrow fix follows
 as a separate implementation change. SA04 remains partial until remaining
 OAuth grant/authentication/extension/security-clause accounting is finished.
+
+SA06 milestone reconciliation (2026-11-19): the current table and opening
+status now include completed mTLS, Message Signing and second-provider work.
+C13's public registrations exercise discovered `none` authentication, browser
+S256 code login, validated ID tokens, UserInfo and refresh in query/Form Post
+and sync/mirai configurations; its live missing-challenge request is rejected
+before code issuance. This closes C09's overlapping public discovery/S256
+interoperability baseline. It does not supply a missing OIDF public-client
+verdict or complete that comprehensive-plan variant. The pinned variant's
+metadata limitation remains explicit rather than hiding the C13 evidence.
+C10 now records both full OAuth selections, including the all-`PASSED`
+reference-state path, without treating the encrypted-state advisory as an
+unqualified client nonconformance. The scope table and CLI alias note were
+updated to match implemented selections. C06's genuine warm-cache follow-up
+remains open with its observed provider-cache limits.
 
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,

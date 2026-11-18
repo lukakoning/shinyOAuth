@@ -46,16 +46,16 @@ synthetic-metadata fixture checks prove authorization-request plumbing. The API
 check and app-stop control create interrupted modules for harness validation;
 neither interruption counts as a client test pass.
 
-| Target | Existing local evidence | Planned independent gate |
+| Target | Existing local evidence | Independent gate and remaining scope |
 | --- | --- | --- |
 | OIDC Core code flow, ID token and UserInfo validation | Unit tests, Keycloak browser/code flows, complete pinned Basic RP module selection (C05) | Basic implemented for the variant above; further profiles below |
 | Discovery, exact issuer and signing-key changes | Discovery/JWKS tests, Keycloak no-cache revalidation/rotation, and six Configuration module outcomes (C06) | Warm-cache refresh remains a C06 follow-up; pinned suite JWKS is `no-store` and the Keycloak fixture returns `no-cache` |
 | Form POST callback and browser binding | Real browser and retained-connection tests; complete pinned Form Post Basic plan on the same-site local rig (C07) | Form Post Basic implemented; cross-site attack cases stay in their separate layer |
 | Refresh identity continuity | Refresh validation, retained-connection tests and all three pinned client refresh modules (C08, extended in C09) | Code flow with HTTP Basic authentication in sync/mirai, plus future parity |
 | Worker transport | Package worker tests; verified mirai transport for the core selections, future smoke/refresh parity, and an alternating shared-pool selection (C09) | Shared-pool scope is sequential reuse across distinct suite issuers, with fresh per-case app/cache objects |
-| Additional client authentication | Keycloak/worker tests and paired positive/issuer-rejection selections for POST, HS256 secret JWT and RS256 private-key JWT (C09) | Public-client discovery remains blocked by the pinned suite's metadata; shared-pool coverage pairs POST and private-key JWT |
-| PAR, DPoP and mTLS | Keycloak and independent Python exchanges; FAPI OIDC and OAuth-only private-key-JWT/DPoP selections (C10) | OIDC requires all twenty-three modules; OAuth-only runs all eleven with an open state-length advisory; mTLS remains pending |
-| JAR/JARM combinations | Independent Python fixture and Keycloak capability tests | FAPI Message Signing; C12; second full provider C13-C14 |
+| Additional client authentication | Keycloak/worker tests and paired positive/issuer-rejection selections for POST, HS256 secret JWT and RS256 private-key JWT (C09); [second-provider](../oidc-provider/README.md) public/S256 discovery, browser login, UserInfo, refresh and missing-PKCE rejection (C13) | Public interoperability baseline is implemented; the pinned OIDF public variant remains blocked by its metadata. Shared-pool scope remains its declared four selections. |
+| PAR, DPoP and mTLS | Keycloak and independent Python exchanges; full FAPI OIDC/OAuth DPoP and four mTLS selections (C10-C11) | OIDC DPoP runs all 23 modules; OAuth DPoP runs all 11, with encrypted-state advisory separate from reference state. mTLS executes all 9/21 modules, retaining simulated-server denial and registration limits. |
+| JAR/JARM combinations | Independent Python, Keycloak capability cases, all 29 FAPI Message Signing modules (C12) and declared advanced [second-provider](../oidc-provider/README.md) flows (C13-C14) | Exact authentication/sender/callback variants, provider capability limits and source-qualified release aggregation remain explicit. |
 | SMART App Launch | SMART browser fixtures and corrected Inferno simulator | Existing Inferno gate remains separate |
 
 The `basic` selection follows the module order in the pinned
