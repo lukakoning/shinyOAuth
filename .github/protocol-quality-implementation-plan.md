@@ -2069,6 +2069,35 @@ filesystem/SQL audit or new OIDF execution. No runtime defect was found. G1/G4
 are now covered; G2/G3 and the complete source-qualified release matrix remain
 open.
 
+SA04 response-mode comparison correction (2026-11-19): discovery and both
+provider construction/validation paths now preserve advertised response-mode
+strings exactly, as do request selection and provider policy fingerprints.
+Uppercase or padded values cannot authorize a canonical mode; exact matches
+in mixed arrays still work. Caller-option normalization, omitted discovery
+query/fragment defaults, generic unknown-capability behavior and distinct
+outbound `jwt`/`query.jwt` checks remain. Whitespace-only capabilities still
+fail validation. The NEWS entry, provider documentation and OAuth map describe
+the narrowed behavior.
+
+The new 182-assertion regression covers OAuth/OIDC discovery, both manual
+constructors, S7 mutations, implicit query and actual callback recovery under
+encrypted/reference state. A changed capability rejects before any token HTTP
+request and preserves the pending record; the original client then exchanges
+once. Case/whitespace affect the fingerprint, while order/duplicates do not.
+All 2,933 targeted discovery/response-mode/state/callback/JARM/provider/worker
+assertions passed on Windows and Linux with zero failures, test warnings or
+skips. Jarl, whitespace and independent review passed; the new test is formatted.
+
+Initial broader attempts exposed validation prerequisites: Windows `future`
+1.70.0 had been built under R 4.5.3, and the Linux subprocess lacked an installed
+package. Accepted checks used the same future version rebuilt from the official
+CRAN archive in a private Windows library, plus a private Linux installation
+of this working source and its existing optional test dependencies. No package
+dependency or base image changed, and warnings were not suppressed. Initial
+results remain separately under ignored `codex/response-mode-case/`; Windows
+retains the known R startup locale messages. These are development checks,
+not a new OIDF browser run or complete source-qualified release matrix.
+
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second

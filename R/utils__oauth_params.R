@@ -395,10 +395,7 @@ resolve_oauth_response_mode <- function(
   if (
     !is.null(outbound_mode) &&
       length(response_modes_supported) > 0 &&
-      !outbound_mode %in%
-        tolower(trimws(
-          response_modes_supported
-        ))
+      !outbound_mode %in% response_modes_supported
   ) {
     out[["error"]] <- paste0(
       "OAuthClient: response_mode = ",

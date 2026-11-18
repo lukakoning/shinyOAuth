@@ -329,7 +329,8 @@
 #'   "fragment")` when omitted per OIDC Discovery/RFC 8414. Generic providers
 #'   may leave this empty when capabilities are not known. Provider metadata may
 #'   include response modes that shinyOAuth does not implement. Requesting an
-#'   unsupported mode raises an error.
+#'   unsupported mode raises an error. Advertised values retain their exact
+#'   case and whitespace; caller `response_mode` options are normalized separately.
 #' @param jarm_signing_alg_values_supported Optional vector of JWS
 #'   algorithms that the provider advertises for signed JWT Secured
 #'   Authorization Responses (JARM).
@@ -919,9 +920,9 @@ oauth_provider <- function(
   if (is.null(response_modes_supported)) {
     response_modes_supported <- character()
   }
-  response_modes_supported <- tolower(trimws(as.character(
+  response_modes_supported <- as.character(
     unlist(response_modes_supported, use.names = FALSE)
-  )))
+  )
   if (is.null(jarm_signing_alg_values_supported)) {
     jarm_signing_alg_values_supported <- character()
   }
@@ -1383,7 +1384,7 @@ oauth_provider_validate <- function(self) {
   if (
     length(self@response_modes_supported) > 0 &&
       any(
-        !nzchar(self@response_modes_supported) |
+        !nzchar(trimws(self@response_modes_supported)) |
           is.na(self@response_modes_supported)
       )
   ) {
@@ -1395,7 +1396,7 @@ oauth_provider_validate <- function(self) {
     !is.null(response_mode_info[["mode"]]) &&
       length(self@response_modes_supported) > 0 &&
       !response_mode_info[["mode"]] %in%
-        tolower(trimws(self@response_modes_supported))
+        self@response_modes_supported
   ) {
     return(paste0(
       "OAuthProvider: extra_auth_params$response_mode = ",
@@ -2298,8 +2299,7 @@ provider_fingerprint <- function(provider) {
       FALSE
     )),
     response_modes_supported = state_policy_string_set(
-      provider_prop("response_modes_supported", character()),
-      transform = tolower
+      provider_prop("response_modes_supported", character())
     ),
     jarm_signing_alg_values_supported = state_policy_string_set(
       provider_prop("jarm_signing_alg_values_supported", character()),

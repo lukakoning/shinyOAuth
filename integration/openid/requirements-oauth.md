@@ -83,7 +83,7 @@ registration or correct request syntax alone does not prove browser binding.
 | MD01 / [8414 3](https://www.rfc-editor.org/rfc/rfc8414.html#section-3), [3.1](https://www.rfc-editor.org/rfc/rfc8414.html#section-3.1) | Derive and GET the OAuth well-known location from the trusted issuer. | A7 inserts the suffix before the issuer path, removes its terminating slash and preserves escaped path segments/ports in request assertions. The original issuer string remains unchanged. The OAuth constructor neither adds OIDC scope/nonce nor enables ID-token/UserInfo validation. |
 | MD02 / [8414 2](https://www.rfc-editor.org/rfc/rfc8414.html#section-2), [3.2](https://www.rfc-editor.org/rfc/rfc8414.html#section-3.2), [3.3](https://www.rfc-editor.org/rfc/rfc8414.html#section-3.3) | Validate metadata shape, capabilities and exact issuer before use. | A7 rejects missing code endpoints/response type, mismatched issuer and malformed JWT/PAR metadata. A3 chooses configured/advertised authentication, with Basic as the omitted-method default. OIDC-only required fields are excluded from this OAuth path. Manual providers bypass metadata discovery. |
 | MD03 / [8414 6.1](https://www.rfc-editor.org/rfc/rfc8414.html#section-6.1), [6.2](https://www.rfc-editor.org/rfc/rfc8414.html#section-6.2), [2.1](https://www.rfc-editor.org/rfc/rfc8414.html#section-2.1) | Authenticate metadata transport; assess optional signed metadata separately. | A7 rejects insecure metadata/endpoints outside the explicit loopback exception; A6 supplies TLS controls. Trusted issuer selection remains an application duty. This path uses unsigned JSON over verified TLS and makes no signed-metadata verification claim. |
-| MD04 / [8414 4](https://www.rfc-editor.org/rfc/rfc8414.html#section-4), [7636 6.2.1](https://www.rfc-editor.org/rfc/rfc7636.html#section-6.2.1) | Compare metadata strings by their decoded code points. | Issuer comparison in A7 remains exact. `.discover_infer_token_auth_style()` and `.discover_resolve_pkce_method()` now compare advertised method names without changing case. [test-discovery-method-case.R](../../tests/testthat/test-discovery-method-case.R) rejects wrong-case-only capabilities and selects exact supported values from mixed arrays through both public constructors. It preserves caller spelling normalization and requires lowercase advertised `plain` for explicit plain PKCE. This corrects the reproduced Basic/S256 misclassification. Response-mode matching remains a separate follow-up below. |
+| MD04 / [8414 4](https://www.rfc-editor.org/rfc/rfc8414.html#section-4), [7636 6.2.1](https://www.rfc-editor.org/rfc/rfc7636.html#section-6.2.1) | Compare metadata strings by their decoded code points. | Issuer comparison in A7 remains exact. `.discover_infer_token_auth_style()` and `.discover_resolve_pkce_method()` compare advertised authentication/PKCE names without changing case; [test-discovery-method-case.R](../../tests/testthat/test-discovery-method-case.R) covers both public constructors. [test-discovery-response-mode-case.R](../../tests/testthat/test-discovery-response-mode-case.R) also covers literal response-mode values through discovery, provider configuration, mutation, request selection and pending-state binding. Wrong-case/padded metadata cannot supply a canonical capability, while exact matches in mixed arrays and caller-option normalization remain available. These are field-specific controls, not a completed metadata-field audit. |
 | IS01 / [9207 2.4](https://www.rfc-editor.org/rfc/rfc9207.html#section-2.4) | Decode and exactly compare a present response issuer with the intended AS. | A8 checks present values in both success/error paths and stops before exchange on mismatch. The trailing-slash case is rejected. Keycloak's second-realm attempt proves the legitimate state remains available after rejection. |
 | IS02 / [9207 2.4](https://www.rfc-editor.org/rfc/rfc9207.html#section-2.4), [3](https://www.rfc-editor.org/rfc/rfc9207.html#section-3) | Remember advertised support and reject missing issuer when required. | Discovery retains `authorization_response_iss_parameter_supported`; client setup infers required presence. A8 tests missing values and separates `enforce_callback_issuer` from `compare_callback_issuer`. Explicit opt-out disables comparison by default; retain strict settings for an RFC 9207 claim. |
 | IS03 / [9207 2](https://www.rfc-editor.org/rfc/rfc9207.html#section-2), [2.4](https://www.rfc-editor.org/rfc/rfc9207.html#section-2.4), [4](https://www.rfc-editor.org/rfc/rfc9207.html#section-4) | Separate AS response duties from client mix-up defenses. | AS issuer publication and inclusion in success/error responses remain AS duties. A8 requires advertised issuer support for direct multi-issuer callbacks, with a separate signed-JARM route; multi-redirect mode has its own complete/distinct callback-set checks. Trusted issuer lists and deployed route isolation remain application duties. |
@@ -124,13 +124,17 @@ dependency; the initial run with 36 missing-prerequisite skips earns no passing
 credit. These are development regressions against the working source, not new
 OIDF module results or a completed metadata-field audit.
 
-Code inspection also found case folding and trimming of advertised
-`response_modes_supported` in `.discover_provider()` and the
-[OAuthProvider constructor](../../R/classes__OAuthProvider.R). Public behavior
-for wrong-case or padded response-mode identifiers still needs a focused
-regression and correction. Keep this separate from the validated authentication
-and PKCE change; assess mixed arrays and caller-option normalization when taking
-that follow-up.
+The response-mode follow-up now preserves the exact advertised values through
+discovery and the [OAuthProvider constructor](../../R/classes__OAuthProvider.R),
+validation, request selection and provider fingerprints. Its 182 focused
+assertions cover uppercase/padded/unknown capabilities, exact matches in mixed
+arrays, implicit query defaults, caller spelling, mutation and pending-state
+recovery in both encrypted and reference transports. The legitimate callback
+remains usable after a changed-capability rejection; the rejected callback
+makes no token request and leaves the pending record unchanged. Capability
+order/duplicates remain equivalent. Generic unknown capabilities and omitted
+discovery defaults retain their prior semantics; whitespace-only values remain
+invalid. This adds no real-browser or provider execution result.
 
 The default reserved-header guard already rejects a custom Authorization value
 combined with body authentication; a source-loaded check confirmed that setup

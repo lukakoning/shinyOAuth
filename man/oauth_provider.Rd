@@ -185,7 +185,8 @@ auto-enable callback issuer enforcement when the caller leaves
 providers use the discovery metadata value, defaulting to \code{c("query", "fragment")} when omitted per OIDC Discovery/RFC 8414. Generic providers
 may leave this empty when capabilities are not known. Provider metadata may
 include response modes that shinyOAuth does not implement. Requesting an
-unsupported mode raises an error.}
+unsupported mode raises an error. Advertised values retain their exact
+case and whitespace; caller \code{response_mode} options are normalized separately.}
 
 \item{mtls_endpoint_aliases}{Optional named list of RFC 8705 mTLS endpoint
 aliases. Names should follow the metadata keys such as \code{token_endpoint},

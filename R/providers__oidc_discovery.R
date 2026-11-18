@@ -395,10 +395,10 @@ oauth_provider_oidc_discover <- function(
     "require_request_uri_registration",
     default = FALSE
   )
-  response_modes_supported <- tolower(trimws(as.character(unlist(
+  response_modes_supported <- as.character(unlist(
     disc[["response_modes_supported"]] %||% c("query", "fragment"),
     use.names = FALSE
-  ))))
+  ))
   jarm_signing_alg_values_supported <- .discover_jarm_metadata(
     disc,
     "authorization_signing_alg_values_supported",
