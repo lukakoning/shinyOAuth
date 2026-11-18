@@ -35,12 +35,13 @@ start pending.
 
 **Implementation status (2026-11-18).** SA02’s image, acquisition and
 dirty-flag revalidation checks are implemented in the follow-up
-execution record below. SA02 remains partial: identifying installed
-source content and enforcing release source policy remain pending. SA01
-now pins the available official `release-v5.3.4` server and proxy images
-after source/digest and live plan comparison. SA01 is complete: fresh
-hosted smoke, Basic and Message Signing passed with verified acquisition
-reports and recorded timings. SA03-SA08 remain pending. See the [release
+execution record below. SA02 now implements source snapshots, archived
+installation input and a clean release-source check; validation is in
+progress. SA01 now pins the available official `release-v5.3.4` server
+and proxy images after source/digest and live plan comparison. SA01 is
+complete: fresh hosted smoke, Basic and Message Signing passed with
+verified acquisition reports and recorded timings. SA03-SA08 remain
+pending. See the [release
 review](https://lukakoning.github.io/integration/openid/release-review.md).
 
 **SA01 (high): Restore fresh-machine reproducibility; move this part of
