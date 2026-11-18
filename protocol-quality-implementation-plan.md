@@ -45,7 +45,9 @@ SA04 is partial: the [requirement
 map](https://lukakoning.github.io/integration/openid/requirements.md)
 accounts for FAPI’s 20 client clauses and relevant network/cryptography
 duties, with remaining OIDC/OAuth and Message Signing mapping work
-named. SA03 and SA05-SA08 remain pending. See the [release
+named. SA06’s Keycloak follow-up now proves no-cache revalidation and
+rotation; C06 warm-cache acceptance remains open. SA03 and SA05-SA08
+remain pending. See the [release
 review](https://lukakoning.github.io/integration/openid/release-review.md).
 
 **SA01 (high): Restore fresh-machine reproducibility; move this part of
@@ -2113,6 +2115,39 @@ Windows R 4.5.1 and Linux R 4.5.0, with no failures, test warnings or
 skips. Formatting and jarl checks passed. These are focused development
 regressions, not a new source-qualified conformance matrix or
 certification result. Runtime package behavior is unchanged.
+
+SA06 Keycloak rotation evidence correction (2026-11-19): the original
+pinned Keycloak 26.6.1 `start-dev` fixture returns
+`Cache-Control: no-cache`, so the earlier two-login test could not
+establish a warm cache. The strengthened [rotation
+test](https://lukakoning.github.io/integration/keycloak/test_integration_keycloak_jwks_rotation.R)
+observes the actual response header, exactly three JWKS downloads across
+three authenticated module logins, stale cache metadata, stable
+cache/key identity, the new key’s absence before rotation and successful
+validation afterward. It retains the rogue-signature rejection controls
+for both old and new key IDs. Required dependency/admin/server setup
+failures now fail rather than skip.
+
+The focused Windows run passed all 40 assertions, with zero failures,
+skips or test warnings. R startup retained the existing locale warnings.
+It tested source `d4e6d1275a5858f70741c44fd75e34baff3e895a` with the
+rotation test and concurrent mixed-JWKS/requirement-map changes recorded
+as dirty. The tested rotation file’s SHA-256 was
+`d212ee9000977071a7faa5dfb9ff825932592504cef760af28a5110052d16986`; the
+installed-package results, observed header and pinned image receipt
+remain in ignored local evidence. Formatting, jarl and whitespace checks
+passed; a separate agent review found no actionable issues in either new
+test.
+
+Attempts with supported theme cache settings and a non-development
+server command still returned `no-cache` in this environment. They did
+not establish cacheability, and the original Compose configuration was
+restored exactly. Provider headers and client TTLs were not rewritten.
+The owned test stack was removed. This is development
+revalidation/rotation evidence; C06 remains open until a real
+cacheable-provider test proves a pre-rotation cache hit and unknown-key
+refresh from that still-fresh entry. SA06’s remaining status
+reconciliation is separate from this correction.
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
