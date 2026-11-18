@@ -148,8 +148,10 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
     )
     context[["plan_id"]] <- plan[["id"]]
     report[["plan_id"]] <- plan[["id"]]
-    report[["images"]] <- stack[["lock"]][["images"]]
-    report[["image_sources"]] <- stack[["image_sources"]]
+    context[["images"]] <- report[["images"]] <- stack[["lock"]][["images"]]
+    context[["image_sources"]] <- report[["image_sources"]] <- stack[[
+      "image_sources"
+    ]]
     started <- Sys.time()
     for (expectation in manifest[["profiles"]][[profile]][["modules"]]) {
       row <- openid_run_case(

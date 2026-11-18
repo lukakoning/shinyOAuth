@@ -590,12 +590,51 @@ openid_transport_matches <- function(result, expectation, context) {
     openid_count(evidence[["worker_operations"]][["audit_userinfo"]], 1L)
 }
 
+openid_check_provenance <- function(report, context, lock) {
+  if (
+    is.null(lock) ||
+      !identical(context[["source_revision"]], lock[["source_revision"]]) ||
+      !identical(context[["images"]], lock[["images"]]) ||
+      !identical(report[["images"]], lock[["images"]])
+  ) {
+    stop("Evidence images do not match the suite lock and run context")
+  }
+  for (value in list(report[["checkout_dirty"]], context[["checkout_dirty"]])) {
+    if (!is.logical(value) || length(value) != 1L || is.na(value)) {
+      stop("Missing or invalid checkout dirty flag")
+    }
+  }
+  if (!identical(report[["checkout_dirty"]], context[["checkout_dirty"]])) {
+    stop("Checkout dirty flag does not match the run context")
+  }
+  for (sources in list(report[["image_sources"]], context[["image_sources"]])) {
+    if (
+      !is.list(sources) ||
+        !identical(names(sources), names(lock[["images"]])) ||
+        !all(vapply(
+          sources,
+          function(value) {
+            openid_string(value) && value %in% c("cached", "pulled")
+          },
+          logical(1)
+        ))
+    ) {
+      stop("Missing or invalid image acquisition metadata")
+    }
+  }
+  if (!identical(report[["image_sources"]], context[["image_sources"]])) {
+    stop("Image acquisition metadata does not match the run context")
+  }
+  invisible(TRUE)
+}
+
 openid_check_report <- function(report, context, manifest) {
   tryCatch(
     {
       if (!identical(report[["schema_version"]], 3L)) {
         stop("Unsupported evidence schema")
       }
+      openid_check_provenance(report, context, manifest[["suite_lock"]])
       for (name in c(
         "run_id",
         "attempt_id",
@@ -932,6 +971,7 @@ openid_check_report <- function(report, context, manifest) {
 }
 
 openid_report_context <- function(root, profile, transport, package_version) {
+  lock <- openid_lock(root)
   git <- function(args) {
     trimws(processx::run("git", args, wd = root)[["stdout"]])
   }
@@ -953,7 +993,8 @@ openid_report_context <- function(root, profile, transport, package_version) {
     attempt_id = random(),
     checkout_revision = git(c("rev-parse", "HEAD")),
     checkout_dirty = nzchar(git(c("status", "--porcelain"))),
-    source_revision = openid_lock(root)[["source_revision"]],
+    source_revision = lock[["source_revision"]],
+    images = lock[["images"]],
     profile = profile,
     transport = transport,
     package_version = package_version,

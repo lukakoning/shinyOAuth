@@ -55,7 +55,10 @@ shared_evidence_fixture <- function() {
     "run_id",
     "attempt_id",
     "checkout_revision",
+    "checkout_dirty",
     "source_revision",
+    "images",
+    "image_sources",
     "package_version",
     "public_probe_plan_id",
     "public_probe_suite_id"

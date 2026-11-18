@@ -37,6 +37,7 @@ openid_variant_key <- function(variant) {
 }
 
 openid_profiles <- function(root = ".") {
+  lock <- openid_lock(root)
   manifest <- jsonlite::read_json(file.path(
     root,
     "integration/openid/profiles.json"
@@ -45,11 +46,12 @@ openid_profiles <- function(root = ".") {
     !identical(manifest[["schema_version"]], 2L) ||
       !identical(
         manifest[["source_revision"]],
-        openid_lock(root)[["source_revision"]]
+        lock[["source_revision"]]
       )
   ) {
     stop("OpenID profile manifest does not match the suite lock")
   }
+  manifest[["suite_lock"]] <- lock
   manifest
 }
 

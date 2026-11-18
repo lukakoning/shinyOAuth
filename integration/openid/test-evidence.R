@@ -6,7 +6,14 @@ evidence_fixture <- function(profile = "smoke") {
     run_id = "run",
     attempt_id = "attempt",
     checkout_revision = paste(rep("a", 40), collapse = ""),
+    checkout_dirty = FALSE,
     source_revision = manifest[["source_revision"]],
+    images = manifest[["suite_lock"]][["images"]],
+    image_sources = list(
+      server = "cached",
+      proxy = "pulled",
+      database = "cached"
+    ),
     profile = profile,
     transport = "sync",
     package_version = "0.7.0.9000",
@@ -1382,3 +1389,4 @@ source("test-fapi-oauth.R", local = TRUE, keep.source = TRUE)
 source("helper-mtls.R", local = TRUE)
 source("test-mtls.R", local = TRUE, keep.source = TRUE)
 source("test-signing.R", local = TRUE, keep.source = TRUE)
+source("test-provenance.R", local = TRUE, keep.source = TRUE)

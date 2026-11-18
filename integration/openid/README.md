@@ -569,6 +569,17 @@ which requires worker/transport and process-cleanup evidence. Prior reports
 retain their original version. The evidence validator binds each result to its
 run, attempt, checkout, source revision, plan, instance and variants, then
 requires both a completed allowed suite verdict and the expected app outcome.
+Revalidation also requires all three image references to match the local suite
+lock and the expected run context. Each image must have a `cached` or `pulled`
+acquisition entry matching that context, and the checkout dirty flag must be a
+Boolean with its original value. The shared-pool report and its four client
+selections carry these fields individually. Missing or substituted metadata
+fails the gate, including in serialized reports. Load the manifest through
+`openid_profiles()` so it includes the independently read lock, and use a trusted
+run context when rechecking evidence; a report cannot establish its own origin.
+Dirty development runs remain allowed. These checks do not identify their
+uncommitted source bytes or qualify a final release matrix; source identity and
+release aggregation remain pending under SA02 and SA08.
 Missing results, app failures, unrecognized suite warnings, unexpected skips and timeouts fail.
 The evidence regression checks also require zero warnings and skips.
 A passing smoke selection keeps `coverage_complete = false`; a passing Basic

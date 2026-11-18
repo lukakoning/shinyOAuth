@@ -328,6 +328,7 @@ openid_shared_audit_fingerprint <- function(config) {
 openid_check_shared_report <- function(report, context, manifest) {
   tryCatch(
     {
+      openid_check_provenance(report, context, manifest[["suite_lock"]])
       for (name in c(
         "schema_version",
         "run_id",

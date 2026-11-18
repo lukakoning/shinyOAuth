@@ -28,6 +28,13 @@ publication or certification submission. Record the disposition of each note
 with implementation commits and evidence, or a concrete reason for deferral.
 All eight notes start pending.
 
+**Implementation status (2026-11-18).** SA02's image, acquisition and dirty-flag
+revalidation checks are implemented in the follow-up execution record below.
+SA02 remains partial: identifying installed source content and enforcing release
+source policy remain pending. SA01's anonymous manifest check was repeated with
+HTTP 200 from the token endpoint and HTTP 404 for the locked server digest;
+the lock remains unchanged. SA01 and SA03-SA08 remain pending.
+
 **SA01 (high): Restore fresh-machine reproducibility; move this part of C16
 forward.** The review independently obtained an anonymous registry token and
 checked the locked server-image manifest. The token endpoint returned HTTP 200;
@@ -36,8 +43,22 @@ the manifest for
 returned HTTP 404. Existing cached-image runs retain their evidence, but the
 documented path cannot currently reproduce them on a fresh CI runner.
 
-Provide an available verified image source, a pinned reproducible source build,
-or a separately reviewed lock update. Retain digest/source correspondence checks
+Follow-up availability check (2026-11-18): the official registry lists published
+release images. Manifest GET requests for `release-v5.3.4`, `release-v5.3.3`,
+`release-v5.3.2`, `release-v5.2.4`, `latest` and `unstable` all returned HTTP 200.
+For example, `registry.gitlab.com/openid/conformance-suite:release-v5.3.4`
+resolved to multi-platform index
+`sha256:dcc4bd1fb7e9c00f048a67373fe2bec5ecf9feb45a6b5d55e237e5c30e5312c6`,
+including Linux amd64 and arm64 images. Upstream's
+[prebuilt Compose file](https://gitlab.com/openid/conformance-suite/-/blob/master/docker-compose-prebuilt.yml)
+uses this official registry and accepts `IMAGE_TAG`. The 404 concerns our exact
+pinned build; other official versions are available. These checks retrieved
+image metadata, without pulling or executing replacement images. The review
+has not located the exact old digest elsewhere and cannot rule out other copies.
+
+Prioritize evaluating an available official release and a separately reviewed
+lock update. A verified mirror of the exact old image or a pinned source build
+remain alternatives. Retain digest/source correspondence checks
 and resolve changed modules and variants explicitly if updating the suite. Do
 not silently substitute a tag. Acceptance: demonstrate image acquisition and a
 successful preflight/API/browser smoke run on a fresh GitHub runner, then measure

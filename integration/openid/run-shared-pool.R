@@ -62,6 +62,10 @@ run_openid_shared_pool <- function() {
   manifest <- openid_profiles()
   library <- openid_install(".", output)
   stack <- openid_start(".", output)
+  context[["images"]] <- report[["images"]] <- stack[["lock"]][["images"]]
+  context[["image_sources"]] <- report[["image_sources"]] <- stack[[
+    "image_sources"
+  ]]
   transport <- openid_app_transport(".", stack, httpuv::randomPort())
   context[["provider_origin"]] <- report[["provider_origin"]] <- stack[[
     "origin"
@@ -125,8 +129,6 @@ run_openid_shared_pool <- function() {
     ]]
     selection
   })
-  report[["images"]] <- stack[["lock"]][["images"]]
-  report[["image_sources"]] <- stack[["image_sources"]]
   pool <- openid_shared_start(".", stack, transport, library)
   report[["initial_worker_state"]] <- pool[["initial_state"]]
   fingerprints <- list()
