@@ -1227,8 +1227,62 @@ oauth_connections_server() retention across navigation are next. This first
 selection uses native UserInfo as its resource; it does not establish separate
 resource-server audience enforcement, encryption, other algorithms/auth methods
 or JAR + DPoP + JARM together. C06 warm-cache, C09 public-client suite capability
-and C15 rejection/query-cleanup work remain separate. Full committed-source
-validation will be recorded below.
+and C15 rejection/query-cleanup work remain separate.
+
+C14 first-selection validation (2026-11-18), source
+`c615cdda526a796112028f374b93317e567f3113`: all four Windows/Linux sync/mirai
+advanced gates passed. Together they completed **24 positive browser logins and
+refreshes**, **eight tampered-JARM HTTP 400 rejections**, **80 successful signed
+UserInfo responses** and **72 native UserInfo HTTP 401 denials**. The denials
+comprise 24 DPoP misuse requests, 24 mTLS misuse requests and 24 revoked-token
+requests. All eight first-use replay controls returned HTTP 200. Each positive
+case completed public connection resource use, introspection and revocation;
+sender binding and refresh rotation were checked on both grants.
+
+All four advanced stopped-app canaries and **3,952 report-mutation controls**
+passed (988 per report). Serialized reports were independently revalidated
+against the complete eight-case selection, source revision, runtime lock,
+actual fixture input hashes, sender/signature/resource/lifecycle observations,
+transport evidence and cleanup. Removing the control results or changing one
+to false was also rejected. All four runtime checkouts were clean.
+
+| Runtime / transport | Eight-case loop seconds | Local sanitized evidence directory |
+| --- | ---: | --- |
+| Windows / sync | 99.04 | `advanced-20261118-185929-1d129ddc66e9` |
+| Windows / mirai | 115.38 | `advanced-20261118-190324-39b58e537a8a` |
+| Linux / sync | 68.65 | `advanced-20261118-185937-5142681ec24e` |
+| Linux / mirai | 76.81 | `advanced-20261118-190302-7f93dd694d96` |
+
+The four baseline regressions also passed all sixteen login/refresh flows,
+sixteen live missing-PKCE rejections, four stopped-app canaries and 256
+report-mutation controls. Their serialized reports received the same independent
+revalidation, with clean checkouts:
+
+| Runtime / transport | Four-case loop seconds | Local sanitized evidence directory |
+| --- | ---: | --- |
+| Windows / sync | 41.47 | `basic-20261118-190744-cc0be7fbe64a` |
+| Windows / mirai | 51.43 | `basic-20261118-190906-4547f4b223c2` |
+| Linux / sync | 23.75 | `basic-20261118-190630-a8966c3c99ad` |
+| Linux / mirai | 29.99 | `basic-20261118-190736-d80b894b307d` |
+
+Windows used R 4.5.1, httr2 1.2.2 and mirai 2.7.1; Linux used R 4.5.0,
+httr2 1.3.0 and mirai 2.7.4 inside Docker Desktop. Both used R openssl 2.6.0
+and chromote 0.5.1, against the pinned Node 24.22.3 / oidc-provider 9.14.0
+runtime. All eight reports record the same fixture input hashes and their
+actual immutable built image IDs. Case-loop timings exclude installation,
+build, stopped-app controls and report-mutation checks; concurrent runs shared
+host resources. Full advanced gates took approximately 205-259 seconds.
+
+The OIDF evidence regression passed **6,682 assertions on each platform**, with
+zero test warnings or skips. The Linux/sync OIDF smoke regression passed all
+three modules, the stopped-app control and cleanup:
+`smoke-20261118-190929-f45cfc12aa58`. Its serialized report was independently
+rechecked and sanitized. Node's six fixture tests, Jarl, R formatting,
+actionlint and patch whitespace checks passed. Only the nine sanitized evidence
+JSON files were copied into the main checkout; keys, client registrations,
+installed libraries and raw logs remain private. No owned test containers
+remain. Hosted CI has not been run for this selection. C14's resource-indicator
+and navigation-retention scenarios remain pending.
 
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
