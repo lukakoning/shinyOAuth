@@ -119,6 +119,8 @@ interop_run_retention <- function(
     "Managed OIDC authorization",
     30
   )
+  # Owner-cookie redirects later reuse this endpoint; keep the login evidence.
+  callback_navigation <- if (form_post) as.list(navigation) else NULL
   callback_cleaned <- identical(
     openid_browser_value(tab, "location.search"),
     ""
@@ -207,7 +209,7 @@ interop_run_retention <- function(
     ),
     owner_cookie = owner_cookie,
     callback_cleaned = callback_cleaned,
-    form_post = if (form_post) as.list(navigation) else NULL,
+    form_post = callback_navigation,
     provider = interop_request(stack, "/fixture/evidence", TRUE),
     browser_version = tab[["Browser"]][["getVersion"]]()[["product"]]
   )
