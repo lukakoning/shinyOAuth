@@ -112,6 +112,7 @@ interop_prepare <- function(root, output) {
     "provider-lock.json",
     "provider.mjs",
     "advanced-provider.mjs",
+    "resource-provider.mjs",
     "test-provider.mjs",
     ".dockerignore"
   )

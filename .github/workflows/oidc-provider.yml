@@ -10,6 +10,7 @@ on:
         options:
           - basic
           - advanced
+          - resources
       transport:
         description: Token and UserInfo transport
         type: choice
@@ -71,6 +72,7 @@ jobs:
           case "$INTEROP_PROFILE" in
             basic) runner=run-tests.R ;;
             advanced) runner=run-advanced.R ;;
+            resources) runner=run-resources.R ;;
             *) exit 1 ;;
           esac
           Rscript "integration/oidc-provider/$runner" --transport "$INTEROP_TRANSPORT"

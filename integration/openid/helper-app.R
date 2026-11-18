@@ -160,6 +160,12 @@ openid_app_start <- function(
           local = TRUE
         )
       }
+      if (!is.null(config[["resource_indicators"]])) {
+        source(
+          file.path(root, "integration/oidc-provider/fixture-resources.R"),
+          local = TRUE
+        )
+      }
       shiny::runApp(
         openid_fixture_app(config),
         host = "127.0.0.1",

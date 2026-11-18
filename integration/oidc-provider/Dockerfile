@@ -2,7 +2,7 @@ FROM node:24.22.3-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b
 WORKDIR /fixture
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund
-COPY provider.mjs advanced-provider.mjs provider-lock.json test-provider.mjs ./
+COPY provider.mjs advanced-provider.mjs resource-provider.mjs provider-lock.json test-provider.mjs ./
 RUN node --test test-provider.mjs
 USER node
 CMD ["node", "provider.mjs"]

@@ -143,6 +143,10 @@ openid_fixture_app <- function(config) {
     discovery_args[["userinfo_signed_jwt_required"]] <- TRUE
     discovery_args[["userinfo_allowed_algs"]] <- "RS256"
   }
+  if (!is.null(config[["resource_indicators"]])) {
+    discovery_args[["userinfo_required"]] <- FALSE
+    discovery_args[["userinfo_id_token_match"]] <- FALSE
+  }
   provider <- tryCatch(
     do.call(discover, discovery_args),
     error = function(error) {
@@ -188,6 +192,7 @@ openid_fixture_app <- function(config) {
       "issuer_mismatch",
       "http_callback_rejected",
       "invalid_request",
+      "invalid_target",
       "access_denied",
       "login_required",
       "interaction_required",
@@ -269,6 +274,7 @@ openid_fixture_app <- function(config) {
         refresh = refresh,
         resource = audit[["resource"]],
         advanced = audit[["advanced"]],
+        resource_checks = audit[["resource_checks"]],
         callback_rejections = observed[["callbacks"]],
         id_token_validated = !is.null(token) &&
           isTRUE(token@id_token_validated),
@@ -384,7 +390,10 @@ openid_fixture_app <- function(config) {
     } else {
       NULL
     },
-    resource_bases = if (!is.null(advanced)) {
+    resource = config[["resource"]],
+    resource_bases = if (!is.null(config[["resource_indicators"]])) {
+      c(api = config[["resource"]])
+    } else if (!is.null(advanced)) {
       c(
         profile = paste0(
           if (identical(advanced[["sender"]], "mtls")) {
@@ -439,7 +448,11 @@ openid_fixture_app <- function(config) {
     shiny::actionButton("login", "Log in"),
     shiny::actionButton("logout", "Log out"),
     shiny::actionButton("refresh", "Refresh"),
-    if (isTRUE(config[["fapi"]]) || !is.null(advanced)) {
+    if (
+      isTRUE(config[["fapi"]]) ||
+        !is.null(advanced) ||
+        !is.null(config[["resource_indicators"]])
+    ) {
       shiny::actionButton("resource", "Read resource")
     },
     if (!is.null(advanced)) {
@@ -447,6 +460,9 @@ openid_fixture_app <- function(config) {
         shiny::actionButton("probes", "Check token binding"),
         shiny::actionButton("lifecycle", "Check token lifecycle")
       )
+    },
+    if (!is.null(config[["resource_indicators"]])) {
+      shiny::actionButton("resource_probes", "Check resource isolation")
     },
     shiny::verbatimTextOutput("snapshot")
   )
@@ -586,6 +602,8 @@ openid_fixture_app <- function(config) {
     )
     extension <- if (!is.null(advanced)) {
       interop_advanced_server(auth, input, client, config)
+    } else if (!is.null(config[["resource_indicators"]])) {
+      interop_resource_server(auth, input, client, config)
     } else {
       NULL
     }
@@ -748,7 +766,11 @@ openid_fixture_app <- function(config) {
     output[["snapshot"]] <- shiny::renderText({
       shiny::invalidateLater(100, session)
       if (!is.null(extension)) {
-        audit[["advanced"]] <- extension()
+        if (!is.null(config[["resource_indicators"]])) {
+          audit[["resource_checks"]] <- extension()
+        } else {
+          audit[["advanced"]] <- extension()
+        }
       }
       snapshot(
         auth[["token"]],

@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "cases": [
+    { "id": "resource-a", "target": "a", "outcome": "authenticated" },
+    { "id": "resource-b", "target": "b", "outcome": "authenticated" },
+    { "id": "unknown-resource", "target": "unknown", "outcome": "authorization_rejected" }
+  ]
+}

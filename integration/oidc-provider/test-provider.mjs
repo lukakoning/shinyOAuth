@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { fixture } from './provider.mjs';
 import { advancedOptions, inspectRS256, peerCertificate } from './advanced-provider.mjs';
 import { generateKeyPairSync, sign } from 'node:crypto';
+import { resourceOptions } from './resource-provider.mjs';
 
 const config = {
   issuer: 'https://localhost:30000', redirect_uri: 'https://localhost:30001/',
@@ -60,4 +61,19 @@ test('advanced registration rejects private client material and retains native J
 
 test('mTLS certificate collection uses the TLS peer rather than a forwarded header', () => {
   assert.equal(peerCertificate({ req: { socket: { getPeerCertificate: () => ({}) } }, get: () => 'FORGED CERTIFICATE' }), undefined);
+});
+
+test('resource configuration resolves exact audiences and rejects unknown indicators natively', () => {
+  const options = resourceOptions({ ...config, resource_indicators: { target: 'a' } });
+  const resolve = options.resourceIndicators.getResourceServerInfo;
+  for (const target of ['a', 'b']) {
+    const uri = `${config.issuer}/resource/${target}`;
+    assert.equal(resolve(null, uri).audience, uri);
+    assert.equal(resolve(null, uri).scope, 'api.read');
+  }
+  for (const uri of [`${config.issuer}/resource/unknown`, `${config.issuer}/resource/a/`]) {
+    assert.throws(() => resolve(null, uri), error => error.error === 'invalid_target');
+  }
+  assert.equal(options.userinfo.enabled, false);
+  assert.throws(() => resourceOptions({ ...config, resource_indicators: { target: 'a' }, advanced: {} }), /Invalid resource/);
 });

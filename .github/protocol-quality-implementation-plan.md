@@ -1281,8 +1281,52 @@ rechecked and sanitized. Node's six fixture tests, Jarl, R formatting,
 actionlint and patch whitespace checks passed. Only the nine sanitized evidence
 JSON files were copied into the main checkout; keys, client registrations,
 installed libraries and raw logs remain private. No owned test containers
-remain. Hosted CI has not been run for this selection. C14's resource-indicator
-and navigation-retention scenarios remain pending.
+remain. Hosted CI has not been run for this selection. The resource-indicator
+follow-up is recorded below; navigation retention remains pending.
+
+C14 resource-indicator implementation (2026-11-18): a separate `resources`
+selection adds native RFC 8707 behavior for two API audiences and a rejected
+unknown resource. It uses confidential Basic authentication, direct query
+authorization and S256. PAR is explicitly disabled for this selection. Chrome
+must observe the exact resource parameter in the outgoing request; native
+authorization, code and refresh events must confirm the same indicator.
+Both APIs must obtain their own audience and the resource-specific `api.read`
+scope through the provider's normal resource-indicator processing. Consent
+uses the public Grant API for resource scopes; no protocol handler is patched.
+
+Each positive case validates its ID token, uses `connection$request()` at the
+selected API, refreshes the same connection and uses the refreshed credential
+at that API. Native introspection confirms the current token's audience and
+scope before and after refresh. The original validated identity must survive
+the native refresh response without a replacement ID token. Native UserInfo
+is disabled because it rejects API-audience tokens. The package's scope policy
+remains enabled; its warning about API access-token scope omitting OIDC/offline
+scopes is expected here. The harness independently requires `api.read` and
+validated ID-token identity.
+
+The resource server is a development fixture on two HTTPS paths sharing the
+provider's origin. It checks opaque-token validity, audience and scope through
+the provider's public AccessToken/Grant model API. It is not an independent
+resource-server product or a JWT access-token verifier. Native provider handlers
+validate indicators and mint audiences. A real token for the other API, absent
+credentials and an invalid token must receive HTTP 401. The public connection
+must also reject an escaped resource base locally, with no extra server request.
+The unknown indicator must produce native `invalid_target` and the matching
+client callback error before code or token issuance.
+
+Each report requires all three browser cases, the stopped-app canary, real
+sync/mirai exchange and refresh, owned-worker cleanup, complete provider events,
+two authenticated resource reads and introspections per positive case, and the
+three denial probes. Serialized reports and altered evidence must also be
+checked; missing or false control results cannot pass. Only sanitized evidence
+JSON is eligible for upload. Manual workflow dispatch now offers `resources`
+alongside `basic` and `advanced`; pull requests keep basic sync.
+
+C14 still retains `oauth_connections_server()` navigation retention. This
+resource selection does not cover other auth methods, callback modes, multiple
+requested resources, JWT access tokens, or indicators combined with JAR/PAR,
+DPoP or mTLS. These limits are recorded with `coverage_complete = false`.
+Validation of the committed implementation will be recorded below.
 
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,

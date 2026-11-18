@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import Provider from 'oidc-provider';
 import { advancedOptions, observeAdvanced, senderFacts } from './advanced-provider.mjs';
+import { resourceOptions, resourceFacts, resourceResponse, observeResource } from './resource-provider.mjs';
 
 const lock = JSON.parse(readFileSync(new URL('./provider-lock.json', import.meta.url)));
 const version = JSON.parse(readFileSync(new URL('./node_modules/oidc-provider/package.json', import.meta.url))).version;
@@ -28,6 +29,8 @@ export function fixture(config) {
   if (config.client_auth_type === 'client_secret_basic') client.client_secret = config.client_secret;
   const features = { devInteractions: { enabled: false }, userinfo: { enabled: true } };
   const advanced = advancedOptions(config);
+  const resources = resourceOptions(config);
+  if (resources) Object.assign(features, resources);
   if (advanced) {
     Object.assign(client, advanced.registration);
     Object.assign(features, advanced.features);
@@ -54,13 +57,14 @@ export function fixture(config) {
   let currentAccess;
   let previousRefresh;
   const state = {};
-  const errors = new Set(['invalid_request', 'invalid_client', 'invalid_grant', 'access_denied', 'invalid_token', 'invalid_dpop_proof', 'invalid_request_object']);
+  const errors = new Set(['invalid_request', 'invalid_client', 'invalid_grant', 'access_denied', 'invalid_token', 'invalid_dpop_proof', 'invalid_request_object', 'invalid_target']);
   for (const type of ['authorization.error', 'grant.error', 'userinfo.error', 'server_error', ...(advanced ? ['pushed_authorization_request.error', 'introspection.error', 'revocation.error'] : [])]) {
     provider.on(type, (ctx, error) => record(type, {
       error: errors.has(error?.error) ? error.error : 'other_error',
       client_matches: ctx.oidc?.params?.client_id === config.client_id || ctx.oidc?.client?.clientId === config.client_id,
       pkce_missing: !ctx.oidc?.params?.code_challenge,
       ...(advanced && type === 'userinfo.error' ? senderFacts(ctx, config, state) : {}),
+      ...(resources ? resourceFacts(ctx, config) : {}),
     }));
   }
   provider.on('authorization.accepted', ctx => {
@@ -72,6 +76,7 @@ export function fixture(config) {
       pkce_s256: params.code_challenge_method === 'S256' && /^[A-Za-z0-9_-]{43}$/.test(challenge),
       state_present: typeof params.state === 'string' && params.state.length >= 22,
       nonce_present: typeof params.nonce === 'string' && params.nonce.length >= 16,
+      ...(resources ? resourceFacts(ctx, config) : {}),
     });
   });
   provider.on('authorization.success', (_ctx, response) => {
@@ -105,6 +110,9 @@ export function fixture(config) {
       refresh_token_present: typeof body.refresh_token === 'string',
       refresh_token_rotated: params.grant_type === 'refresh_token'
         ? params.refresh_token === previousRefresh && body.refresh_token !== previousRefresh : null,
+      ...(resources ? { ...resourceFacts(ctx, config),
+        audience_matches: ctx.oidc.entities.AccessToken?.aud === `${config.issuer}/resource/${config.resource_indicators.target}`,
+        scope_matches: ctx.oidc.entities.AccessToken?.scope === 'api.read' } : {}),
       ...(advanced ? { sender_bound: config.advanced.sender === 'dpop' ? typeof state.dpopJkt === 'string' && state.dpopJkt === state.requestJkt
         : config.advanced.sender === 'mtls' ? typeof state.mtlsThumbprint === 'string' && state.mtlsThumbprint === config.mtls_thumbprint : true } : {}),
     });
@@ -112,6 +120,7 @@ export function fixture(config) {
   });
   provider.use(async (ctx, next) => {
     await next();
+    if (resources) observeResource(ctx, config, state, record);
     if (advanced) observeAdvanced(ctx, config, key, state, record);
     else if (ctx.path === '/userinfo') record('userinfo', {
       status: ctx.status, issued_token_used: issued.has(ctx.get('authorization').replace(/^Bearer /i, '')),
@@ -132,10 +141,12 @@ export function fixture(config) {
       if (req.headers['x-fixture-key'] !== config.control_key) { res.writeHead(403).end(); return; }
       res.setHeader('content-type', 'application/json');
       res.end(JSON.stringify({ run_id: config.run_id, provider_version: version, node_version: process.version,
-        client_auth_type: config.client_auth_type, features: { dev_interactions: false, userinfo: true,
-          pkce_required: true, refresh_rotation: true }, ...(advanced ? { advanced: config.advanced } : {}), events }));
+        client_auth_type: config.client_auth_type, features: { dev_interactions: false, userinfo: !resources,
+          pkce_required: true, refresh_rotation: true }, ...(advanced ? { advanced: config.advanced } : {}),
+        ...(resources ? { resource_indicators: config.resource_indicators } : {}), events }));
       return;
     }
+    if (resources && await resourceResponse(req, res, provider, config, state, record)) return;
     if (/^\/interaction\/[A-Za-z0-9_-]+$/.test(path)) {
       const details = await provider.interactionDetails(req, res);
       const prompt = details.prompt.name;
@@ -155,6 +166,9 @@ export function fixture(config) {
           : new provider.Grant({ accountId: details.session.accountId, clientId: details.params.client_id });
         if (details.prompt.details.missingOIDCScope) grant.addOIDCScope(details.prompt.details.missingOIDCScope.join(' '));
         if (details.prompt.details.missingOIDCClaims) grant.addOIDCClaims(details.prompt.details.missingOIDCClaims);
+        for (const [resource, scopes] of Object.entries(details.prompt.details.missingResourceScopes || {})) {
+          grant.addResourceScope(resource, scopes.join(' '));
+        }
         const grantId = await grant.save();
         await provider.interactionFinished(req, res, { consent: { grantId } }, { mergeWithLastSubmission: true });
       }

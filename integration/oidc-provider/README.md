@@ -14,6 +14,8 @@ Rscript integration/oidc-provider/run-tests.R --transport sync
 Rscript integration/oidc-provider/run-tests.R --transport mirai
 Rscript integration/oidc-provider/run-advanced.R --transport sync
 Rscript integration/oidc-provider/run-advanced.R --transport mirai
+Rscript integration/oidc-provider/run-resources.R --transport sync
+Rscript integration/oidc-provider/run-resources.R --transport mirai
 ```
 
 On Windows, the runner also looks for Git's bundled OpenSSL. Set
@@ -97,13 +99,50 @@ The explicit connection resource request, misuse probes, introspection and
 revocation run in the Shiny main process; reports identify that boundary. Invalid
 JARM is rejected at the HTTP callback boundary before a replacement Shiny session.
 
+The [resource selection](resource-profiles.json) exercises RFC 8707 with two
+API audiences and a rejected unknown resource. It uses confidential Basic
+authentication, direct query requests and S256. Chrome must observe the exact
+resource parameter in the outgoing request; native provider events must observe
+it at authorization, code exchange and refresh. Both API targets must produce
+their own audience and the resource-specific `api.read` scope. PAR is explicitly
+disabled for this selection.
+
+Each positive case validates its ID token, calls the API through
+`connection$request()`, refreshes the original connection and calls the API
+again. Native introspection must confirm the current token's audience and
+scope before and after refresh. The original validated identity must survive
+refresh, including the provider's response without a replacement ID token.
+Native UserInfo is disabled because an API-audience token cannot access it.
+The scope policy stays enabled: the package can warn that the API access-token
+scope omits the original OIDC/offline scopes. The harness requires the native
+API scope and validated ID-token identity separately.
+
+The resource server is a development fixture on two HTTPS paths. It uses the
+provider's public AccessToken/Grant model API to check validity, audience and
+scope; it is not a separate third-party resource-server implementation or a
+JWT access-token verifier. Native provider handlers validate resource indicators
+and issue the audience-bound tokens. A valid token for the other API, missing
+credentials and an invalid token must receive HTTP 401. A connection request
+that escapes its approved resource base must fail locally without an extra
+resource-server request. The unknown resource must yield native `invalid_target`
+and a matching client callback error before code or token issuance.
+
+Resource evidence is `.artifacts/resources-*/evidence.json`. Exchange and refresh
+use the selected sync/mirai transport; API requests, raw misuse controls and
+introspection run in the main Shiny process. The gate checks the complete
+selection, app-stop failure, worker execution, cleanup, serialized reports and
+altered evidence. Other auth methods, callback modes, multiple requested
+resources, JWT access tokens and resource indicators combined with JAR/PAR or
+sender constraints remain outside this selection.
+
 These selections establish scoped interoperability, not OpenID certification,
 FAPI compliance or every advertised provider feature. `coverage_complete` stays
-false. RFC 8707 resource indicators and retained connections across navigation
-remain C14 work. Native UserInfo is the only resource used in this selection.
+false. Retained connections across navigation remain C14 work. Native UserInfo
+is the resource used by the advanced selection; the resource selection uses
+the separate fixture API paths described above.
 Other algorithms, client authentication methods, encryption and combined
 JAR + DPoP + JARM are outside its scope. The
 [independent Python fixture](../conformance/README.md) remains a separate
 protocol oracle. The [workflow](../../.github/workflows/oidc-provider.yml) runs
-basic sync on relevant pull requests and offers basic/advanced with sync/mirai
+basic sync on relevant pull requests and offers basic/advanced/resources with sync/mirai
 through manual dispatch.
