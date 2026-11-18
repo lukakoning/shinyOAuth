@@ -115,6 +115,10 @@ jobs:
             Rscript integration/openid/run-tests.R --profile "$OPENID_PROFILE" --transport "$OPENID_TRANSPORT"
           fi
 
+      - name: Verify identified release source
+        run: |
+          Rscript integration/openid/run-release-source-check.R --revision "$GITHUB_SHA" integration/openid/.artifacts/"$OPENID_PROFILE"-*/evidence.json
+
       - name: Upload sanitized reports
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

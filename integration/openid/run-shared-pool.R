@@ -5,6 +5,7 @@ run_openid_shared_pool <- function() {
   Sys.setenv(CURL_SSL_BACKEND = "openssl")
   for (name in c(
     "environment",
+    "source",
     "suite",
     "evidence",
     "auth",
@@ -31,6 +32,7 @@ run_openid_shared_pool <- function() {
     "promises",
     "later"
   ))
+  checkout_source <- openid_source_identity(".")
   checks <- testthat::test_file(
     "integration/openid/test-evidence.R",
     env = environment(),
@@ -41,6 +43,7 @@ run_openid_shared_pool <- function() {
   if (any(as.data.frame(checks)[["skipped"]])) {
     stop("Shared-pool evidence checks require zero skips")
   }
+  openid_assert_source(".", checkout_source)
   output <- openid_output(".", "shared-pool")
   report <- openid_report_context(
     ".",
@@ -48,6 +51,9 @@ run_openid_shared_pool <- function() {
     "mirai",
     read.dcf("DESCRIPTION")[[1L, "Version"]]
   )
+  if (!identical(report[["checkout_source"]], checkout_source)) {
+    stop("Checkout source changed during regression checks")
+  }
   on.exit(
     jsonlite::write_json(
       report,
@@ -60,7 +66,11 @@ run_openid_shared_pool <- function() {
   )
   context <- report
   manifest <- openid_profiles()
-  library <- openid_install(".", output)
+  library <- openid_install(".", output, context[["checkout_source"]])
+  context[["installation"]] <- report[["installation"]] <- openid_installation(
+    library,
+    context[["checkout_source"]]
+  )
   stack <- openid_start(".", output)
   context[["images"]] <- report[["images"]] <- stack[["lock"]][["images"]]
   context[["image_sources"]] <- report[["image_sources"]] <- stack[[
@@ -173,8 +183,24 @@ run_openid_shared_pool <- function() {
   openid_stop_app(transport)
   openid_stop(stack)
   report[["cleanup_verified"]] <- TRUE
+  report[["checkout_source_after"]] <- openid_assert_source(
+    ".",
+    context[["checkout_source"]]
+  )
+  report[["source_verified"]] <- TRUE
+  report[["installation_after"]] <- openid_installation(
+    library,
+    context[["checkout_source"]]
+  )
   for (i in seq_along(profiles)) {
     selection <- report[["selections"]][[i]]
+    for (name in c(
+      "checkout_source_after",
+      "source_verified",
+      "installation_after"
+    )) {
+      selection[[name]] <- report[[name]]
+    }
     selection[["cleanup_verified"]] <- TRUE
     selection[["results"]] <- lapply(selection[["results"]], function(row) {
       row[["worker_cleanup_verified"]] <- TRUE

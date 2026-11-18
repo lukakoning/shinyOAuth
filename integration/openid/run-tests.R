@@ -42,6 +42,7 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
   }
   Sys.setenv(CURL_SSL_BACKEND = "openssl")
   source("integration/openid/helper-environment.R", local = TRUE)
+  source("integration/openid/helper-source.R", local = TRUE)
   source("integration/openid/helper-suite.R", local = TRUE)
   source("integration/openid/helper-evidence.R", local = TRUE)
   source("integration/openid/helper-auth.R", local = TRUE)
@@ -64,12 +65,17 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
   profile <- if (api_mode) "api" else options[["--profile"]]
   output <- openid_output(".", profile)
   report <- list(
-    schema_version = 3L,
+    schema_version = 4L,
     status = "failed",
     application_flow = "not_attempted",
     gate_passed = FALSE,
     coverage_complete = FALSE
   )
+  source <- openid_source_identity(".")
+  report[["checkout_source"]] <- source
+  report[["checkout_revision"]] <- source[["revision"]]
+  report[["checkout_dirty"]] <- source[["dirty"]]
+  report[["source_verified"]] <- FALSE
   on.exit(
     jsonlite::write_json(
       report,
@@ -92,6 +98,7 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
   }
   manifest <- openid_profiles()
   if (!api_mode) {
+    openid_assert_source(".", source)
     openid_require(c("shiny", "callr", "chromote"))
     if (!identical(options[["--transport"]], "sync")) {
       openid_require(c(options[["--transport"]], "promises", "later"))
@@ -102,8 +109,14 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
       options[["--transport"]],
       read.dcf("DESCRIPTION")[[1L, "Version"]]
     )
+    if (!identical(report[["checkout_source"]], source)) {
+      stop("Checkout source changed during regression checks")
+    }
     context <- report
-    library <- openid_install(".", output)
+    library <- openid_install(".", output, context[["checkout_source"]])
+    context[["installation"]] <- report[[
+      "installation"
+    ]] <- openid_installation(library, context[["checkout_source"]])
     stack <- openid_start(".", output)
     transport <- openid_app_transport(".", stack, httpuv::randomPort())
     context[["provider_origin"]] <- report[["provider_origin"]] <- stack[[
@@ -205,6 +218,15 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
     openid_stop_app(transport)
     openid_stop(stack)
     report[["cleanup_verified"]] <- TRUE
+    report[["checkout_source_after"]] <- openid_assert_source(
+      ".",
+      context[["checkout_source"]]
+    )
+    report[["source_verified"]] <- TRUE
+    report[["installation_after"]] <- openid_installation(
+      library,
+      context[["checkout_source"]]
+    )
     check <- openid_check_report(report, context, manifest)
     report[names(check)] <- check
     if (!isTRUE(check[["gate_passed"]])) {
@@ -245,6 +267,8 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
     "INTERRUPTED"
   ))
   openid_stop(stack)
+  report[["checkout_source_after"]] <- openid_assert_source(".", source)
+  report[["source_verified"]] <- TRUE
   report[["source_revision"]] <- manifest[["source_revision"]]
   report[["api_checks"]] <- list(
     plan_created = TRUE,

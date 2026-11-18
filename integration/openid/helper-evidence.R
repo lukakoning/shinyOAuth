@@ -631,10 +631,16 @@ openid_check_provenance <- function(report, context, lock) {
 openid_check_report <- function(report, context, manifest) {
   tryCatch(
     {
-      if (!identical(report[["schema_version"]], 3L)) {
+      if (
+        !report[["schema_version"]] %in% c(3L, 4L) ||
+          !identical(report[["schema_version"]], context[["schema_version"]])
+      ) {
         stop("Unsupported evidence schema")
       }
       openid_check_provenance(report, context, manifest[["suite_lock"]])
+      if (identical(report[["schema_version"]], 4L)) {
+        openid_check_source(report, context)
+      }
       for (name in c(
         "run_id",
         "attempt_id",
@@ -972,9 +978,7 @@ openid_check_report <- function(report, context, manifest) {
 
 openid_report_context <- function(root, profile, transport, package_version) {
   lock <- openid_lock(root)
-  git <- function(args) {
-    trimws(processx::run("git", args, wd = root)[["stdout"]])
-  }
+  source <- openid_source_identity(root)
   random <- function() paste(format(openssl::rand_bytes(12)), collapse = "")
   dependencies <- c(
     "httr2",
@@ -987,12 +991,14 @@ openid_report_context <- function(root, profile, transport, package_version) {
     if (!identical(transport, "sync")) c(transport, "promises", "later")
   )
   list(
-    schema_version = 3L,
+    schema_version = 4L,
     status = "failed",
     run_id = random(),
     attempt_id = random(),
-    checkout_revision = git(c("rev-parse", "HEAD")),
-    checkout_dirty = nzchar(git(c("status", "--porcelain"))),
+    checkout_revision = source[["revision"]],
+    checkout_dirty = source[["dirty"]],
+    checkout_source = source,
+    source_verified = FALSE,
     source_revision = lock[["source_revision"]],
     images = lock[["images"]],
     profile = profile,

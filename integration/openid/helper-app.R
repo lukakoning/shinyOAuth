@@ -1,4 +1,9 @@
-openid_install <- function(root, output) {
+openid_install <- function(root, output, source = NULL) {
+  input <- if (is.null(source)) {
+    normalizePath(root, winslash = "/")
+  } else {
+    openid_source_archive(root, output, source)
+  }
   library <- file.path(output, "library")
   dir.create(library)
   executable <- file.path(
@@ -11,7 +16,7 @@ openid_install <- function(root, output) {
       "CMD",
       "INSTALL",
       paste0("--library=", library),
-      normalizePath(root, winslash = "/")
+      input
     ),
     stdout = file.path(output, "install.log"),
     stderr = file.path(output, "install.stderr"),
@@ -20,6 +25,30 @@ openid_install <- function(root, output) {
   )
   if (result[["status"]] != 0L) {
     stop("Checkout installation failed; inspect the private install log")
+  }
+  if (!is.null(source)) {
+    openid_assert_source(root, source)
+    package <- file.path(library, "shinyOAuth")
+    files <- openid_installed_files(package)
+    record <- list(
+      revision = source[["revision"]],
+      tree = source[["tree"]],
+      source_fingerprint = source[["fingerprint"]],
+      method = if (source[["dirty"]]) "working_tree_build" else "git_archive",
+      archive_sha256 = openid_file_hash(input),
+      package_version = read.dcf(file.path(package, "DESCRIPTION"))[[
+        1L,
+        "Version"
+      ]],
+      files = files,
+      fingerprint = openid_hash_manifest(files)
+    )
+    jsonlite::write_json(
+      record,
+      file.path(package, "Meta/openid-source.json"),
+      auto_unbox = TRUE,
+      pretty = TRUE
+    )
   }
   normalizePath(library, winslash = "/")
 }

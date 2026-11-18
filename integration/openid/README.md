@@ -570,8 +570,8 @@ The workflow needs no external
 account or provider credentials and uploads only explicit sanitized report paths.
 
 The [profile manifest](profiles.json) freezes each plan's variants and module
-selections. The manifest remains schema 2; client evidence is now schema 3,
-which requires worker/transport and process-cleanup evidence. Prior reports
+selections. The manifest remains schema 2; client evidence is now schema 4,
+which adds source and installation identity to worker/transport and cleanup evidence. Prior reports
 retain their original version. The evidence validator binds each result to its
 run, attempt, checkout, source revision, plan, instance and variants, then
 requires both a completed allowed suite verdict and the expected app outcome.
@@ -583,9 +583,10 @@ selections carry these fields individually. Missing or substituted metadata
 fails the gate, including in serialized reports. Load the manifest through
 `openid_profiles()` so it includes the independently read lock, and use a trusted
 run context when rechecking evidence; a report cannot establish its own origin.
-Dirty development runs remain allowed. These checks do not identify their
-uncommitted source bytes or qualify a final release matrix; source identity and
-release aggregation remain pending under SA02 and SA08.
+The [source identity checks](source-identity.md) record the checkout and actual
+installation input, verify both remain unchanged during execution, and require
+clean committed input for release evidence. Dirty development runs remain
+allowed for scenario checks. Complete release aggregation remains SA08 work.
 Older shared-pool reports without per-selection provenance remain historical
 records and require a new run to pass the current validator.
 Missing results, app failures, unrecognized suite warnings, unexpected skips and timeouts fail.

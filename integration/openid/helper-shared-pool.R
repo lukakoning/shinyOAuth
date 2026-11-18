@@ -329,6 +329,9 @@ openid_check_shared_report <- function(report, context, manifest) {
   tryCatch(
     {
       openid_check_provenance(report, context, manifest[["suite_lock"]])
+      if (identical(report[["schema_version"]], 4L)) {
+        openid_check_source(report, context)
+      }
       for (name in c(
         "schema_version",
         "run_id",

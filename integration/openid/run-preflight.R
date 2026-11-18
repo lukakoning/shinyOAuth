@@ -4,6 +4,7 @@ run_openid_preflight <- function(args = commandArgs(trailingOnly = TRUE)) {
   }
   Sys.setenv(CURL_SSL_BACKEND = "openssl")
   source("integration/openid/helper-environment.R", local = TRUE)
+  source("integration/openid/helper-source.R", local = TRUE)
   openid_require(c(
     "httr2",
     "jsonlite",
@@ -16,10 +17,15 @@ run_openid_preflight <- function(args = commandArgs(trailingOnly = TRUE)) {
   ))
   output <- openid_output(".", "preflight")
   evidence <- list(
-    schema_version = 1L,
+    schema_version = 2L,
     status = "failed",
     application_flow = "not_attempted"
   )
+  source <- openid_source_identity(".")
+  evidence[["checkout_source"]] <- source
+  evidence[["checkout_revision"]] <- source[["revision"]]
+  evidence[["checkout_dirty"]] <- source[["dirty"]]
+  evidence[["source_verified"]] <- FALSE
   # A pass is set only after the explicit cleanup has succeeded.
   on.exit(
     jsonlite::write_json(
@@ -61,6 +67,8 @@ run_openid_preflight <- function(args = commandArgs(trailingOnly = TRUE)) {
   evidence[["coverage_complete"]] <- FALSE
   # Cleanup is explicit on success; the deferred cleanup remains an idempotent fallback.
   openid_stop(stack)
+  evidence[["checkout_source_after"]] <- openid_assert_source(".", source)
+  evidence[["source_verified"]] <- TRUE
   evidence[["cleanup_verified"]] <- TRUE
   evidence[["status"]] <- "passed"
   cat("OpenID preflight passed; no client conformance flow attempted.\n")
