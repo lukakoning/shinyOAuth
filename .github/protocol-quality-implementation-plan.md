@@ -1719,6 +1719,55 @@ and the deployment limits above. Follow the steering handoff next: SA01-SA02
 take priority before further feature expansion. SA01-SA08 remain pending;
 release-source aggregation and durable release evidence are still future work.
 
+SA02 first implementation and validation (2026-11-18), source
+`daae0a1649a6d69cd117a62a1054c307bfd6b5ed`: the report validator now checks all
+three image references against the independently loaded suite lock and the
+expected run context. Missing images, substituted references and absent or
+invalid acquisition entries fail. The `cached`/`pulled` acquisition entries and
+Boolean `checkout_dirty` must equal their original context values. Changing the
+report and context image references together still fails against the lock.
+Shared-pool runners record this metadata before constructing the four client
+selections; both the parent and each selection are checked. Historical shared
+reports that lack per-selection provenance require a new run for this validator.
+
+All **6,808 evidence assertions passed on each platform**, including 126 new
+provenance assertions, with zero test failures, warnings or skips. The existing
+Windows R startup locale warnings remain. The original retained Message Signing
+report from SA02 still passes unchanged; each of the review's three individual
+mutations now returns both `gate_passed = false` and `coverage_complete = false`.
+The two live checks below also passed and their serialized reports were
+independently revalidated with the known source revision, clean flag, locked
+images and observed cached acquisition mode. Missing and substituted metadata
+were rejected again, including inside all four shared-pool selections.
+
+| Selection / runtime / transport | Normal cases | Case-loop seconds | Local sanitized evidence directory |
+| --- | ---: | ---: | --- |
+| Smoke / Windows / sync | 3 | 37.85 | `smoke-20261118-215640-ca571d49244e` |
+| Shared pool / Linux / mirai | 8 | 47.29 | `shared-pool-20261118-205810-694254d0fbdd` |
+
+Both reports identify the same clean source above, pass the real app-failure
+control and verify cleanup. Each complete command took approximately 206 seconds,
+including regression tests, installation and startup; concurrent jobs shared
+host resources. Both retain `coverage_complete = false`. Jarl, formatting and
+patch whitespace checks passed, and no owned test containers remain. These are
+local development checks; hosted CI was not run for this change. SA02 remains
+partial: uncommitted source-content identity, its link to the installed package
+and release-source enforcement remain pending. Dirty development runs remain
+allowed when their metadata matches the expected context.
+
+SA01 candidate investigation (2026-11-18): the old server digest still returns
+HTTP 404 after successful anonymous registry authentication. The official
+`release-v5.3.4` multi-platform index is available at
+`sha256:dcc4bd1fb7e9c00f048a67373fe2bec5ecf9feb45a6b5d55e237e5c30e5312c6`.
+It was pulled explicitly by digest, then checked through Docker `RepoDigests`
+and the jar's embedded `git.properties`. The jar identifies clean source
+`23353b36957d6466010de767c812d2c91ed37638` with description `release-v5.3.4`,
+matching the official source tag. No replacement suite or client flow was run.
+The committed lock remains unchanged. Next, compare the candidate's complete
+plan/module/variant lists and relevant source changes before an explicit lock
+update; fresh GitHub acquisition, preflight, API, browser smoke and larger-job
+timings remain SA01 acceptance work.
+
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second

@@ -580,6 +580,8 @@ run context when rechecking evidence; a report cannot establish its own origin.
 Dirty development runs remain allowed. These checks do not identify their
 uncommitted source bytes or qualify a final release matrix; source identity and
 release aggregation remain pending under SA02 and SA08.
+Older shared-pool reports without per-selection provenance remain historical
+records and require a new run to pass the current validator.
 Missing results, app failures, unrecognized suite warnings, unexpected skips and timeouts fail.
 The evidence regression checks also require zero warnings and skips.
 A passing smoke selection keeps `coverage_complete = false`; a passing Basic
