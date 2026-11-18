@@ -16,6 +16,8 @@ Rscript integration/oidc-provider/run-advanced.R --transport sync
 Rscript integration/oidc-provider/run-advanced.R --transport mirai
 Rscript integration/oidc-provider/run-resources.R --transport sync
 Rscript integration/oidc-provider/run-resources.R --transport mirai
+Rscript integration/oidc-provider/run-retention.R --transport sync
+Rscript integration/oidc-provider/run-retention.R --transport mirai
 ```
 
 On Windows, the runner also looks for Git's bundled OpenSSL. Set
@@ -136,14 +138,44 @@ altered evidence. Other auth methods, callback modes, multiple requested
 resources, JWT access tokens and resource indicators combined with JAR/PAR or
 sender constraints remain outside this selection.
 
+The [retention selection](retention-profiles.json) uses
+`oauth_connections_server()` with browser retention for query and Form Post
+callbacks. A single manager and encrypted memory store live outside the Shiny
+server function. Each case completes one native OIDC login, then navigates to
+a second page and back through full document loads. The new Shiny sessions must
+restore the same connection ID and validated identity in the same R process.
+Each session obtains its own connection reference. Four public connection
+requests must succeed, including before/after refresh and after both navigations.
+The public `identity()` API supplies verified ID-token/UserInfo comparisons;
+reports retain identity digests, not claim values.
+
+A separate Chrome profile must start empty and receive the package's typed
+unavailable-connection error when given the first browser's ID. Local logout
+uses `revoke = FALSE`: it must make the old R reference unusable and block raw
+token export. A full reload must establish an empty owner that cannot recover
+the old connection ID. These checks establish local retirement; upstream
+revocation is covered by the separate advanced selection. Cookie evidence
+requires one Secure, HttpOnly, SameSite=Lax owner cookie at `/`, hidden from
+JavaScript, and excludes its value.
+
+The retention report is `.artifacts/retention-*/evidence.json`. It requires
+actual session changes, identity/ID continuity, exact provider events, native
+PKCE/code/client-authentication checks, refresh rotation, worker execution and
+cleanup. Form Post uses a real Chrome POST and the HTTP 303 bridge. Exchange,
+refresh and validated UserInfo use the selected sync/mirai transport; explicit
+resource reads and owner/store operations run in the main process. Provider
+and app use HTTPS localhost on different ports. Cross-site cookie deployments,
+account retention, owner expiry, multiple clients and process restarts are
+outside this selection; the existing synthetic retention tests remain separate.
+
 These selections establish scoped interoperability, not OpenID certification,
 FAPI compliance or every advertised provider feature. `coverage_complete` stays
-false. Retained connections across navigation remain C14 work. Native UserInfo
-is the resource used by the advanced selection; the resource selection uses
+false. The selected C13-C14 scenarios are implemented. Native UserInfo
+is the resource used by the advanced/retention selections; the resource selection uses
 the separate fixture API paths described above.
 Other algorithms, client authentication methods, encryption and combined
 JAR + DPoP + JARM are outside its scope. The
 [independent Python fixture](../conformance/README.md) remains a separate
 protocol oracle. The [workflow](../../.github/workflows/oidc-provider.yml) runs
-basic sync on relevant pull requests and offers basic/advanced/resources with sync/mirai
+basic sync on relevant pull requests and offers basic/advanced/resources/retention with sync/mirai
 through manual dispatch.

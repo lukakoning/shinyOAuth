@@ -166,8 +166,17 @@ openid_app_start <- function(
           local = TRUE
         )
       }
+      fixture_app <- if (isTRUE(config[["retention"]])) {
+        source(
+          file.path(root, "integration/oidc-provider/fixture-retention.R"),
+          local = TRUE
+        )
+        interop_retention_app(config)
+      } else {
+        openid_fixture_app(config)
+      }
       shiny::runApp(
-        openid_fixture_app(config),
+        fixture_app,
         host = "127.0.0.1",
         port = port,
         launch.browser = FALSE,

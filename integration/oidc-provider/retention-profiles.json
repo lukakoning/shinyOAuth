@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "cases": [
+    { "id": "retained-query", "response_mode": "query" },
+    { "id": "retained-form-post", "response_mode": "form_post" }
+  ]
+}

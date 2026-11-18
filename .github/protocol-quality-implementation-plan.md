@@ -1380,8 +1380,50 @@ assertions**, with zero test warnings or skips. All seven Node fixture tests,
 Jarl, formatting, actionlint and patch whitespace checks passed. No owned test
 containers remain. Only sanitized evidence JSON is eligible for workflow upload;
 temporary keys, registrations, libraries and raw logs remain ignored locally.
-Hosted CI has not been run for this new selection. C14 navigation retention
-remains the next implementation step.
+Hosted CI has not been run for this new selection. Navigation retention is
+implemented in the follow-up below.
+
+C14 browser-retention implementation (2026-11-18): the `retention` selection
+adds query and Form Post cases using `oauth_connections_server()` against the
+unmodified pinned provider. A browser owner, one client and the encrypted memory
+store persist outside the Shiny server function. After native OIDC login the
+browser loads a second page and returns through full document navigation. New
+Shiny sessions must restore the same connection ID and validated identity in
+the same R process; each session obtains a new connection reference. Four
+public resource requests use native UserInfo, including before/after refresh
+and after both navigations. The public `identity()` API verifies ID-token and
+UserInfo continuity, with only a salted identity digest retained in reports.
+
+Each case also opens a separate Chrome profile. That browser must have no saved
+connection and must receive the typed unavailable-connection error when probing
+the other owner's ID. Local logout (`revoke = FALSE`, `reload = FALSE`) must
+make the old R reference unusable and block token export. After a full reload,
+the new empty owner must also reject the old ID. The test makes no remote
+revocation claim for this action; advanced interoperability covers revocation
+separately. Cookie evidence requires one Secure, HttpOnly, SameSite=Lax owner
+cookie at the root path, unavailable to JavaScript, without retaining its value.
+
+Evidence requires exact native events: the missing-PKCE rejection, one code
+exchange, one refresh and six successful current-token UserInfo calls. This
+prevents a new authorization from substituting for restoration. It also checks
+the complete snapshot sequence, new session counters, stable app/process/ID,
+identity comparisons, live denial outcomes and explicit cleanup. Every report
+has a stopped-managed-app canary, altered-evidence checks and serialized report
+validation, including rejection of missing or false control results. Form Post
+uses the real POST and HTTP 303 bridge.
+
+The selected sync/mirai transport handles exchange, refresh and validated
+UserInfo. Explicit resource reads, owner checks and memory-store updates stay
+in the main process. Both origins use HTTPS localhost on different ports;
+cross-site cookie deployments, account owners, expiry, multiple clients,
+sender-bound grants and process restarts remain outside this selection.
+The existing synthetic retention fixtures continue to cover their own scope.
+Manual dispatch now offers `retention`, uploading only sanitized evidence JSON.
+
+This implements C14's final planned scenario; committed-source validation is
+recorded below. The declared C13-C14 selections remain scoped interoperability
+evidence with `coverage_complete = false`. C06 warm-cache, C09 public-client
+suite capability and C15 rejection-gap review remain separate work.
 
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
@@ -1785,6 +1827,8 @@ Rscript integration/oidc-provider/run-advanced.R --transport sync
 Rscript integration/oidc-provider/run-advanced.R --transport mirai
 Rscript integration/oidc-provider/run-resources.R --transport sync
 Rscript integration/oidc-provider/run-resources.R --transport mirai
+Rscript integration/oidc-provider/run-retention.R --transport sync
+Rscript integration/oidc-provider/run-retention.R --transport mirai
 ```
 
 `core` expands to Basic, Configuration, Form Post Basic and refresh; report

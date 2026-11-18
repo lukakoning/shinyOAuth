@@ -11,6 +11,7 @@ on:
           - basic
           - advanced
           - resources
+          - retention
       transport:
         description: Token and UserInfo transport
         type: choice
@@ -73,6 +74,7 @@ jobs:
             basic) runner=run-tests.R ;;
             advanced) runner=run-advanced.R ;;
             resources) runner=run-resources.R ;;
+            retention) runner=run-retention.R ;;
             *) exit 1 ;;
           esac
           Rscript "integration/oidc-provider/$runner" --transport "$INTEROP_TRANSPORT"
