@@ -36,12 +36,12 @@ start pending.
 **Implementation status (2026-11-18).** SA02’s image, acquisition and
 dirty-flag revalidation checks are implemented in the follow-up
 execution record below. SA02 now implements source snapshots, archived
-installation input and a clean release-source check; validation is in
-progress. SA01 now pins the available official `release-v5.3.4` server
-and proxy images after source/digest and live plan comparison. SA01 is
-complete: fresh hosted smoke, Basic and Message Signing passed with
-verified acquisition reports and recorded timings. SA03-SA08 remain
-pending. See the [release
+installation input and a clean release-source check; local and hosted
+acceptance is complete. SA01 now pins the available official
+`release-v5.3.4` server and proxy images after source/digest and live
+plan comparison. SA01 is complete: fresh hosted smoke, Basic and Message
+Signing passed with verified acquisition reports and recorded timings.
+SA03-SA08 remain pending. See the [release
 review](https://lukakoning.github.io/integration/openid/release-review.md).
 
 **SA01 (high): Restore fresh-machine reproducibility; move this part of
@@ -2044,6 +2044,43 @@ matrix and durable evidence work. SA02 source identity is next;
 SA03-SA08 retain their existing status. Only sanitized evidence JSON is
 eligible for upload; raw diagnostics and test credentials remain ignored
 locally.
+
+SA02 source/installation acceptance (2026-11-18), source
+`8d2ec4d90e9645f546f2186f9bb6f0acd3fa2b6f`: schema-4 client reports now
+bind source snapshots, exact installation archives and installed-file
+hashes to the run. Clean installs use a canonical Git archive of the
+selected commit; dirty development installs retain their private built
+input and remain ineligible for release evidence. The release-source CLI
+independently regenerates the expected commit archive and rejects dirty,
+old-schema, mixed or incomplete source proof. The workflow runs it
+against `GITHUB_SHA`. Preflight/API reports now record before/after
+checkout identity too. See [source
+identity](https://lukakoning.github.io/integration/openid/source-identity.md).
+
+All 6,938 evidence assertions passed on Windows and Linux, including 130
+new source checks. Windows smoke and Linux/mirai shared-pool scenarios
+passed with the same archive hash and clean source. Saved installations
+and serialized reports were independently rechecked; missing/altered
+records and mixed revisions were rejected. Earlier schema-3 reports
+still pass historical scenario checks and fail the new release-source
+check. An initial cross-Git configuration failure exposed CRLF/LF
+archive differences; the accepted producer forces LF. The earlier
+development records retain their original fields and are described in
+the source identity record.
+
+Hosted [run
+44412596895](https://github.com/lukakoning/shinyOAuth/actions/runs/44412596895)
+passed preflight, all 15 API inventories, browser smoke and the new
+source gate at that exact clean commit. All three source snapshots
+match; its installation archive hash matches Windows and Linux. The
+downloaded ZIP matched GitHub’s artifact digest, and its source proof
+passed independent Windows revalidation. The hosted job took 397
+seconds, including a 20.91-second browser case loop. An independent
+agent review found no actionable SA02 defects. SA02 acceptance is
+complete for the OIDF harness. SA08 retains full matrix completeness,
+other integration layers and durable release evidence. SA04 requirement
+mapping and SA06’s Keycloak warm-cache follow-up are being implemented
+separately.
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
