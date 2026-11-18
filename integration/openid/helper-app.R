@@ -154,6 +154,12 @@ openid_app_start <- function(
         stop("Fixture selected the wrong async backend")
       }
       source(file.path(root, "integration/openid/fixture-app.R"), local = TRUE)
+      if (!is.null(config[["advanced"]])) {
+        source(
+          file.path(root, "integration/oidc-provider/fixture-advanced.R"),
+          local = TRUE
+        )
+      }
       shiny::runApp(
         openid_fixture_app(config),
         host = "127.0.0.1",

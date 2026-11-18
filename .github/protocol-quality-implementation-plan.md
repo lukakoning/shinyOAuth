@@ -1182,9 +1182,54 @@ R formatting and actionlint passed. Only sanitized evidence JSON was retained
 in the main checkout; keys, registrations, libraries and raw logs remain private.
 No owned test containers remain. Hosted CI has not been run for this new gate.
 
-C13's selected baseline is implemented. C14 is next; its advanced combinations
-remain untested against this provider. C06 warm-cache, C09 public-client suite
-capability and C15 rejection/query-cleanup work remain separate.
+C14 first selection (2026-11-18): the advanced runner adds six explicit
+confidential Basic-auth cases: JAR + DPoP, JAR + mTLS token binding and
+JAR + signed JARM, each directly and through PAR. Request Objects, ID tokens,
+JARM and signed UserInfo use RS256; DPoP uses ES256. Each positive case must
+finish browser login, refresh, validated UserInfo, a real public connection
+request at native UserInfo, introspection and access-token revocation. The
+revoked credential must become inactive and receive HTTP 401 at UserInfo.
+
+The published provider package and its native claim/signature validation remain
+unmodified. Public configuration enables the selected features and mTLS
+discovery aliases. Independent observers verify actual Request Object and
+response signatures, selected claims, PAR-only browser parameters, grant sender
+binding and use of the current credential. Client private keys are excluded
+from the provider configuration and mounted directories. The shared Shiny
+fixture enables these modes without changing package production code.
+
+DPoP probes require native HTTP 401 for Bearer fallback, a different proof key
+and replay, with HTTP 200 for the first use of the same proof. mTLS probes
+require 401 for a missing certificate, a different certificate with the same
+subject, and that wrong certificate carrying a forged certificate header.
+Binding evidence comes from the actual TLS peer, not the header. Two further
+browser cases tamper with real JARM signatures and require HTTP 400 before any
+token or UserInfo exchange. Each report includes the app-stop canary, mutated
+evidence controls and serialized report validation.
+
+The mTLS listener is separate from the normal browser listener; normal
+discovery configuration supplies token, UserInfo, introspection, revocation and
+PAR aliases. This selection tests certificate binding with Basic authentication
+and temporary self-signed peers, not PKI client authentication. Opaque mTLS
+tokens do not require a locally observed cnf claim; provider binding and live
+denial evidence are required. Refresh evidence requires sender-constrained
+credentials to remain blocked from raw export while the connection stays usable.
+
+The advanced selection is available by manual workflow dispatch with sync or
+mirai; pull requests retain the four-case basic sync gate. Only sanitized
+JSON is uploaded. The new README records the commands and scope. Token
+exchange, refresh and validated UserInfo use the selected transport. Explicit
+resource/probe/introspection/revocation actions run in the Shiny main process,
+and JARM rejection occurs at the pre-session HTTP boundary.
+
+C14 remains partial. RFC 8707 resource indicators and
+oauth_connections_server() retention across navigation are next. This first
+selection uses native UserInfo as its resource; it does not establish separate
+resource-server audience enforcement, encryption, other algorithms/auth methods
+or JAR + DPoP + JARM together. C06 warm-cache, C09 public-client suite capability
+and C15 rejection/query-cleanup work remain separate. Full committed-source
+validation will be recorded below.
+
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second
@@ -1581,10 +1626,10 @@ Rscript integration/openid/run-tests.R --profile fapi-mtls --transport sync
 Rscript integration/openid/run-tests.R --profile fapi-mtls --transport mirai
 Rscript integration/openid/run-tests.R --profile fapi-signing --transport sync
 Rscript integration/openid/run-tests.R --profile fapi-signing --transport mirai
-Rscript integration/oidc-provider/run-tests.R --profile core --transport sync
-Rscript integration/oidc-provider/run-tests.R --profile core --transport mirai
-Rscript integration/oidc-provider/run-tests.R --profile advanced --transport sync
-Rscript integration/oidc-provider/run-tests.R --profile advanced --transport mirai
+Rscript integration/oidc-provider/run-tests.R --transport sync
+Rscript integration/oidc-provider/run-tests.R --transport mirai
+Rscript integration/oidc-provider/run-advanced.R --transport sync
+Rscript integration/oidc-provider/run-advanced.R --transport mirai
 ```
 
 `core` expands to Basic, Configuration, Form Post Basic and refresh; report

@@ -24,6 +24,11 @@ openid_fixture_jarm_error <- function(content) {
 }
 
 openid_fixture_app <- function(config) {
+  advanced <- config[["advanced"]]
+  use_jar <- isTRUE(config[["message_signing"]]) || !is.null(advanced)
+  use_dpop <- identical(advanced[["sender"]], "dpop") ||
+    (isTRUE(config[["fapi"]]) &&
+      !identical(config[["sender_constraint"]], "mtls"))
   required <- c(
     "issuer",
     "origin",
@@ -110,15 +115,14 @@ openid_fixture_app <- function(config) {
   discovery_args <- list(
     issuer = config[["issuer"]],
     token_auth_style = style,
-    allowed_token_types = if (
-      isTRUE(config[["fapi"]]) &&
-        !identical(config[["sender_constraint"]], "mtls")
-    ) {
+    allowed_token_types = if (use_dpop) {
       "DPoP"
     } else {
       "Bearer"
     },
-    authorization_request_front_channel_mode = if (isTRUE(config[["fapi"]])) {
+    authorization_request_front_channel_mode = if (
+      isTRUE(config[["fapi"]]) || isTRUE(advanced[["par"]])
+    ) {
       "minimal"
     } else {
       "compat"
@@ -134,6 +138,10 @@ openid_fixture_app <- function(config) {
   }
   if (!is.null(config[["extra_auth_params"]])) {
     discovery_args[["extra_auth_params"]] <- config[["extra_auth_params"]]
+  }
+  if (!is.null(advanced)) {
+    discovery_args[["userinfo_signed_jwt_required"]] <- TRUE
+    discovery_args[["userinfo_allowed_algs"]] <- "RS256"
   }
   provider <- tryCatch(
     do.call(discover, discovery_args),
@@ -194,7 +202,9 @@ openid_fixture_app <- function(config) {
         mtls_configured = !is.null(provider) &&
           identical(config[["sender_constraint"]], "mtls") &&
           identical(provider@token_auth_style, style) &&
-          style %in% c("private_key_jwt", "tls_client_auth") &&
+          (style %in%
+            c("private_key_jwt", "tls_client_auth") ||
+            (!is.null(advanced) && identical(style, "header"))) &&
           provider@mtls_client_certificate_bound_access_tokens &&
           client@mtls_certificate_bound_access_tokens &&
           !client@mtls_require_observed_cnf &&
@@ -258,6 +268,7 @@ openid_fixture_app <- function(config) {
           nzchar(token@refresh_token),
         refresh = refresh,
         resource = audit[["resource"]],
+        advanced = audit[["advanced"]],
         callback_rejections = observed[["callbacks"]],
         id_token_validated = !is.null(token) &&
           isTRUE(token@id_token_validated),
@@ -317,22 +328,26 @@ openid_fixture_app <- function(config) {
       "client_assertion_private_key_kid"
     ]],
     client_assertion_alg = config[["client_assertion_alg"]],
-    request_object_mode = if (isTRUE(config[["message_signing"]])) {
+    request_object_mode = if (use_jar) {
       "request"
     } else {
       "parameters"
     },
-    request_object_signing_alg = if (isTRUE(config[["message_signing"]])) {
+    request_object_signing_alg = if (!is.null(advanced)) {
+      "RS256"
+    } else if (isTRUE(config[["message_signing"]])) {
       "ES256"
     } else {
       NULL
     },
-    jarm_signed_response_alg = if (isTRUE(config[["message_signing"]])) {
+    jarm_signed_response_alg = if (isTRUE(advanced[["jarm"]])) {
+      "RS256"
+    } else if (isTRUE(config[["message_signing"]])) {
       "ES256"
     } else {
       NULL
     },
-    request_object_nbf_skew = if (isTRUE(config[["message_signing"]])) {
+    request_object_nbf_skew = if (use_jar) {
       0
     } else {
       NULL
@@ -359,23 +374,28 @@ openid_fixture_app <- function(config) {
       config[["sender_constraint"]],
       "mtls"
     ),
-    dpop_private_key = if (
-      isTRUE(config[["fapi"]]) &&
-        !identical(config[["sender_constraint"]], "mtls")
-    ) {
+    dpop_private_key = if (use_dpop) {
       openssl::write_pem(openssl::ec_keygen("P-256"))
     } else {
       NULL
     },
-    dpop_signing_alg = if (
-      isTRUE(config[["fapi"]]) &&
-        !identical(config[["sender_constraint"]], "mtls")
-    ) {
+    dpop_signing_alg = if (use_dpop) {
       "ES256"
     } else {
       NULL
     },
-    resource_bases = if (isTRUE(config[["fapi"]])) {
+    resource_bases = if (!is.null(advanced)) {
+      c(
+        profile = paste0(
+          if (identical(advanced[["sender"]], "mtls")) {
+            config[["mtls_origin"]]
+          } else {
+            config[["issuer"]]
+          },
+          "/"
+        )
+      )
+    } else if (isTRUE(config[["fapi"]])) {
       c(suite = sub("accounts$", "", config[["resource_endpoint"]]))
     } else {
       character()
@@ -419,8 +439,14 @@ openid_fixture_app <- function(config) {
     shiny::actionButton("login", "Log in"),
     shiny::actionButton("logout", "Log out"),
     shiny::actionButton("refresh", "Refresh"),
-    if (isTRUE(config[["fapi"]])) {
+    if (isTRUE(config[["fapi"]]) || !is.null(advanced)) {
       shiny::actionButton("resource", "Read resource")
+    },
+    if (!is.null(advanced)) {
+      shiny::tagList(
+        shiny::actionButton("probes", "Check token binding"),
+        shiny::actionButton("lifecycle", "Check token lifecycle")
+      )
     },
     shiny::verbatimTextOutput("snapshot")
   )
@@ -485,7 +511,7 @@ openid_fixture_app <- function(config) {
           )],
           use.names = FALSE
         )
-        if (isTRUE(config[["message_signing"]])) {
+        if (isTRUE(config[["message_signing"]]) || isTRUE(advanced[["jarm"]])) {
           claims <- getFromNamespace(
             "parse_jwt_payload_or_null",
             "shinyOAuth"
@@ -509,7 +535,7 @@ openid_fixture_app <- function(config) {
           ),
           simplifyVector = FALSE
         )
-        if (isTRUE(config[["message_signing"]])) {
+        if (isTRUE(config[["message_signing"]]) || isTRUE(advanced[["jarm"]])) {
           value[["jarm_error"]] <- openid_fixture_jarm_error(content)
         }
         value[["http_rejection"]] <- list(
@@ -526,7 +552,7 @@ openid_fixture_app <- function(config) {
           issuer_present = !is.null(params[["iss"]]),
           content_digest = openid_fixture_digest(trimws(content))
         )
-        if (isTRUE(config[["message_signing"]])) {
+        if (isTRUE(config[["message_signing"]]) || isTRUE(advanced[["jarm"]])) {
           value[["http_rejection"]][["jarm_error"]] <- value[["jarm_error"]]
         }
         path <- file.path(config[["audit_directory"]], "callback-http.json")
@@ -558,6 +584,11 @@ openid_fixture_app <- function(config) {
       auto_redirect = FALSE,
       async = !identical(config[["transport"]], "sync")
     )
+    extension <- if (!is.null(advanced)) {
+      interop_advanced_server(auth, input, client, config)
+    } else {
+      NULL
+    }
     refresh <- NULL
     shiny::observeEvent(
       input[["resource"]],
@@ -716,6 +747,9 @@ openid_fixture_app <- function(config) {
     )
     output[["snapshot"]] <- shiny::renderText({
       shiny::invalidateLater(100, session)
+      if (!is.null(extension)) {
+        audit[["advanced"]] <- extension()
+      }
       snapshot(
         auth[["token"]],
         isTRUE(auth[["authenticated"]]),

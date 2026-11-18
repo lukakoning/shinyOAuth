@@ -12,6 +12,8 @@ dependencies, Chrome, Python 3 and the OpenSSL CLI installed:
 ```sh
 Rscript integration/oidc-provider/run-tests.R --transport sync
 Rscript integration/oidc-provider/run-tests.R --transport mirai
+Rscript integration/oidc-provider/run-advanced.R --transport sync
+Rscript integration/oidc-provider/run-advanced.R --transport mirai
 ```
 
 On Windows, the runner also looks for Git's bundled OpenSSL. Set
@@ -56,10 +58,52 @@ Private logs, temporary keys, configuration files and package installations stay
 under the ignored artifacts directory. The shared Shiny/browser/worker helpers
 are reused from [the OIDF harness](../openid/README.md).
 
-This establishes interoperability for the four selected cases, not OpenID
-certification or every advertised provider feature. `coverage_complete` stays
-false. JAR, PAR, sender-constrained tokens, JARM, signed UserInfo, resource
-indicators and retained connections across navigation remain C14 work. The
+The [advanced selection](advanced-profiles.json) adds six confidential Basic-auth
+cases: JAR + DPoP, JAR + mTLS token binding, and JAR + signed JARM, each directly
+and through PAR. All use RS256 Request Objects, ID tokens and signed UserInfo;
+JARM uses RS256 and DPoP uses ES256. PAR cases send only the client identifier
+and request URI through the browser. Each case must log in, refresh and use
+the resulting credential through `connection$request()` at native UserInfo.
+Public introspection must report an active token with the expected client and
+subject, then revocation must make it inactive and unusable at UserInfo.
+
+The provider independently observes the actual Request Object and signed
+responses, verifies their signatures and records the selected claims as
+booleans. Its native Request Object claim/signature validation remains enabled.
+Client signing keys and certificate private keys stay outside the provider's
+mounted directories; registration contains only a public JWK and certificate
+fingerprint. DPoP grant binding must match the key thumbprint in the signed
+request. mTLS binding must match the actual TLS peer certificate.
+
+Live DPoP probes require HTTP 401 for Bearer fallback, a different proof key
+and a replayed proof; the first use of that proof must return 200. Live mTLS
+probes require 401 with no certificate, a different certificate, and a different
+certificate carrying a forged certificate header. Both certificates have the
+same subject. Two further browser cases alter a real JARM signature and require
+HTTP 400 before any token exchange. Each advanced report also runs the app-stop
+canary and rejects altered copies of its evidence, including missing sender,
+signature, refresh, resource, lifecycle, worker or cleanup observations.
+
+mTLS uses a separate HTTPS listener and normal discovery endpoint aliases for
+token, UserInfo, introspection, revocation and PAR. The browser-facing listener
+does not request a client certificate. This tests certificate-bound tokens
+with Basic client authentication and self-signed peers; it does not test PKI
+client authentication. Tokens are opaque, so local observation of a `cnf` claim
+is not required. The provider checks binding and denies the live misuse probes.
+
+Evidence for advanced runs is `.artifacts/advanced-*/evidence.json`. Token
+exchange, refresh and validated UserInfo use the selected sync/mirai transport.
+The explicit connection resource request, misuse probes, introspection and
+revocation run in the Shiny main process; reports identify that boundary. Invalid
+JARM is rejected at the HTTP callback boundary before a replacement Shiny session.
+
+These selections establish scoped interoperability, not OpenID certification,
+FAPI compliance or every advertised provider feature. `coverage_complete` stays
+false. RFC 8707 resource indicators and retained connections across navigation
+remain C14 work. Native UserInfo is the only resource used in this selection.
+Other algorithms, client authentication methods, encryption and combined
+JAR + DPoP + JARM are outside its scope. The
 [independent Python fixture](../conformance/README.md) remains a separate
 protocol oracle. The [workflow](../../.github/workflows/oidc-provider.yml) runs
-sync on relevant pull requests and offers sync/mirai through manual dispatch.
+basic sync on relevant pull requests and offers basic/advanced with sync/mirai
+through manual dispatch.

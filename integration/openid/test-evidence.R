@@ -455,6 +455,27 @@ testthat::test_that("refresh coverage requires all three pinned modules and full
   )[["gate_passed"]])
 })
 
+testthat::test_that("sender-bound refresh requires usable connections and blocked raw export", {
+  f <- refresh_fixture()
+  row <- f[["report"]][["results"]][[1L]]
+  expected <- list(outcome = "refreshed", export_blocked = TRUE)
+  matches <- function(value, expectation = expected) {
+    openid_refresh_matches(
+      value,
+      expectation,
+      value[["app"]][["run_id"]],
+      f[["context"]][["package_version"]]
+    )
+  }
+  testthat::expect_false(matches(row))
+  row[["app"]][["refresh"]][["exported_current"]] <- FALSE
+  row[["app"]][["refresh"]][["export_blocked"]] <- TRUE
+  testthat::expect_true(matches(row))
+  testthat::expect_false(matches(row, list(outcome = "refreshed")))
+  row[["app"]][["refresh"]][["old_connection_usable"]] <- FALSE
+  testthat::expect_false(matches(row))
+})
+
 testthat::test_that("refresh cannot pass with a fresh app, session, grant or missing checkpoint", {
   f <- refresh_fixture()
   for (i in seq_len(3L)) {

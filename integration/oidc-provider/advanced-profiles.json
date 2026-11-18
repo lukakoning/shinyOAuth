@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "cases": [
+    { "id": "jar-dpop-direct", "sender": "dpop", "par": false, "jarm": false },
+    { "id": "jar-dpop-par", "sender": "dpop", "par": true, "jarm": false },
+    { "id": "jar-mtls-direct", "sender": "mtls", "par": false, "jarm": false },
+    { "id": "jar-mtls-par", "sender": "mtls", "par": true, "jarm": false },
+    { "id": "jar-jarm-direct", "sender": null, "par": false, "jarm": true },
+    { "id": "jar-jarm-par", "sender": null, "par": true, "jarm": true }
+  ]
+}

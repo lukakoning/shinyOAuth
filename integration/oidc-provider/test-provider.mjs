@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fixture } from './provider.mjs';
+import { advancedOptions, inspectRS256, peerCertificate } from './advanced-provider.mjs';
+import { generateKeyPairSync, sign } from 'node:crypto';
 
 const config = {
   issuer: 'https://localhost:30000', redirect_uri: 'https://localhost:30001/',
@@ -33,4 +35,29 @@ test('public client evidence distinguishes an unexpected authentication header',
   });
   assert.equal(events[0].authentication_valid, false);
   assert.doesNotMatch(JSON.stringify(events), /DO_NOT_EXPORT/);
+});
+
+test('signature inspection verifies actual RS256 bytes independently of expiry policy', () => {
+  const pair = generateKeyPairSync('rsa', { modulusLength: 2048 });
+  const pub = pair.publicKey.export({ format: 'jwk' });
+  const input = [Buffer.from(JSON.stringify({ alg: 'RS256' })).toString('base64url'),
+    Buffer.from(JSON.stringify({ exp: 1, sub: 'DO_NOT_EXPORT' })).toString('base64url')].join('.');
+  const jwt = `${input}.${sign('RSA-SHA256', Buffer.from(input), pair.privateKey).toString('base64url')}`;
+  assert.equal(inspectRS256(jwt, pub).claims.exp, 1);
+  assert.equal(inspectRS256(`${input}.${'A'.repeat(342)}`, pub), null);
+  assert.equal(inspectRS256(jwt, generateKeyPairSync('rsa', { modulusLength: 2048 }).publicKey.export({ format: 'jwk' })), null);
+});
+
+test('advanced registration rejects private client material and retains native JAR validation', () => {
+  const publicKey = generateKeyPairSync('rsa', { modulusLength: 2048 }).publicKey.export({ format: 'jwk' });
+  const selected = { ...config, advanced: { sender: 'dpop', par: true, jarm: false }, client_jwk: publicKey };
+  const options = advancedOptions(selected);
+  assert.equal(options.features.requestObjects.requireSignedRequestObject, true);
+  assert.equal('assertJwtClaimsAndHeader' in options.features.requestObjects, false);
+  assert.throws(() => advancedOptions({ ...selected, client_assertion_private_key: 'PRIVATE MATERIAL' }), /private material/);
+  assert.throws(() => advancedOptions({ ...selected, client_jwk: { ...publicKey, d: 'PRIVATE MATERIAL' } }), /Invalid advanced/);
+});
+
+test('mTLS certificate collection uses the TLS peer rather than a forwarded header', () => {
+  assert.equal(peerCertificate({ req: { socket: { getPeerCertificate: () => ({}) } }, get: () => 'FORGED CERTIFICATE' }), undefined);
 });

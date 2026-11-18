@@ -31,12 +31,12 @@ interop_lock <- function(root = ".") {
   lock
 }
 
-interop_output <- function(root = ".") {
+interop_output <- function(root = ".", profile = "basic") {
   path <- file.path(
     normalizePath(root, winslash = "/"),
     "integration/oidc-provider/.artifacts",
     paste0(
-      "basic-",
+      paste0(profile, "-"),
       format(Sys.time(), "%Y%m%d-%H%M%S", tz = "UTC"),
       "-",
       paste(format(openssl::rand_bytes(6)), collapse = "")
@@ -111,6 +111,7 @@ interop_prepare <- function(root, output) {
     "package-lock.json",
     "provider-lock.json",
     "provider.mjs",
+    "advanced-provider.mjs",
     "test-provider.mjs",
     ".dockerignore"
   )
@@ -189,6 +190,17 @@ interop_stop <- function(stack) {
 interop_start <- function(environment, config, .env = parent.frame()) {
   port <- httpuv::randomPort(min = 20000L, max = 45000L)
   config[["issuer"]] <- paste0("https://localhost:", port)
+  mtls_port <- if (identical(config[["advanced"]][["sender"]], "mtls")) {
+    httpuv::randomPort(min = 20000L, max = 45000L)
+  } else {
+    NULL
+  }
+  if (!is.null(mtls_port)) {
+    if (identical(mtls_port, port)) {
+      stop("Provider ports must be distinct")
+    }
+    config[["mtls_origin"]] <- paste0("https://localhost:", mtls_port)
+  }
   config[["control_key"]] <- paste(
     format(openssl::rand_bytes(32)),
     collapse = ""
@@ -197,7 +209,11 @@ interop_start <- function(environment, config, .env = parent.frame()) {
     environment[["output"]],
     paste0(config[["run_id"]], "-config.json")
   )
-  jsonlite::write_json(config, path, auto_unbox = TRUE)
+  provider_config <- config
+  for (name in c("client_assertion_private_key", "dpop_private_key", "mtls")) {
+    provider_config[[name]] <- NULL
+  }
+  jsonlite::write_json(provider_config, path, auto_unbox = TRUE, null = "null")
   user <- if (.Platform[["OS.type"]] == "windows") {
     character()
   } else {
@@ -221,6 +237,9 @@ interop_start <- function(environment, config, .env = parent.frame()) {
     paste0("shinyoauth.oidc-provider.run_id=", config[["run_id"]]),
     "--publish",
     paste0("127.0.0.1:", port, ":9443"),
+    if (!is.null(mtls_port)) {
+      c("--publish", paste0("127.0.0.1:", mtls_port, ":9444"))
+    },
     "--mount",
     paste0("type=bind,source=", path, ",target=/run/config.json,readonly"),
     "--mount",
@@ -245,6 +264,7 @@ interop_start <- function(environment, config, .env = parent.frame()) {
     list(
       container = container,
       origin = config[["issuer"]],
+      mtls_origin = config[["mtls_origin"]],
       run_id = config[["run_id"]],
       control_key = config[["control_key"]],
       lifecycle = new.env(parent = emptyenv())

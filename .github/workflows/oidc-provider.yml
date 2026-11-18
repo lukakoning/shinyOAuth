@@ -3,6 +3,13 @@ name: oidc-provider interoperability
 on:
   workflow_dispatch:
     inputs:
+      profile:
+        description: Provider selection
+        type: choice
+        default: basic
+        options:
+          - basic
+          - advanced
       transport:
         description: Token and UserInfo transport
         type: choice
@@ -26,13 +33,14 @@ permissions:
   contents: read
 
 jobs:
-  basic:
+  interoperability:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
       CURL_SSL_BACKEND: openssl
       NOT_CRAN: "true"
       INTEROP_TRANSPORT: ${{ inputs.transport || 'sync' }}
+      INTEROP_PROFILE: ${{ inputs.profile || 'basic' }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - uses: r-lib/actions/setup-r@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
@@ -58,14 +66,20 @@ jobs:
           cache-version: 1
       - name: Select Chrome
         run: echo "CHROMOTE_CHROME=${{ steps.chrome.outputs.chrome-path }}" >> "$GITHUB_ENV"
-      - name: Run public and confidential code flows and refresh
-        run: Rscript integration/oidc-provider/run-tests.R --transport "$INTEROP_TRANSPORT"
+      - name: Run selected provider cases
+        run: |
+          case "$INTEROP_PROFILE" in
+            basic) runner=run-tests.R ;;
+            advanced) runner=run-advanced.R ;;
+            *) exit 1 ;;
+          esac
+          Rscript "integration/oidc-provider/$runner" --transport "$INTEROP_TRANSPORT"
       - name: Upload sanitized evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: oidc-provider-${{ env.INTEROP_TRANSPORT }}-evidence
-          path: integration/oidc-provider/.artifacts/basic-*/evidence.json
+          name: oidc-provider-${{ env.INTEROP_PROFILE }}-${{ env.INTEROP_TRANSPORT }}-evidence
+          path: integration/oidc-provider/.artifacts/${{ env.INTEROP_PROFILE }}-*/evidence.json
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 7

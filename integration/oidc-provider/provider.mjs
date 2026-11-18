@@ -3,6 +3,7 @@ import { createHash, generateKeyPairSync, randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import Provider from 'oidc-provider';
+import { advancedOptions, observeAdvanced, senderFacts } from './advanced-provider.mjs';
 
 const lock = JSON.parse(readFileSync(new URL('./provider-lock.json', import.meta.url)));
 const version = JSON.parse(readFileSync(new URL('./node_modules/oidc-provider/package.json', import.meta.url))).version;
@@ -26,8 +27,14 @@ export function fixture(config) {
   };
   if (config.client_auth_type === 'client_secret_basic') client.client_secret = config.client_secret;
   const features = { devInteractions: { enabled: false }, userinfo: { enabled: true } };
+  const advanced = advancedOptions(config);
+  if (advanced) {
+    Object.assign(client, advanced.registration);
+    Object.assign(features, advanced.features);
+  }
   const provider = new Provider(config.issuer, {
     clients: [client], jwks: { keys: [key] }, features,
+    ...(advanced ? { discovery: advanced.discovery } : {}),
     cookies: { keys: [randomBytes(32).toString('base64url')] },
     claims: { openid: ['sub'], profile: ['name'], email: ['email', 'email_verified'] },
     scopes: ['openid', 'profile', 'email', 'offline_access'], responseTypes: ['code'],
@@ -46,12 +53,14 @@ export function fixture(config) {
   const issued = new Set();
   let currentAccess;
   let previousRefresh;
-  const errors = new Set(['invalid_request', 'invalid_client', 'invalid_grant', 'access_denied']);
-  for (const type of ['authorization.error', 'grant.error', 'userinfo.error', 'server_error']) {
+  const state = {};
+  const errors = new Set(['invalid_request', 'invalid_client', 'invalid_grant', 'access_denied', 'invalid_token', 'invalid_dpop_proof', 'invalid_request_object']);
+  for (const type of ['authorization.error', 'grant.error', 'userinfo.error', 'server_error', ...(advanced ? ['pushed_authorization_request.error', 'introspection.error', 'revocation.error'] : [])]) {
     provider.on(type, (ctx, error) => record(type, {
       error: errors.has(error?.error) ? error.error : 'other_error',
       client_matches: ctx.oidc?.params?.client_id === config.client_id || ctx.oidc?.client?.clientId === config.client_id,
       pkce_missing: !ctx.oidc?.params?.code_challenge,
+      ...(advanced && type === 'userinfo.error' ? senderFacts(ctx, config, state) : {}),
     }));
   }
   provider.on('authorization.accepted', ctx => {
@@ -74,6 +83,11 @@ export function fixture(config) {
     const body = ctx.body;
     if (typeof body.access_token === 'string') issued.add(body.access_token);
     currentAccess = body.access_token;
+    state.currentAccess = currentAccess;
+    if (advanced) {
+      state.dpopJkt = ctx.oidc.entities.AccessToken?.jkt;
+      state.mtlsThumbprint = ctx.oidc.entities.AccessToken?.['x5t#S256'];
+    }
     const authorization = ctx.get('authorization');
     const expected = `Basic ${Buffer.from(`${config.client_id}:${config.client_secret}`).toString('base64')}`;
     record('grant.success', {
@@ -91,12 +105,15 @@ export function fixture(config) {
       refresh_token_present: typeof body.refresh_token === 'string',
       refresh_token_rotated: params.grant_type === 'refresh_token'
         ? params.refresh_token === previousRefresh && body.refresh_token !== previousRefresh : null,
+      ...(advanced ? { sender_bound: config.advanced.sender === 'dpop' ? typeof state.dpopJkt === 'string' && state.dpopJkt === state.requestJkt
+        : config.advanced.sender === 'mtls' ? typeof state.mtlsThumbprint === 'string' && state.mtlsThumbprint === config.mtls_thumbprint : true } : {}),
     });
     previousRefresh = body.refresh_token;
   });
   provider.use(async (ctx, next) => {
     await next();
-    if (ctx.path === '/userinfo') record('userinfo', {
+    if (advanced) observeAdvanced(ctx, config, key, state, record);
+    else if (ctx.path === '/userinfo') record('userinfo', {
       status: ctx.status, issued_token_used: issued.has(ctx.get('authorization').replace(/^Bearer /i, '')),
       current_token_used: ctx.get('authorization').replace(/^Bearer /i, '') === currentAccess,
       subject_present: typeof ctx.body?.sub === 'string',
@@ -116,7 +133,7 @@ export function fixture(config) {
       res.setHeader('content-type', 'application/json');
       res.end(JSON.stringify({ run_id: config.run_id, provider_version: version, node_version: process.version,
         client_auth_type: config.client_auth_type, features: { dev_interactions: false, userinfo: true,
-          pkce_required: true, refresh_rotation: true }, events }));
+          pkce_required: true, refresh_rotation: true }, ...(advanced ? { advanced: config.advanced } : {}), events }));
       return;
     }
     if (/^\/interaction\/[A-Za-z0-9_-]+$/.test(path)) {
@@ -151,7 +168,12 @@ export function fixture(config) {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const config = JSON.parse(readFileSync(process.env.FIXTURE_CONFIG));
   const { handler } = fixture(config);
-  const server = createServer({ key: readFileSync(process.env.FIXTURE_TLS_KEY), cert: readFileSync(process.env.FIXTURE_TLS_CERT) },
-    (req, res) => { Promise.resolve(handler(req, res)).catch(() => { res.writeHead(500).end('Fixture failed'); }); });
+  const tls = { key: readFileSync(process.env.FIXTURE_TLS_KEY), cert: readFileSync(process.env.FIXTURE_TLS_CERT) };
+  const serve = (req, res) => { Promise.resolve(handler(req, res)).catch(() => {
+    if (!res.headersSent) res.writeHead(500);
+    if (!res.writableEnded) res.end('Fixture failed');
+  }); };
+  const server = createServer(tls, serve);
+  if (config.advanced?.sender === 'mtls') createServer({ ...tls, requestCert: true, rejectUnauthorized: false }, serve).listen(9444, '0.0.0.0');
   server.listen(9443, '0.0.0.0', () => console.log(JSON.stringify({ ready: true, version, node_version: process.version })));
 }

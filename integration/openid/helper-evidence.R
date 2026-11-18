@@ -269,13 +269,17 @@ openid_refresh_matches <- function(
     "access_changed",
     "original_id_token_retained",
     "issuer_unchanged",
-    "subject_unchanged",
-    "exported_current"
+    "subject_unchanged"
   )) {
     if (!identical(refresh[[name]], positive)) return(FALSE)
   }
-  for (name in c("export_blocked", "refresh_error_is_access_error")) {
-    if (!identical(refresh[[name]], !positive)) return(FALSE)
+  export_blocked <- !positive || isTRUE(expectation[["export_blocked"]])
+  if (
+    !identical(refresh[["exported_current"]], !export_blocked) ||
+      !identical(refresh[["export_blocked"]], export_blocked) ||
+      !identical(refresh[["refresh_error_is_access_error"]], !positive)
+  ) {
+    return(FALSE)
   }
   if (positive) {
     return(

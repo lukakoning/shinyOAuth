@@ -4,4 +4,5 @@
 !package-lock.json
 !provider-lock.json
 !provider.mjs
+!advanced-provider.mjs
 !test-provider.mjs
