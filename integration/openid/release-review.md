@@ -150,3 +150,8 @@ identity and SA08's complete release matrix and durable evidence retention
 remain pending. Earlier reports remain evidence for their recorded revisions.
 Only sanitized evidence JSON is eligible for workflow upload; private
 keys, registrations, libraries and raw diagnostics remain ignored locally.
+
+Follow-up: [schema-4 source identity](source-identity.md) adds checkout snapshots,
+archived installation input and release-source enforcement for subsequent runs.
+The reports in this release review retain their original schemas and fields;
+the source-identity follow-up records its own implementation and validation.
