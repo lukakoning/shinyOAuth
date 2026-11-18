@@ -3,11 +3,12 @@
 This SA04 slice maps the authorization-code and refresh client paths, shared
 client authentication, bearer requests, PKCE, OAuth metadata and callback issuer
 identification. It supplements the [FAPI map](requirements.md) and
-[selection scope](scope.md). The implementation reviewed here is
-`a009f5cf71b47d2606b75143b08ded925f161220`; the metadata case-comparison gap
-below was reproduced against that source. A row links implementation and actual
-assertions, but adds no execution result or certification claim. Use the retained
-run and [source identity](source-identity.md) when making a release claim.
+[selection scope](scope.md). The initial review used
+`a009f5cf71b47d2606b75143b08ded925f161220`; MD04 records the resulting metadata
+case-comparison correction and its development validation. A row links
+implementation and actual assertions, but adds no provider execution result or
+certification claim. Use the retained run and [source identity](source-identity.md)
+when making a release claim.
 
 The package acts as a client. The authorization server (AS) owns authorization,
 code issuance, client registration and grant validation; the resource server
@@ -68,7 +69,7 @@ security recommendations still need their own accounting.
 | --- | --- | --- |
 | PK01 / [4.1](https://www.rfc-editor.org/rfc/rfc7636.html#section-4.1), [7.1](https://www.rfc-editor.org/rfc/rfc7636.html#section-7.1) | Generate a fresh, sufficiently random verifier with valid syntax. | [utils__random.R](../../R/utils__random.R), `gen_code_verifier()`, uses `openssl::rand_bytes()` through `random_urlsafe()` and validates the 43-128-character bounds. A1 generates 64 characters per transaction; [test-random-and-validators.R](../../tests/testthat/test-random-and-validators.R) exercises generator/validator bounds. AS-generated code entropy is a separate property. |
 | PK02 / [4.2](https://www.rfc-editor.org/rfc/rfc7636.html#section-4.2), [4.3](https://www.rfc-editor.org/rfc/rfc7636.html#section-4.3), [4.5](https://www.rfc-editor.org/rfc/rfc7636.html#section-4.5) | Send S256 challenge/method, then the original verifier at token exchange. | A1 stores the verifier in pending state; A9 compares the real pushed challenge and token verifier. [test-pkce-s256-encoding.R](../../tests/testthat/test-pkce-s256-encoding.R) checks the Appendix B vector. [Keycloak PKCE](../keycloak/test_integration_keycloak_pkce.R) tests successful exchange and missing/wrong-verifier rejection; local missing-verifier failure and AS wrong-verifier rejection are distinct assertions. |
-| PK03 / [7.2](https://www.rfc-editor.org/rfc/rfc7636.html#section-7.2) | Do not retry an S256 failure by downgrading to plain. | `.discover_resolve_pkce_method()` in A7 refuses a default S256 request when metadata offers only plain; A1 has no failure-to-plain retry. [test-discovery-hardened.R](../../tests/testthat/test-discovery-hardened.R) checks explicit plain opt-in. Plain/disabled configurations earn no S256 credit. MD04 records the remaining case-sensitive metadata gap. |
+| PK03 / [7.2](https://www.rfc-editor.org/rfc/rfc7636.html#section-7.2) | Do not retry an S256 failure by downgrading to plain. | `.discover_resolve_pkce_method()` in A7 refuses a default S256 request when metadata offers only plain; A1 has no failure-to-plain retry. [test-discovery-hardened.R](../../tests/testthat/test-discovery-hardened.R) checks explicit plain opt-in. Plain/disabled configurations earn no S256 credit. MD04 records exact capability matching and its audit limits. |
 
 The pinned Basic RP fixture does not enforce the verifier as an AS would; its
 successful code exchange cannot establish that server property. Keep A9's
@@ -82,7 +83,7 @@ registration or correct request syntax alone does not prove browser binding.
 | MD01 / [8414 3](https://www.rfc-editor.org/rfc/rfc8414.html#section-3), [3.1](https://www.rfc-editor.org/rfc/rfc8414.html#section-3.1) | Derive and GET the OAuth well-known location from the trusted issuer. | A7 inserts the suffix before the issuer path, removes its terminating slash and preserves escaped path segments/ports in request assertions. The original issuer string remains unchanged. The OAuth constructor neither adds OIDC scope/nonce nor enables ID-token/UserInfo validation. |
 | MD02 / [8414 2](https://www.rfc-editor.org/rfc/rfc8414.html#section-2), [3.2](https://www.rfc-editor.org/rfc/rfc8414.html#section-3.2), [3.3](https://www.rfc-editor.org/rfc/rfc8414.html#section-3.3) | Validate metadata shape, capabilities and exact issuer before use. | A7 rejects missing code endpoints/response type, mismatched issuer and malformed JWT/PAR metadata. A3 chooses configured/advertised authentication, with Basic as the omitted-method default. OIDC-only required fields are excluded from this OAuth path. Manual providers bypass metadata discovery. |
 | MD03 / [8414 6.1](https://www.rfc-editor.org/rfc/rfc8414.html#section-6.1), [6.2](https://www.rfc-editor.org/rfc/rfc8414.html#section-6.2), [2.1](https://www.rfc-editor.org/rfc/rfc8414.html#section-2.1) | Authenticate metadata transport; assess optional signed metadata separately. | A7 rejects insecure metadata/endpoints outside the explicit loopback exception; A6 supplies TLS controls. Trusted issuer selection remains an application duty. This path uses unsigned JSON over verified TLS and makes no signed-metadata verification claim. |
-| MD04 / [8414 4](https://www.rfc-editor.org/rfc/rfc8414.html#section-4) | Compare metadata strings by their decoded code points. | Issuer comparison in A7 is exact, but `.discover_infer_token_auth_style()` lowercases advertised methods and `.discover_resolve_pkce_method()` uppercases advertised PKCE names. The reviewed OAuth constructor accepts `CLIENT_SECRET_BASIC` as Basic and `s256` as S256. Add case-sensitive capability matching and targeted regressions; preserve any caller-argument aliases separately. This row remains open. |
+| MD04 / [8414 4](https://www.rfc-editor.org/rfc/rfc8414.html#section-4), [7636 6.2.1](https://www.rfc-editor.org/rfc/rfc7636.html#section-6.2.1) | Compare metadata strings by their decoded code points. | Issuer comparison in A7 remains exact. `.discover_infer_token_auth_style()` and `.discover_resolve_pkce_method()` now compare advertised method names without changing case. [test-discovery-method-case.R](../../tests/testthat/test-discovery-method-case.R) rejects wrong-case-only capabilities and selects exact supported values from mixed arrays through both public constructors. It preserves caller spelling normalization and requires lowercase advertised `plain` for explicit plain PKCE. This corrects the reproduced Basic/S256 misclassification. Response-mode matching remains a separate follow-up below. |
 | IS01 / [9207 2.4](https://www.rfc-editor.org/rfc/rfc9207.html#section-2.4) | Decode and exactly compare a present response issuer with the intended AS. | A8 checks present values in both success/error paths and stops before exchange on mismatch. The trailing-slash case is rejected. Keycloak's second-realm attempt proves the legitimate state remains available after rejection. |
 | IS02 / [9207 2.4](https://www.rfc-editor.org/rfc/rfc9207.html#section-2.4), [3](https://www.rfc-editor.org/rfc/rfc9207.html#section-3) | Remember advertised support and reject missing issuer when required. | Discovery retains `authorization_response_iss_parameter_supported`; client setup infers required presence. A8 tests missing values and separates `enforce_callback_issuer` from `compare_callback_issuer`. Explicit opt-out disables comparison by default; retain strict settings for an RFC 9207 claim. |
 | IS03 / [9207 2](https://www.rfc-editor.org/rfc/rfc9207.html#section-2), [2.4](https://www.rfc-editor.org/rfc/rfc9207.html#section-2.4), [4](https://www.rfc-editor.org/rfc/rfc9207.html#section-4) | Separate AS response duties from client mix-up defenses. | AS issuer publication and inclusion in success/error responses remain AS duties. A8 requires advertised issuer support for direct multi-issuer callbacks, with a separate signed-JARM route; multi-redirect mode has its own complete/distinct callback-set checks. Trusted issuer lists and deployed route isolation remain application duties. |
@@ -109,16 +110,27 @@ including minimal PAR browser parameters and stricter authentication/algorithms.
 | RI01 / [8707 2](https://www.rfc-editor.org/rfc/rfc8707.html#section-2), [2.1](https://www.rfc-editor.org/rfc/rfc8707.html#section-2.1), [2.2](https://www.rfc-editor.org/rfc/rfc8707.html#section-2.2) | The client validates absolute resource URIs without fragments and sends repeated values on authorization, token, refresh and PAR requests. [test-resource-indicators.R](../../tests/testthat/test-resource-indicators.R) counts and decodes the actual fields; `test-par.R` checks the pushed body. | Target necessity and the most specific resource identifier are application choices. URI syntax does not establish an audience restriction. |
 | RI02 / [8707 2](https://www.rfc-editor.org/rfc/rfc8707.html#section-2), [3](https://www.rfc-editor.org/rfc/rfc8707.html#section-3) | [Keycloak resource cases](../keycloak/test_integration_keycloak_resource_indicators.R) observe that stock accepted `resource` values produce no audience. A separately mapped client gets the expected audience; a protected-resource fixture accepts it and returns 401 for the control token. | The mapped audience comes from explicit AS fixture configuration, not stock RFC 8707 enforcement. AS audience restriction, `invalid_target` generation and RS rejection remain external properties; multi-resource narrowing/alias policy still needs a full extension review. |
 
-## Follow-up selected by this map
+## Development validation and remaining work
 
-MD04 needs a focused regression matrix before strict metadata-string compliance
-can be claimed: reject uppercase registered authentication names and lowercase
-`s256` when they are the only advertised choices; accept canonical choices in
-mixed arrays containing unknown extension values. Exercise inferred and explicit
-authentication with both public discovery constructors, and retain exact issuer
-comparison. Caller-facing argument aliases need not change with wire-metadata
-matching. The observed case conversion is a concrete remaining gap, not a new
-provider execution result.
+The MD04 correction keeps caller-facing option normalization separate from
+advertised capabilities. Its public OAuth/OIDC matrix checks inferred and
+explicit authentication, S256 and explicit plain, wrong-case-only metadata and
+mixed arrays containing canonical and unknown values. All 94 assertions pass
+on Windows and Linux; before the correction, 46 assertions failed. The complete
+discovery selection passes 873 assertions on each platform with zero failures,
+skips or test warnings. Windows R emitted its four existing startup locale
+warnings. Linux required a private installation of the `webfakes` 1.5.0 test
+dependency; the initial run with 36 missing-prerequisite skips earns no passing
+credit. These are development regressions against the working source, not new
+OIDF module results or a completed metadata-field audit.
+
+Code inspection also found case folding and trimming of advertised
+`response_modes_supported` in `.discover_provider()` and the
+[OAuthProvider constructor](../../R/classes__OAuthProvider.R). Public behavior
+for wrong-case or padded response-mode identifiers still needs a focused
+regression and correction. Keep this separate from the validated authentication
+and PKCE change; assess mixed arrays and caller-option normalization when taking
+that follow-up.
 
 The default reserved-header guard already rejects a custom Authorization value
 combined with body authentication; a source-loaded check confirmed that setup
@@ -128,5 +140,6 @@ unblock switch is a configuration limit, not an uncovered default regression.
 Keep source-qualified lifecycle and browser results separate from collector
 fixtures. C06 warm-cache rotation remains open: the OIDF source forbids JWKS
 storage, and the strengthened [Keycloak rotation test](../keycloak/test_integration_keycloak_jwks_rotation.R)
-observes `no-cache` and repeated downloads. Finish the OIDC, Message Signing and
-remaining extension/security-clause maps before closing SA04.
+observes `no-cache` and repeated downloads. Finish the remaining OAuth
+grant/authentication, extension and security-clause accounting before closing
+SA04.

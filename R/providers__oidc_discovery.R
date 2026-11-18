@@ -1263,7 +1263,7 @@ oauth_provider_oidc_discover <- function(
   # Apply it before validating an explicit choice as well as before inference.
   methods <- disc[["token_endpoint_auth_methods_supported"]] %||%
     "client_secret_basic"
-  methods <- tolower(as.character(methods))
+  methods <- as.character(methods)
 
   if (!is.null(token_auth_style)) {
     return(.discover_validate_requested_token_auth_style(
@@ -1582,7 +1582,7 @@ oauth_provider_oidc_discover <- function(
   }
 
   cc_methods <- disc[["code_challenge_methods_supported"]] %||% character(0)
-  cc_methods <- toupper(as.character(cc_methods))
+  cc_methods <- as.character(cc_methods)
   pkce_method <- normalize_pkce_method(pkce_method %||% NULL, default = NULL)
   if (
     !is.null(pkce_method) &&
@@ -1609,10 +1609,10 @@ oauth_provider_oidc_discover <- function(
     return(pkce_method)
   }
 
-  requested_method <- toupper(pkce_method %||% "S256")
+  requested_method <- pkce_method %||% "S256"
 
   if (!(requested_method %in% cc_methods)) {
-    remediation <- if ("PLAIN" %in% cc_methods) {
+    remediation <- if ("plain" %in% cc_methods) {
       "Discovery will not silently downgrade; pass `pkce_method = 'plain'` explicitly only if you intend to allow plain PKCE"
     } else {
       "Adjust the provider or discovery configuration so it supports PKCE S256"

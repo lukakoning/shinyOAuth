@@ -2003,6 +2003,28 @@ unqualified client nonconformance. The scope table and CLI alias note were
 updated to match implemented selections. C06's genuine warm-cache follow-up
 remains open with its observed provider-cache limits.
 
+SA04 metadata comparison correction (2026-11-19): the OAuth requirement audit
+reproduced incorrect case folding of advertised client-authentication and PKCE
+method names through the public discovery constructors. Four substitutions in
+`providers__oidc_discovery.R` now retain those wire identifiers' exact case,
+while keeping caller-option normalization. Wrong-case-only metadata fails;
+mixed arrays can select an exactly supported method; explicit plain PKCE
+requires advertised lowercase `plain` and is never selected as a silent
+downgrade. The NEWS entry and OAuth map describe the changed behavior.
+
+The new public OAuth/OIDC regression matrix has 94 assertions; 46 failed before
+the correction. All 873 discovery assertions passed on Windows and Linux with
+zero failures, skips or test warnings. The initial Linux run lacked the
+test-only `webfakes` prerequisite and recorded 36 skips; a private ignored
+validation library supplied it for the accepted rerun. No package dependency
+or container image changed. Windows retained its four known R startup locale
+warnings. Windows used parent `46d65458` and Linux `543113fb`, both with the
+recorded working changes; neither is a clean-source release run. Formatting,
+jarl and independent review passed. The four-line runtime
+patch stays limited to authentication/PKCE; response-mode metadata folding is
+a separate named audit/fix follow-up. These are development regressions, not new
+OIDF module results or a complete metadata-field compliance claim.
+
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second
