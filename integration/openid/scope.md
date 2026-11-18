@@ -44,7 +44,7 @@ neither interruption counts as a client test pass.
 | Target | Existing local evidence | Planned independent gate |
 | --- | --- | --- |
 | OIDC Core code flow, ID token and UserInfo validation | Unit tests, Keycloak browser/code flows, complete pinned Basic RP module selection (C05) | Basic implemented for the variant above; further profiles below |
-| Discovery, exact issuer and signing-key changes | Discovery/JWKS tests, Keycloak rotation, and six Configuration module outcomes (C06) | Warm-cache refresh remains a C06 follow-up; pinned suite JWKS is `no-store` |
+| Discovery, exact issuer and signing-key changes | Discovery/JWKS tests, Keycloak no-cache revalidation/rotation, and six Configuration module outcomes (C06) | Warm-cache refresh remains a C06 follow-up; pinned suite JWKS is `no-store` and the Keycloak fixture returns `no-cache` |
 | Form POST callback and browser binding | Real browser and retained-connection tests; complete pinned Form Post Basic plan on the same-site local rig (C07) | Form Post Basic implemented; cross-site attack cases stay in their separate layer |
 | Refresh identity continuity | Refresh validation, retained-connection tests and all three pinned client refresh modules (C08, extended in C09) | Code flow with HTTP Basic authentication in sync/mirai, plus future parity |
 | Worker transport | Package worker tests; verified mirai transport for the core selections, future smoke/refresh parity, and an alternating shared-pool selection (C09) | Shared-pool scope is sequential reuse across distinct suite issuers, with fresh per-case app/cache objects |
@@ -141,6 +141,13 @@ digests establish continuity without exposing keys, tokens or identity values.
 The remaining C06 acceptance case needs cacheable independent-provider evidence;
 the local HTTP-cache, invalidation, signature and refresh-throttle tests supply
 separate package-owned coverage meanwhile.
+
+The [Keycloak rotation test](../keycloak/test_integration_keycloak_jwks_rotation.R)
+now observes the original fixture's `no-cache` response and stale cache entries.
+Three successful module logins require three real JWKS downloads across signing
+key rotation, retain the same cache identity and reject rogue old/new-key-ID
+signatures. Setup failures cannot skip this test. These checks establish
+revalidation and rotation, while C06's warm-cache acceptance remains open.
 
 Core selections also support actual mirai transport, while future multisession
 is limited to smoke and refresh parity selections. Each module case owns a

@@ -32,13 +32,16 @@ keycloak_admin_token <- function() {
     httr2::req_perform()
 
   if (httr2::resp_is_error(resp)) {
-    testthat::skip("Keycloak admin token request failed")
+    stop("Keycloak admin token request failed", call. = FALSE)
   }
 
   body <- httr2::resp_body_json(resp, simplifyVector = TRUE)
   token <- body[["access_token"]] %||% NA_character_
   if (!keycloak_nonempty_string(token)) {
-    testthat::skip("Keycloak admin token response did not include access_token")
+    stop(
+      "Keycloak admin token response did not include access_token",
+      call. = FALSE
+    )
   }
   token
 }
@@ -63,7 +66,7 @@ keycloak_realm_keys <- function(token) {
     token = token
   )
   if (httr2::resp_is_error(resp)) {
-    testthat::skip("Keycloak admin keys endpoint failed")
+    stop("Keycloak admin keys endpoint failed", call. = FALSE)
   }
   httr2::resp_body_json(resp, simplifyVector = FALSE)
 }
@@ -75,12 +78,12 @@ keycloak_realm_id <- function(token) {
     token = token
   )
   if (httr2::resp_is_error(resp)) {
-    testthat::skip("Keycloak admin realm endpoint failed")
+    stop("Keycloak admin realm endpoint failed", call. = FALSE)
   }
   body <- httr2::resp_body_json(resp, simplifyVector = TRUE)
   realm_id <- body[["id"]] %||% body[["realm"]] %||% NA_character_
   if (!keycloak_nonempty_string(realm_id)) {
-    testthat::skip("Could not determine Keycloak realm id")
+    stop("Could not determine Keycloak realm id", call. = FALSE)
   }
   realm_id
 }
@@ -140,11 +143,12 @@ keycloak_create_generated_rsa_key_provider <- function(token) {
   )
 
   if (httr2::resp_status(resp) >= 400L) {
-    testthat::skip(
+    stop(
       paste(
         "Keycloak did not accept an rsa-generated key provider component:",
         httr2::resp_body_string(resp)
-      )
+      ),
+      call. = FALSE
     )
   }
 
@@ -154,7 +158,7 @@ keycloak_create_generated_rsa_key_provider <- function(token) {
     !keycloak_nonempty_string(component_id) ||
       identical(component_id, location)
   ) {
-    testthat::skip("Could not infer generated key provider component id")
+    stop("Could not infer generated key provider component id", call. = FALSE)
   }
 
   list(id = component_id, name = name)
@@ -226,19 +230,112 @@ make_rogue_id_token_with_kid <- function(id_token, kid) {
   )
 }
 
-testthat::test_that("JWKS cache refreshes on live Keycloak signing-key rotation", {
-  skip_common()
-  testthat::skip_if_not_installed("jose")
+testthat::test_that("Keycloak no-cache JWKS are refetched across signing-key rotation", {
+  for (package in c("jose", "xml2", "rvest")) {
+    if (!requireNamespace(package, quietly = TRUE)) {
+      stop(paste("Required rotation-test dependency is missing:", package))
+    }
+  }
+  if (!keycloak_reachable()) {
+    stop("Required rotation-test Keycloak is not reachable at localhost:8080")
+  }
   local_test_options()
 
   prov <- make_provider()
   client <- make_public_client(prov)
+  cache <- client@provider@jwks_cache
+  cache_key <- shinyOAuth:::jwks_cache_key(
+    prov@issuer,
+    pins = prov@jwks_pins,
+    pin_mode = prov@jwks_pin_mode,
+    issuer_match = prov@issuer_match,
+    jwks_host_issuer_match = prov@jwks_host_issuer_match,
+    jwks_host_allow_only = prov@jwks_host_allow_only,
+    jwks_uri_override = prov@jwks_uri,
+    tls_minimum = shinyOAuth:::client_tls_minimum(client)
+  )
+  cached_kids <- function(entry) {
+    vapply(
+      entry[["jwks"]][["keys"]],
+      function(key) key[["kid"]] %||% "",
+      character(1)
+    )
+  }
+  testthat::expect_null(cache[["get"]](cache_key, missing = NULL))
+
+  # Count real downloads without replacing the cache or changing HTTP responses.
+  perform <- shinyOAuth:::req_with_retry
+  jwks_requests <- list()
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      is_jwks <- identical(req[["url"]], prov@jwks_uri)
+      if (is_jwks) {
+        requested_at <- as.numeric(Sys.time())
+        entry <- cache[["get"]](cache_key, missing = NULL)
+      }
+      resp <- perform(req, ...)
+      if (is_jwks) {
+        jwks_requests[[length(jwks_requests) + 1L]] <<- list(
+          requested_at = requested_at,
+          entry = entry,
+          cache_control = httr2::resp_header(resp, "cache-control")
+        )
+      }
+      resp
+    },
+    .package = "shinyOAuth"
+  )
 
   first <- jwks_rotation_login_via_module(client)
   testthat::expect_true(isTRUE(first[["authenticated"]]))
+  testthat::expect_true(isTRUE(first[["token"]]@id_token_validated))
   first_header <- shinyOAuth:::parse_jwt_header(first[["token"]]@id_token)
   first_kid <- first_header[["kid"]] %||% NA_character_
   testthat::expect_true(keycloak_nonempty_string(first_kid))
+
+  first_entry <- cache[["get"]](cache_key, missing = NULL)
+  testthat::expect_type(first_entry, "list")
+  testthat::expect_true(first_kid %in% cached_kids(first_entry))
+  testthat::expect_lte(
+    first_entry[["fresh_until"]],
+    first_entry[["fetched_at"]]
+  )
+  testthat::expect_length(jwks_requests, 1L)
+  testthat::expect_match(
+    jwks_requests[[1L]][["cache_control"]],
+    "(^|,)\\s*no-cache\\s*(,|$)"
+  )
+  testthat::expect_null(jwks_requests[[1L]][["entry"]])
+  testthat::expect_null(cache[["get"]](
+    paste0(cache_key, "xfr"),
+    missing = NULL
+  ))
+
+  # This pinned server requires revalidation. These logins do not prove a warm
+  # cache hit or refresh-on-unknown-kid from a still-fresh cached key set.
+  repeated_login <- jwks_rotation_login_via_module(client)
+  testthat::expect_true(isTRUE(repeated_login[["authenticated"]]))
+  testthat::expect_true(isTRUE(repeated_login[["token"]]@id_token_validated))
+  testthat::expect_identical(
+    shinyOAuth:::parse_jwt_header(repeated_login[["token"]]@id_token)[["kid"]],
+    first_kid
+  )
+  testthat::expect_identical(client@provider@jwks_cache, cache)
+  testthat::expect_length(jwks_requests, 2L)
+  testthat::expect_identical(jwks_requests[[2L]][["entry"]], first_entry)
+  testthat::expect_match(
+    jwks_requests[[2L]][["cache_control"]],
+    "(^|,)\\s*no-cache\\s*(,|$)"
+  )
+  repeated_entry <- cache[["get"]](cache_key, missing = NULL)
+  testthat::expect_gt(
+    repeated_entry[["fetched_at"]],
+    first_entry[["fetched_at"]]
+  )
+  testthat::expect_lte(
+    repeated_entry[["fresh_until"]],
+    repeated_entry[["fetched_at"]]
+  )
 
   admin_token <- keycloak_admin_token()
   component <- keycloak_create_generated_rsa_key_provider(admin_token)
@@ -247,12 +344,41 @@ testthat::test_that("JWKS cache refreshes on live Keycloak signing-key rotation"
   new_kid <- wait_for_active_rs256_kid(admin_token, previous_kid = first_kid)
   testthat::expect_true(keycloak_nonempty_string(new_kid))
   testthat::expect_false(identical(new_kid, first_kid))
+  testthat::expect_false(new_kid %in% cached_kids(repeated_entry))
+  testthat::expect_identical(client@provider@jwks_cache, cache)
+  testthat::expect_identical(cache[["get"]](cache_key), repeated_entry)
 
   second <- jwks_rotation_login_via_module(client)
   testthat::expect_true(isTRUE(second[["authenticated"]]))
   second_header <- shinyOAuth:::parse_jwt_header(second[["token"]]@id_token)
   testthat::expect_identical(second_header[["kid"]], new_kid)
   testthat::expect_true(isTRUE(second[["token"]]@id_token_validated))
+  testthat::expect_identical(client@provider@jwks_cache, cache)
+  testthat::expect_length(jwks_requests, 3L)
+  testthat::expect_match(
+    jwks_requests[[3L]][["cache_control"]],
+    "(^|,)\\s*no-cache\\s*(,|$)"
+  )
+  testthat::expect_identical(jwks_requests[[3L]][["entry"]], repeated_entry)
+  testthat::expect_lte(
+    repeated_entry[["fresh_until"]],
+    jwks_requests[[3L]][["requested_at"]]
+  )
+
+  refreshed_entry <- cache[["get"]](cache_key, missing = NULL)
+  testthat::expect_true(new_kid %in% cached_kids(refreshed_entry))
+  testthat::expect_gt(
+    refreshed_entry[["fetched_at"]],
+    repeated_entry[["fetched_at"]]
+  )
+  testthat::expect_lte(
+    refreshed_entry[["fresh_until"]],
+    refreshed_entry[["fetched_at"]]
+  )
+  testthat::expect_null(cache[["get"]](
+    paste0(cache_key, "xfr"),
+    missing = NULL
+  ))
 
   rogue_old_kid <- make_rogue_id_token_with_kid(
     second[["token"]]@id_token,
@@ -273,4 +399,5 @@ testthat::test_that("JWKS cache refreshes on live Keycloak signing-key rotation"
     regexp = "signature",
     class = "shinyOAuth_id_token_error"
   )
+  testthat::expect_identical(client@provider@jwks_cache, cache)
 })
