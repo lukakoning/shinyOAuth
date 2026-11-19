@@ -96,6 +96,9 @@ These entries index implemented client behavior and selected evidence. The
 for direct client clauses, with explicit registration, AS/RS, deployment and
 inherited-security boundaries. The FAPI map applies additional profile rules,
 including minimal PAR browser parameters and stricter authentication/algorithms.
+The partial [OAuth security map](requirements-security.md) separately accounts
+for RFC 9700 redirect, replay, mix-up, injection and CSRF duties and their
+AS/deployment boundaries; its remaining audit sections stay explicit.
 
 | ID / extension clause | Conditional client behavior and concrete evidence | Remaining role or scope limit |
 | --- | --- | --- |

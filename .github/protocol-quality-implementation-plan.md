@@ -41,7 +41,8 @@ OAuth code/refresh/metadata, PAR/JWT client authentication and JWT/Message
 Signing. Direct mTLS/DPoP/resource-indicator client clauses now have a companion
 map. G1-G4 now have their recorded regressions; G3 adds a named Message Signing
 configuration assessment, while G2 retains its observed purpose-policy limits.
-Inherited-security and aggregate coverage work remains open. SA06's Keycloak follow-up now
+The partial RFC 9700 map adds redirect/replay and selected attack protections;
+remaining inherited-security and aggregate coverage work stays open. SA06's Keycloak follow-up now
 proves no-cache revalidation and rotation; C06 warm-cache acceptance remains
 open. SA05 now separates upstream execution from local coverage and categorized
 limits, with regression and retained-report validation. SA06's milestone status
@@ -2281,6 +2282,25 @@ is under `codex/discovery-dpop-case/`; the tested checkout was development
 source at `f9056d9b12fd8f11e24eacfcb2c1317ac9b8261b`. No production behavior
 changed, and these regressions do not add a live-provider or release-matrix
 claim.
+
+SA04 OAuth security map, first slice (2026-11-19):
+[requirements-security.md](../integration/openid/requirements-security.md)
+accounts for RFC 9700 sections 2.1–2.2 and 4.2–4.8 through eight reusable
+implementation/test evidence entries and fifteen clause/role rows. It adds
+threat-specific accounting to the existing OAuth/extension maps: redirect and
+transaction integrity, token replay, referrer/history disclosure, pre-redemption
+issuer/route defenses, code/access-token injection, nonce ordering, CSRF and
+PKCE downgrade. The other RFC sections remain named pending audit work.
+
+Independent review corrected one evidence conflation: the linked Keycloak
+missing-verifier case fails locally before exchange; only its wrong-verifier
+case supplies AS denial. The map also preserves malformed-callback query
+cleanup, initiation consent and HTTPS cross-site/deployment gaps. It does not
+infer server replay/PKCE enforcement from client request construction, or
+unconditional JWT-purpose separation from nonce/subject checks. All 36 distinct
+local links and 30 distinct official RFC links/anchors passed author and
+independent checks. This is a source/test audit at `f9056d9b`, with no runtime
+change or new execution credit. SA04 and SA08 remain incomplete.
 
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
