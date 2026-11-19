@@ -12,6 +12,11 @@ See [interpreting client evidence](assessment.md) for the independent
 `selection_complete`, `upstream_plan_complete` and legacy `coverage_complete`
 decisions, exact accepted non-passing verdicts and categorized limitations.
 
+The Message Signing fixture also performs a
+[local configuration assessment](configuration.md) before authorization,
+including explicit `nbf`, Request Object lifetime, effective authentication
+audiences and the separate JWT-purpose policies for its named selection.
+
 Run from the repository root with Docker Engine using Linux containers,
 Compose v2, Git, Chrome/Chromium, and R packages `httr2`, `jsonlite`, `processx`,
 `openssl`, `withr`, `chromote`, `httpuv` and `testthat` installed:

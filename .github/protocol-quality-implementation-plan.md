@@ -39,7 +39,9 @@ the [requirement maps](../integration/openid/requirements.md) account for FAPI's
 20 client clauses, relevant network/cryptography duties, OIDC code/discovery,
 OAuth code/refresh/metadata, PAR/JWT client authentication and JWT/Message
 Signing. Direct mTLS/DPoP/resource-indicator client clauses now have a companion
-map; inherited-security and configuration/coverage work remains open. SA06's Keycloak follow-up now
+map. G1-G4 now have their recorded regressions; G3 adds a named Message Signing
+configuration assessment, while G2 retains its observed purpose-policy limits.
+Inherited-security and aggregate coverage work remains open. SA06's Keycloak follow-up now
 proves no-cache revalidation and rotation; C06 warm-cache acceptance remains
 open. SA05 now separates upstream execution from local coverage and categorized
 limits, with regression and retained-report validation. SA06's milestone status
@@ -2222,6 +2224,44 @@ warnings or skips. Formatting, jarl, whitespace, local links and independent
 review passed. Results remain under ignored `codex/jwt-purpose-separation/`.
 G2's corpus is implemented with its purpose-policy assessment explicitly
 limited; G3 and the overall SA04/source-qualified release work remain open.
+
+SA04 Message Signing configuration G3 (2026-11-19):
+[helper-configuration.R](../integration/openid/helper-configuration.R) now
+assesses the named OIDC/private-key-JWT/ES256/DPoP/`jwt` selection. Both fixture
+subprocess startup paths source the helper; the Message Signing client is
+checked before authorization. The result contains only named boolean checks,
+stable issue IDs, selected policies and explicit unassessed limits, with
+`certification_status = "not_assessed"`. The
+[configuration example](../integration/openid/configuration.md) distinguishes
+these integration settings from the package's general defaults.
+
+The guard covers S256, nonce/ID-token validation, independent UserInfo signing
+policy, TLS/unsafe options, reference state, PAR/JAR/JARM and the effective
+token/PAR authentication algorithms and issuer audiences. Real ES256 Request
+Objects produced by public preparation APIs pass at TTL/skew pairs 45/0,
+3600/0 and 45/3555. Omitted `nbf`, excessive skew and an `exp - nbf` window
+over 3,600 seconds fail before HTTP or state writes. General OAuth/JAR timing
+defaults and valid broader configurations remain available.
+
+Independent review identified an alias-selection corner case: additional mTLS
+intent can select endpoints outside the checked base HTTPS URLs. The named
+DPoP-only assessment now uses the runtime predicate on the client and resolved
+token/PAR authentication clients to reject that intent. Regressions demonstrate
+actual alias resolution for generic-valid mixed clients and PAR mTLS overrides,
+no HTTP/state changes on rejection, and acceptance of inactive aliases and
+unused certificate material. Review of the correction and startup/source hooks
+found no further actionable issue.
+
+Windows and Linux each passed 249 new configuration assertions and the full
+7,308-assertion integration evidence regression suite with zero failures,
+errors, test warnings or skips. Formatting, jarl, whitespace and all 85 local
+links in the touched environment documents passed. Evidence is retained under
+ignored `codex/g3-configuration/` and `codex/message-signing-configuration/`;
+the earlier pre-alias-review runs are preserved separately. These are dirty
+development-checkout results, including unrelated DESCRIPTION/NEWS edits.
+Hosted runtime validation is the next check. G3's local configuration scope
+is implemented; G2's purpose-policy limits, overall SA04 and the complete
+source-qualified release matrix remain open.
 
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,

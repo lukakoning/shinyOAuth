@@ -139,6 +139,9 @@ openid_fixture_app <- function(config) {
   if (!is.null(config[["extra_auth_params"]])) {
     discovery_args[["extra_auth_params"]] <- config[["extra_auth_params"]]
   }
+  if (isTRUE(config[["message_signing"]])) {
+    discovery_args[["userinfo_allowed_algs"]] <- c("ES256", "EdDSA", "Ed25519")
+  }
   if (!is.null(advanced)) {
     discovery_args[["userinfo_signed_jwt_required"]] <- TRUE
     discovery_args[["userinfo_allowed_algs"]] <- "RS256"
@@ -423,6 +426,9 @@ openid_fixture_app <- function(config) {
     },
     state_key = openssl::rand_bytes(32)
   )
+  if (isTRUE(config[["message_signing"]])) {
+    openid_assert_message_signing_configuration(client)
+  }
   if (isTRUE(config[["preload_jwks"]])) {
     # No public prefetch API exists. This calls the installed package's normal
     # fetch/cache/host-policy path, without injecting keys or validation results.

@@ -182,6 +182,10 @@ openid_app_start <- function(
       if (!isTRUE(config[["backend_verified"]])) {
         stop("Fixture selected the wrong async backend")
       }
+      source(
+        file.path(root, "integration/openid/helper-configuration.R"),
+        local = TRUE
+      )
       source(file.path(root, "integration/openid/fixture-app.R"), local = TRUE)
       if (!is.null(config[["advanced"]])) {
         source(

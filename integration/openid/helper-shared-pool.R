@@ -144,6 +144,10 @@ openid_shared_start <- function(
         file.path(root, "integration/openid/fixture-transport.R"),
         local = TRUE
       )
+      source(
+        file.path(root, "integration/openid/helper-configuration.R"),
+        local = TRUE
+      )
       source(file.path(root, "integration/openid/fixture-app.R"), local = TRUE)
       source(
         file.path(root, "integration/openid/helper-shared-pool.R"),
