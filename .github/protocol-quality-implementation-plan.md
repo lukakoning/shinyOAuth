@@ -2452,6 +2452,45 @@ evidence and live acceptance below; filtered development-build staging is a
 named source-tooling follow-up. This implements the callback-cleanup slice;
 SA07 cross-site HTTPS/browser work, overall SA04 and SA08 remain open.
 
+SA07 canonical acceptance and diagnosis follow-up (2026-11-19): clean source
+`9288fbbe98c4d2730db5a1c1060b75588a3d2ab5` passed all 11 OAuth/reference/sync
+modules, including four schema-2 cleanup outcomes, and the full 7,904 evidence
+assertions on Windows and Linux. The canonical source archive was
+`52ad859ba15131d9ef5035d44e23218a411520caa166d8337d1be035113e89ee`.
+An independent reviewer checked exact module/variant inventory, each cleanup
+flag, zero rejection traffic, actual private installations and selected-commit
+archive. Linux used a temporary native Git-bundle clone to avoid Windows
+absolute-worktree paths and unreadable ignored artifacts; source/install
+before/after records matched, with no warnings or skips. These are distinct
+client and unit-evidence results, not a complete matrix.
+
+The separate clean Message Signing/mirai attempt stopped at its invalid-state
+module after 15 suite `PASSED` verdicts: the stricter application evidence gate
+rejected its diagnosis. Every cleanup/privacy/pending-state/zero-exchange flag
+passed, but the formatter returned the outer state-validation diagnosis rather
+than the specific inner missing-record reason. The failed report has no final
+source/installation records and receives no passing-run credit; its release-
+source check correctly fails. Its queued hosted run was cancelled before
+validation. All failed reports, logs and private receipts remain preserved.
+
+The approved inner reason can occur as an `abort_pkg()` heading or a nested
+heading in the trusted primary bullet. The follow-up recognizes only exact
+approved namespace titles at those positions; it never searches received or
+diagnostic lines and returns only the fixed public literal. The collector and
+its acceptance requirements are unchanged. New real ES256 JARM GET/POST cases
+create two reference-state preparations, remove one record, require the exact
+rejection without HTTP dispatch, preserve the other, then exercise a trusted
+JWKS fetch and rightful callback recovery. Unknown, suffixed and diagnostic-
+only headers cannot select an approved diagnosis.
+
+All 1,600 targeted assertions across cleanup, form-POST and JARM-response tests
+passed on each OS, including 47 added assertions; failures, errors, test warnings
+and skips were zero. Source guards, air, jarl, whitespace and independent review
+passed. Evidence is in ignored
+`codex/callback-rejection-cleanup/*-reference-header-final/`. The earlier 3,803-
+assertion scope is retained for its original source, rather than relabeled as
+execution of this correction. Fresh clean-source validation follows below.
+
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second
 full provider. Add another mock server only when a remaining test case justifies

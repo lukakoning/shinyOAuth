@@ -64,6 +64,7 @@ oauth_callback_rejection_message <- function(e, status) {
     "OAuth form_post JARM callback must not contain both response and direct OAuth callback parameters.",
     "State payload decryption or validation failed"
   )
+  headers <- paste0("[shinyOAuth] - ", messages)
   conditions <- list(e)
   for (depth in seq_len(8L)) {
     parent <- tryCatch(e[["parent"]], error = function(...) NULL)
@@ -79,6 +80,12 @@ oauth_callback_rejection_message <- function(e, status) {
       "\n",
       fixed = TRUE
     )[[1L]]
+    # Some typed errors use their approved classification as the header title.
+    # Exact equality avoids trusting diagnostic values or a suffixed title.
+    header <- match(trimws(lines[[1L]]), headers)
+    if (!is.na(header)) {
+      return(messages[[header]])
+    }
     # Only the primary bullet may select a classification. Opt-in received
     # values and other diagnostic suffixes remain outside this allowlist.
     index <- if (
@@ -100,6 +107,13 @@ oauth_callback_rejection_message <- function(e, status) {
       "",
       primary
     ))
+    # State-store errors can retain that namespace header as the primary
+    # bullet of a typed wrapper. Inspect only that selected primary, never an
+    # informational or received-value bullet elsewhere in the condition.
+    header <- match(primary, headers)
+    if (!is.na(header)) {
+      return(messages[[header]])
+    }
     matched <- startsWith(primary, messages)
     if (any(matched)) return(messages[[which(matched)[[1L]]]])
   }

@@ -256,6 +256,219 @@ test_that("mixed, encoded and duplicate rejection locators preserve a genuine re
   expect_match(final[["content"]], "requires oauth_ui")
 })
 
+test_that("a missing reference record retains its typed rejection through public JARM callbacks", {
+  withr::local_options(
+    cli.num_colors = 256,
+    shinyOAuth.allowed_hosts = c("issuer.example", "localhost")
+  )
+  for (post in c(FALSE, TRUE)) {
+    key <- openssl::ec_keygen("P-256")
+    jwk <- jsonlite::fromJSON(
+      write_test_jwk(key[["pubkey"]]),
+      simplifyVector = FALSE
+    )
+    jwk[["kid"]] <- "reference-signing-key"
+    jwk[["alg"]] <- "ES256"
+    jwk[["use"]] <- "sig"
+    provider <- oauth_provider(
+      "reference-rejection",
+      "https://issuer.example/authorize",
+      "https://issuer.example/token",
+      issuer = "https://issuer.example",
+      jwks_uri = "https://issuer.example/jwks",
+      token_auth_style = "public",
+      use_nonce = FALSE,
+      id_token_validation = FALSE,
+      id_token_required = FALSE
+    )
+    client <- oauth_client(
+      provider,
+      "reference-client",
+      redirect_uri = "http://localhost:8100/callback",
+      scopes = "openid",
+      state_transport = "reference",
+      response_mode = if (post) "form_post.jwt" else "query.jwt",
+      jarm_signed_response_alg = "ES256"
+    )
+    browser <- valid_browser_token()
+    prepare <- function() {
+      parse_query_param(prepare_call(client, browser), "state", decode = TRUE)
+    }
+    rightful <- prepare()
+    missing <- prepare()
+    expect_false(identical(rightful, missing))
+    rightful_key <- state_cache_key(rightful)
+    missing_key <- state_cache_key(missing)
+    record <- client@state_store[["get"]](rightful_key)
+    client@state_store[["remove"]](missing_key)
+    expect_null(client@state_store[["get"]](missing_key, missing = NULL))
+    expect_identical(client@state_store[["keys"]](), rightful_key)
+    requests <- character()
+    local_mocked_bindings(
+      req_perform = function(req, ...) {
+        requests <<- c(requests, req[["url"]])
+        if (!identical(req[["url"]], provider@jwks_uri)) {
+          stop("Unexpected token, UserInfo or resource request")
+        }
+        httr2::response(
+          url = req[["url"]],
+          status = 200L,
+          headers = list(
+            "content-type" = "application/json",
+            "cache-control" = "public, max-age=600"
+          ),
+          body = charToRaw(jsonlite::toJSON(
+            list(keys = list(jwk)),
+            auto_unbox = TRUE
+          ))
+        )
+      },
+      .package = "httr2"
+    )
+    rendered <- 0L
+    ui <- (if (post) oauth_form_post_ui else oauth_ui)(
+      function(req) {
+        rendered <<- rendered + 1L
+        shiny::fluidPage("Application")
+      },
+      "auth",
+      client
+    )
+    sign <- function(state) {
+      jose::jwt_encode_sig(
+        jose::jwt_claim(
+          iss = provider@issuer,
+          aud = client@client_id,
+          exp = as.numeric(Sys.time()) + 60,
+          state = state,
+          code = "SECRET-REFERENCE-CODE"
+        ),
+        key,
+        header = list(kid = "reference-signing-key")
+      )
+    }
+    request <- function(jwt) {
+      encoded <- httr2::url_query_build(list(response = jwt))
+      if (post) {
+        callback_rejection_request(body = encoded)
+      } else {
+        callback_rejection_request(encoded)
+      }
+    }
+    jwt <- sign(missing)
+    expect_identical(parse_jwt_header(jwt)[["alg"]], "ES256")
+    expect_identical(
+      jose::jwt_decode_sig(jwt, key[["pubkey"]])[["state"]],
+      missing
+    )
+    req <- request(jwt)
+    rejected <- ui(req)
+    expect_identical(rejected[["status"]], 303L)
+    expect_match(
+      rejected[["headers"]][["Location"]],
+      "^\\?shinyOAuth_callback_error=ce1_[A-Za-z0-9_-]{43}#$"
+    )
+    final <- callback_rejection_terminal(ui, req, rejected)
+    expect_identical(final[["status"]], 400L)
+    expect_identical(
+      final[["content"]],
+      "State store entry is missing or malformed"
+    )
+    expect_false(grepl(
+      "SECRET|reference-client|Trace ID|issuer.example",
+      paste(
+        rejected[["content"]],
+        rejected[["headers"]][["Location"]],
+        final[["content"]]
+      )
+    ))
+    # Authenticating missing state precedes any issuer-key refresh. No code
+    # exchange or other HTTP request is possible for the rejected response.
+    expect_length(requests, 0L)
+    expect_identical(rendered, 0L)
+    expect_identical(client@state_store[["keys"]](), rightful_key)
+    expect_identical(client@state_store[["get"]](rightful_key), record)
+    good <- ui(request(sign(rightful)))
+    expect_identical(good[["status"]], 303L)
+    expect_match(good[["headers"]][["Location"]], "shinyOAuth_form_post=")
+    expect_identical(requests, provider@jwks_uri)
+    handle <- parse_query_param(
+      good[["headers"]][["Location"]],
+      "shinyOAuth_form_post",
+      decode = TRUE
+    )
+    accepted <- oauth_form_post_store_take(client, "auth", handle)
+    expect_identical(
+      accepted[["normalized_response"]][["claims"]][["state"]],
+      rightful
+    )
+    expect_identical(client@state_store[["get"]](rightful_key), record)
+    expect_identical(rendered, 0L)
+  }
+})
+
+test_that("rejection classification trusts only exact approved namespace headers", {
+  withr::local_options(
+    shinyOAuth.expose_error_body = TRUE,
+    cli.num_colors = 256
+  )
+  reason <- "State store entry is missing or malformed"
+  header <- paste0("[shinyOAuth] - ", reason)
+  condition <- function(title, body = NULL) {
+    tryCatch(
+      abort_pkg(
+        title,
+        body,
+        class = c("shinyOAuth_state_error", "shinyOAuth_error")
+      ),
+      error = identity
+    )
+  }
+  expect_identical(
+    oauth_callback_rejection_message(condition(reason), 400L),
+    reason
+  )
+  nested <- tryCatch(err_invalid_state(header), error = identity)
+  expect_identical(oauth_callback_rejection_message(nested, 400L), reason)
+  for (title in c(
+    "Unapproved SECRET header",
+    paste0(reason, " SECRET-SUFFIX")
+  )) {
+    e <- condition(title, c(i = header))
+    expect_identical(
+      oauth_callback_rejection_message(e, 400L),
+      "OAuth callback could not be processed."
+    )
+  }
+  suffixed <- tryCatch(
+    err_invalid_state(paste0(header, " SECRET-SUFFIX")),
+    error = identity
+  )
+  expect_identical(
+    oauth_callback_rejection_message(suffixed, 400L),
+    "OAuth callback could not be processed."
+  )
+  received <- tryCatch(
+    err_claim_validation(
+      "JARM signing alg mismatch",
+      "alg",
+      "ES256",
+      header,
+      err_invalid_state
+    ),
+    error = identity
+  )
+  expect_match(
+    cli::ansi_strip(conditionMessage(received)),
+    header,
+    fixed = TRUE
+  )
+  expect_identical(
+    oauth_callback_rejection_message(received, 400L),
+    "JARM signing alg mismatch"
+  )
+})
+
 test_that("query budget, cache expiry, cache failure and pressure remain fail closed", {
   cache <- oauth_callback_rejection_cache()
   client <- make_test_client()
