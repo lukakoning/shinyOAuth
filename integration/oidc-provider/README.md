@@ -18,12 +18,20 @@ Rscript integration/oidc-provider/run-resources.R --transport sync
 Rscript integration/oidc-provider/run-resources.R --transport mirai
 Rscript integration/oidc-provider/run-retention.R --transport sync
 Rscript integration/oidc-provider/run-retention.R --transport mirai
+Rscript integration/oidc-provider/run-jwks-rotation.R
 ```
 
 On Windows, the runner also looks for Git's bundled OpenSSL. Set
 `SHINYOAUTH_OPENSSL` to choose another executable. Node runs in the pinned
 container; a host Node installation is unnecessary. A failed build, startup,
 runtime check or discovery capability check fails the gate.
+
+The separate [warm JWKS rotation selection](jwks-rotation.md) retains one
+default client cache across real provider logins and an owned provider restart.
+It requires an observed cache hit before one unknown-key refresh, with native
+request counts and rogue-signature controls. This headless sync selection has
+no browser-cookie or shared-worker-cache claim and records absent origin
+freshness headers rather than inventing a provider max-age.
 
 The four [cases](profiles.json) cover public clients (`none`) and confidential
 clients (`client_secret_basic`), each with query and Form Post callbacks. Every

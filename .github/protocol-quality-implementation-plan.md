@@ -2635,6 +2635,37 @@ remain preserved. This is synthetic/development evidence, not execution of
 the 39-row matrix. SA08 remains partial until that execution and durable
 retention are demonstrated.
 
+SA06 native-provider warm-cache selection implementation (2026-11-20):
+[`run-jwks-rotation.R`](../integration/oidc-provider/jwks-rotation.md) reuses the
+pinned oidc-provider and unchanged package default JWKS cache across three
+real code/S256 logins. The intended live sequence requires population, an
+observed hit without another native JWKS request, an owned provider restart
+with a new signing key at the same issuer/port, then exactly one unknown-key
+refresh while the old cache entry is still usable. Native request/key/process
+observations corroborate the package's pass-through fetch trace. Old/new-key
+rogue signatures must fail without extra endpoint traffic after the refresh.
+
+The native endpoint's actual Cache-Control and Expires headers are absent.
+This deliberately exercises the unchanged default one-hour backend policy,
+not a fabricated positive origin max-age. No header, cache entry or lifetime
+is overridden. The optional provider observer records native responses without
+replacing handlers; client observers delegate to actual fetch/request functions.
+Proof checks require exact digests, scalar finite timestamps, native run/process
+identities, key transition, state consumption and throttle evidence.
+
+Focused evidence/type mutations passed 212 R assertions with zero failures,
+errors, test warnings or skips. All eight pinned Node fixture tests passed,
+including native header/public-key and opt-in-observer controls. Root review
+strengthened malformed digest/process/time handling before freezing the files.
+This headless testServer/HTTP interaction selection bypasses browser-token
+checking explicitly and claims no Chrome, browser-cookie, mirai/shared-cache,
+Keycloak or OIDF execution. Its dedicated schema-1 report cannot fill an OIDF
+release-matrix row. Required setup failures fail rather than skip. The manual
+provider workflow exposes this sync-only selection and sanitized report path;
+retention is still seven days. The original Keycloak no-cache and OIDF no-store
+tests are unchanged. Canonical live acceptance follows separately; C06's
+observed warm-cache gap is not closed merely by these synthetic checks.
+
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second
 full provider. Add another mock server only when a remaining test case justifies

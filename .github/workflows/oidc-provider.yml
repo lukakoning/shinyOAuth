@@ -12,8 +12,9 @@ on:
           - advanced
           - resources
           - retention
+          - jwks-rotation
       transport:
-        description: Token and UserInfo transport
+        description: Token and UserInfo transport (jwks-rotation requires sync)
         type: choice
         default: sync
         options:
@@ -65,6 +66,7 @@ jobs:
             any::promises
             any::later
             any::ps
+            any::xml2
           cache-version: 1
       - name: Select Chrome
         run: echo "CHROMOTE_CHROME=${{ steps.chrome.outputs.chrome-path }}" >> "$GITHUB_ENV"
@@ -75,9 +77,18 @@ jobs:
             advanced) runner=run-advanced.R ;;
             resources) runner=run-resources.R ;;
             retention) runner=run-retention.R ;;
+            jwks-rotation) runner=run-jwks-rotation.R ;;
             *) exit 1 ;;
           esac
-          Rscript "integration/oidc-provider/$runner" --transport "$INTEROP_TRANSPORT"
+          if [[ "$INTEROP_PROFILE" == "jwks-rotation" ]]; then
+            if [[ "$INTEROP_TRANSPORT" != "sync" ]]; then
+              echo "jwks-rotation requires sync transport"
+              exit 1
+            fi
+            Rscript "integration/oidc-provider/$runner"
+          else
+            Rscript "integration/oidc-provider/$runner" --transport "$INTEROP_TRANSPORT"
+          fi
       - name: Upload sanitized evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

@@ -4,6 +4,7 @@ import { fixture } from './provider.mjs';
 import { advancedOptions, inspectRS256, peerCertificate } from './advanced-provider.mjs';
 import { generateKeyPairSync, sign } from 'node:crypto';
 import { resourceOptions } from './resource-provider.mjs';
+import { createServer } from 'node:http';
 
 const config = {
   issuer: 'https://localhost:30000', redirect_uri: 'https://localhost:30001/',
@@ -76,4 +77,41 @@ test('resource configuration resolves exact audiences and rejects unknown indica
   }
   assert.equal(options.userinfo.enabled, false);
   assert.throws(() => resourceOptions({ ...config, resource_indicators: { target: 'a' }, advanced: {} }), /Invalid resource/);
+});
+
+test('rotation observation is opt-in and native JWKS retain their original headers and public keys', async () => {
+  assert.throws(() => fixture({ ...config, jwks_rotation: 'true' }), /Invalid JWKS rotation selection/);
+  const selected = fixture({ ...config, jwks_rotation: true });
+  const second = fixture({ ...config, jwks_rotation: true });
+  const evidence = async instance => {
+    let body;
+    await instance.handler({ url: '/fixture/evidence', method: 'GET', headers: { 'x-fixture-key': config.control_key } }, {
+      setHeader() {}, end(value) { body = JSON.parse(value); },
+    });
+    return body;
+  };
+  assert.equal('jwks_rotation' in await evidence(fixture(config)), false);
+  const first = (await evidence(selected)).jwks_rotation;
+  const next = (await evidence(second)).jwks_rotation;
+  assert.match(first.instance_id, /^[a-f0-9]{32}$/);
+  assert.equal(first.issuer, config.issuer);
+  assert.equal(next.issuer, first.issuer);
+  assert.notEqual(first.instance_id, next.instance_id);
+  assert.notEqual(first.active_kid, next.active_kid);
+  const server = createServer((req, res) => Promise.resolve(selected.handler(req, res)).catch(error => {
+    res.writeHead(500).end(); throw error;
+  }));
+  try {
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/jwks`);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('cache-control'), null);
+    assert.equal(response.headers.get('expires'), null);
+    const jwks = await response.json();
+    assert.deepEqual(jwks.keys.map(value => value.kid), [first.active_kid]);
+    assert.equal(jwks.keys.every(value => !('d' in value) && !('p' in value)), true);
+    assert.deepEqual(selected.events, [{ sequence: 1, type: 'jwks', status: 200,
+      kids: [first.active_kid], cache_control: null, expires: null }]);
+    assert.doesNotMatch(JSON.stringify(await evidence(selected)), /"control_key"|"client_secret"|"d"|"p"/);
+  } finally { await new Promise(resolve => server.close(resolve)); }
 });

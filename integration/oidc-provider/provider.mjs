@@ -20,6 +20,8 @@ export function fixture(config) {
       !/^[a-f0-9]{32}$/.test(config.run_id) || !/^[a-f0-9]{64}$/.test(config.control_key)) throw Error('Invalid local fixture configuration');
   const key = generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({ format: 'jwk' });
   Object.assign(key, { kid: randomBytes(16).toString('hex'), alg: 'RS256', use: 'sig' });
+  if (config.jwks_rotation !== undefined && config.jwks_rotation !== true) throw Error('Invalid JWKS rotation selection');
+  const rotation = config.jwks_rotation ? { instance_id: randomBytes(16).toString('hex'), active_kid: key.kid, issuer: config.issuer } : undefined;
   const client = {
     client_id: config.client_id, redirect_uris: [config.redirect_uri],
     token_endpoint_auth_method: config.client_auth_type,
@@ -120,6 +122,12 @@ export function fixture(config) {
   });
   provider.use(async (ctx, next) => {
     await next();
+    // Observe the native endpoint; do not supply keys or alter cache headers.
+    if (rotation && ctx.path === '/jwks') record('jwks', {
+      status: ctx.status, kids: (ctx.body?.keys ?? []).map(value => value.kid),
+      cache_control: ctx.response.get('cache-control') || null,
+      expires: ctx.response.get('expires') || null,
+    });
     if (resources) observeResource(ctx, config, state, record);
     if (advanced) observeAdvanced(ctx, config, key, state, record);
     else if (ctx.path === '/userinfo') record('userinfo', {
@@ -143,7 +151,8 @@ export function fixture(config) {
       res.end(JSON.stringify({ run_id: config.run_id, provider_version: version, node_version: process.version,
         client_auth_type: config.client_auth_type, features: { dev_interactions: false, userinfo: !resources,
           pkce_required: true, refresh_rotation: true }, ...(advanced ? { advanced: config.advanced } : {}),
-        ...(resources ? { resource_indicators: config.resource_indicators } : {}), events }));
+        ...(resources ? { resource_indicators: config.resource_indicators } : {}),
+        ...(rotation ? { jwks_rotation: rotation } : {}), events }));
       return;
     }
     if (resources && await resourceResponse(req, res, provider, config, state, record)) return;
