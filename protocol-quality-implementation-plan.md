@@ -2630,6 +2630,62 @@ the source guard after concurrent documentation edits remain preserved
 and are excluded from acceptance. Clean client/API and shared-pool
 entrypoint validation follows at the committed correction.
 
+G3 clean hosted Message Signing acceptance (2026-11-19): [run
+44568024103](https://github.com/lukakoning/shinyOAuth/actions/runs/44568024103)
+passed all 29 Message Signing/sync modules at clean source
+`f9056d9b12fd8f11e24eacfcb2c1317ac9b8261b`. Fresh pinned-image
+acquisition, TLS, all fifteen API inventories, application/module
+evidence and cleanup passed. Preflight/API/client source records
+matched; the client installation matched the independently regenerated
+commit archive. The downloaded ZIP’s SHA-256 matched GitHub metadata,
+and independent local report revalidation and the release-source CLI
+passed. The module loop took 222.62 seconds; the job took 610 seconds
+after 979 seconds in queue. Exact archive/artifact hashes and phase
+timings are recorded in the [release
+review](https://lukakoning.github.io/integration/openid/release-review.md).
+
+This run validates the named configuration guard and fixture integration
+at its recorded source. It does not retrospectively cover the later
+namespace correction at `be2abdbc`, or combine different revisions into
+an SA08 matrix. The corrected clean API entrypoint has also passed;
+corrected clean client/shared-pool acceptance is recorded below. G2’s
+compatibility limits, remaining SA04 audit sections and SA08
+aggregate/durable release evidence remain open.
+
+Clean regression-namespace correction acceptance (2026-11-19): fresh
+actual entrypoints at `be2abdbc75acef61aa4f5141c9c5b41d97fa5dfd` passed
+from detached clean Windows worktrees while the machine’s old
+`0.6.1.9000` package remained unchanged. Message Signing/sync passed all
+29 modules (306.94-second loop). API passed all fifteen
+inventories/probes while retaining no client-flow credit.
+Shared-pool/mirai passed four selections/eight modules, verified workers
+and cleanup (47.53-second loop). Both commands’ regression checks used
+their own verified private archive installation; no pkgload was used.
+
+All three source and actual 39-file installation inventories were
+independently checked against their receipts.
+Initial/post-regression/final records match where recorded; shared-pool
+enforces the post-regression comparison and keeps matching initial/final
+records in its selections. The canonical archive hashes match across
+entrypoints. The release-source CLI accepted the two client reports
+together at the selected commit/tree/archive and rejected the API
+report. The owned Docker projects are gone, and clean worktree status
+remains unchanged. The [source
+policy](https://lukakoning.github.io/integration/openid/source-identity.md)
+records the exact archive identity, paths, preserved failed attempt and
+scope.
+
+Independent hosted/local review also verified actual module/variant
+inventory, signed exchange/JARM rejection evidence and source bytes.
+Windows clean snapshots use CRLF while the canonical archive uses LF;
+each snapshot must validate internally. Future cross-platform SA08
+aggregation must compare the selected commit/tree/canonical archive
+rather than requiring identical raw working-tree fingerprints across
+OSes. The hosted `f9056d9b` selection stays separate from these
+`be2abdbc` results. No mixed-revision or complete-matrix claim follows;
+remaining RFC 9700 sections, SA07 browser work and SA08
+aggregation/durable retention remain open.
+
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
 interoperability with a second full provider. Add another mock server
