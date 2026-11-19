@@ -239,7 +239,9 @@ userinfo[["sub"]]
   omitted per OIDC Discovery/RFC 8414. Generic providers may leave this
   empty when capabilities are not known. Provider metadata may include
   response modes that shinyOAuth does not implement. Requesting an
-  unsupported mode raises an error.
+  unsupported mode raises an error. Advertised values retain their exact
+  case and whitespace; caller `response_mode` options are normalized
+  separately.
 
 - mtls_endpoint_aliases:
 

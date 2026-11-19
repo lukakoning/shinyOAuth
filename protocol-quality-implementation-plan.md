@@ -2308,6 +2308,63 @@ base image or package dependencies. Formatting, jarl, whitespace and
 independent review passed. G1 is complete as a focused regression; G2-G4
 and the broader source-qualified release matrix remain open.
 
+SA04 JWT regression G4 (2026-11-19): a new real-signature corpus
+exercises ID-token/JARM module callbacks and public signed-UserInfo
+retrieval. Eight cases per context include ordinary signed positives,
+valid optional `jku`/`x5u` headers, attacker-signed JWTs pointing to
+attacker keys, unmatched SQL/path-shaped key IDs and correctly
+registered literal unusual-key-ID positives. The only mock is
+[`httr2::req_perform()`](https://httr2.r-lib.org/reference/req_perform.html);
+every HTTP destination is recorded, and attacker locations would supply
+matching attacker keys if requested. No header-selected location is
+contacted. Trusted provider JWKS still supplies the verification keys,
+unknown IDs fail and registered literal IDs remain usable.
+
+Rejected JARM keeps the pending state and makes no token request.
+Rejected ID tokens stop UserInfo/authentication after the required token
+response. Invalid signed UserInfo returns no claims. Windows and Linux
+each passed 274 focused locator/JWKS/JOSE assertions, including 171 new
+assertions, with zero failures, test warnings or skips; formatting, jarl
+and whitespace checks passed. Private result CSVs/RDS remain under
+ignored `codex/jwt-untrusted-locators/`. This is unit/module evidence
+with an explicit browser-marker bypass, not a browser, filesystem/SQL
+audit or new OIDF execution. No runtime defect was found. G1/G4 are now
+covered; G2/G3 and the complete source-qualified release matrix remain
+open.
+
+SA04 response-mode comparison correction (2026-11-19): discovery and
+both provider construction/validation paths now preserve advertised
+response-mode strings exactly, as do request selection and provider
+policy fingerprints. Uppercase or padded values cannot authorize a
+canonical mode; exact matches in mixed arrays still work. Caller-option
+normalization, omitted discovery query/fragment defaults, generic
+unknown-capability behavior and distinct outbound `jwt`/`query.jwt`
+checks remain. Whitespace-only capabilities still fail validation. The
+NEWS entry, provider documentation and OAuth map describe the narrowed
+behavior.
+
+The new 182-assertion regression covers OAuth/OIDC discovery, both
+manual constructors, S7 mutations, implicit query and actual callback
+recovery under encrypted/reference state. A changed capability rejects
+before any token HTTP request and preserves the pending record; the
+original client then exchanges once. Case/whitespace affect the
+fingerprint, while order/duplicates do not. All 2,933 targeted
+discovery/response-mode/state/callback/JARM/provider/worker assertions
+passed on Windows and Linux with zero failures, test warnings or skips.
+Jarl, whitespace and independent review passed; the new test is
+formatted.
+
+Initial broader attempts exposed validation prerequisites: Windows
+`future` 1.70.0 had been built under R 4.5.3, and the Linux subprocess
+lacked an installed package. Accepted checks used the same future
+version rebuilt from the official CRAN archive in a private Windows
+library, plus a private Linux installation of this working source and
+its existing optional test dependencies. No package dependency or base
+image changed, and warnings were not suppressed. Initial results remain
+separately under ignored `codex/response-mode-case/`; Windows retains
+the known R startup locale messages. These are development checks, not a
+new OIDF browser run or complete source-qualified release matrix.
+
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
 interoperability with a second full provider. Add another mock server
