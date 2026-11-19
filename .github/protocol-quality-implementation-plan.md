@@ -2263,6 +2263,25 @@ Hosted runtime validation is the next check. G3's local configuration scope
 is implemented; G2's purpose-policy limits, overall SA04 and the complete
 source-qualified release matrix remain open.
 
+SA04 public DPoP discovery case regression (2026-11-19):
+[test-discovery-dpop-case.R](../tests/testthat/test-discovery-dpop-case.R)
+closes the constructor-level follow-up identified by the sender-constraint
+map. Both exported OAuth and OIDC discovery APIs run their actual request,
+JSON parsing and metadata validation. Invalid or mixed canonical/invalid
+ES256/EdDSA/Ed25519 spelling must produce the specific parse error without
+returning a provider; canonical controls preserve the existing internal
+capabilities. Only HTTP responses are replaced, and each case requires exactly
+its expected discovery URL with no fallback, retry or JWKS request.
+
+Windows and Linux each passed 128 new assertions and 475 scoped discovery
+assertions across six files, with zero failures, errors, test warnings or skips.
+Before/after and cross-platform hashes of the selected runtime/helpers/tests
+matched. Formatting, whitespace and independent review passed. Ignored evidence
+is under `codex/discovery-dpop-case/`; the tested checkout was development
+source at `f9056d9b12fd8f11e24eacfcb2c1317ac9b8261b`. No production behavior
+changed, and these regressions do not add a live-provider or release-matrix
+claim.
+
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second
