@@ -47,9 +47,11 @@ handling. OAuth-only discovery is a distinct constructor and earns no OIDC
 identity credit. The additional OIDF authentication selections cover paired
 positive/issuer-rejection cases for POST, secret JWT and private-key JWT; they
 do not complete the Comprehensive plan. Public-client discovery remains limited
-by the pinned suite's metadata, while existing enforcing
-[Keycloak PKCE](../keycloak/test_integration_keycloak_pkce.R) cases cover a public
-client separately. See [scope.md](scope.md) for exact module lists and limits.
+by the pinned suite's metadata. Enforcing
+[Keycloak PKCE](../keycloak/test_integration_keycloak_pkce.R) cases and
+[second-provider public/S256 code, UserInfo and refresh](../oidc-provider/README.md)
+supply separate interoperability evidence. They do not complete that OIDF
+variant. See [scope.md](scope.md) for exact module lists and limits.
 
 ## Discovery
 
@@ -139,17 +141,17 @@ establish consistency before replacement credentials become usable.
 
 | Feature / clause | Scope and existing evidence | Remaining work before expanding the claim |
 | --- | --- | --- |
-| [Core 6](https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.6), Request Objects | JAR by value/reference and JARM have package, Keycloak and independent-provider evidence outside this code-flow baseline | Map each extension's request/registration/algorithm duties separately. Their JWE helpers do not imply ID-token or UserInfo decryption support. |
+| [Core 6](https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.6), Request Objects | JAR by value/reference and JARM have package, Keycloak and independent-provider evidence outside this code-flow baseline | The [JWT/Message Signing map](requirements-jwt-signing.md) accounts for their client duties and registration/algorithm limits. Their JWE helpers do not imply ID-token or UserInfo decryption support. |
 | [Core 7](https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.7), self-issued OP | No self-issued OP claim | Requires its distinct discovery/registration/key/subject validation path. |
 | [Core 11](https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.11), offline access | Scopes/extra request parameters and the refresh API can support a configured OP grant | Consent conditions and OP refresh issuance remain separate. No complete offline-access consent UX/registration matrix is claimed. Refresh tokens are not limited to offline-access grants. |
 | [Core 10.1.1](https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.10.1.1), signing-key rotation | D/I support cache-aware refresh and retry; Configuration and real Keycloak rotation have different cache conditions | Keep no-store Configuration outcomes separate from cacheable provider evidence. Production OP key-publication/retention duties remain external. |
-| [Core 13, 14](https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.14), serialization and comparisons | Parsed JSON retains claim types; form/query helpers preserve values; subject/audience/nonce and issuer checks use exact comparisons | Add a composed/decomposed Unicode regression for allowed identifiers or requested claim values. JSON escape variants of identical code points should compare equal without accepting canonical-equivalent different sequences. |
+| [Core 13, 14](https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.14), serialization and comparisons | Parsed JSON retains claim types; form/query helpers preserve values; subject/audience/nonce and issuer checks use exact comparisons. [test-claims-unicode.R](../../tests/testthat/test-claims-unicode.R) checks strict requested ID-token/UserInfo claim values after JSON decoding | Literal UTF-8 and JSON escapes for identical code points match; composed/decomposed sequences and case changes remain distinct under scalar/array request constraints. These focused local-policy checks do not establish every identifier/metadata comparison or impose strict claims policy on all callers. |
 | [Core 15.4](https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.15.4), RP feature selection | Authorization code, static registration and selected discovery/identity features | Implicit/hybrid flows, dynamic registration, WebFinger and logout protocols remain outside this claim. Optional features become conditional obligations only when selected; do not report their absence as a generic code-flow failure. |
 
-No runtime defect was established by this mapping. The clearest small regression
-addition is Unicode comparison behavior. A second useful check would request
-`auth_time` explicitly through `claims` with strict policy and assert rejection
-when absent, alongside the existing `max_age` tests; first inspect the general
-claims tests to avoid duplicating their coverage. Keep reauthentication UX and
-authorization-initiation acceptance as browser work, and finish the remaining
-extension/security-clause maps before marking SA04 complete.
+No runtime defect was established by this mapping. The focused Unicode
+regression now accounts for the requested-claim comparison gap above. Existing
+[strict essential-claim tests](../../tests/testthat/test-claims-validation.R)
+already reject missing requested `auth_time` and accept a supplied value; that
+local-policy coverage does not need a duplicate test. Keep reauthentication UX
+and authorization-initiation acceptance as browser work, and finish the
+remaining extension/security-clause maps before marking SA04 complete.
