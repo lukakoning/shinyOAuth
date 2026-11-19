@@ -155,3 +155,43 @@ Follow-up: [schema-4 source identity](source-identity.md) adds checkout snapshot
 archived installation input and release-source enforcement for subsequent runs.
 The reports in this release review retain their original schemas and fields;
 the source-identity follow-up records its own implementation and validation.
+
+**Message Signing configuration follow-up: 2026-11-19**
+
+The selected configuration assessment at
+`f9056d9b12fd8f11e24eacfcb2c1317ac9b8261b` passed fresh hosted
+[Message Signing / sync run 44568024103](https://github.com/lukakoning/shinyOAuth/actions/runs/44568024103).
+All 29 modules returned suite `PASSED`; the application checks, exact
+module/variant gate, cleanup and workflow release-source check also passed.
+The fixture ran its configuration guard before authorization, including its
+independent signed-UserInfo policy and DPoP-only selection boundary.
+
+Preflight acquired all three locked images by verified digest. The API report
+checked all fifteen declared plan inventories and variant probes without
+claiming a client flow. All three sanitized reports record the same clean
+checkout/tree and matching before/after source snapshots. The schema-4 client
+report also records unchanged installed-package files and canonical archive
+SHA-256 `c84d5ba168ba8c5b0392a231c78f583556570a212b598d8c2f14115ed5c809c6`.
+The downloaded artifact matched GitHub's digest
+`sha256:476fd0e930f0f270ce3d600008cc4e590d952949f80d88f6eaf8a33d2eb739d1`.
+Independent local revalidation required exactly one preflight, API and client
+report, checked the locked acquisition and inventories, revalidated all module
+evidence and regenerated the selected commit's archive for the source CLI.
+
+| Hosted Message Signing / sync phase | Seconds |
+| --- | ---: |
+| Queue before runner assignment | 979 |
+| Complete job, excluding queue | 610 |
+| R setup | 53 |
+| Dependency setup | 54 |
+| Preflight | 48 |
+| API/evidence command | 98 |
+| Browser command, including regressions and setup | 337 |
+| 29-module loop within that command | 222.62 |
+| Release-source command | 1 |
+
+The runner used Ubuntu and R 4.5.1. The original sanitized JSON and ZIP remain
+under ignored `.artifacts/hosted-44568024103/`. Workflow artifact retention is
+still seven days. This is evidence for the exact selection and source above;
+the later regression-namespace correction has its own validation. These
+records do not establish the complete final release matrix or certification.

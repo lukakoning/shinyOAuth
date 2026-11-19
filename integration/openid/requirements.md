@@ -29,6 +29,10 @@ writing a row does not establish a new test result. The
 Earlier runs retain their recorded source and suite identities. The schema-4
 [source check](source-identity.md) adds installation provenance for subsequent
 runs; the complete source-qualified release matrix remains SA08 work.
+The release review now also records a separate schema-4 hosted
+Message Signing/sync result at `f9056d9b`, with all 29 modules and its
+release-source check passed. Its source identity remains distinct from the
+later namespace correction and other selections.
 
 The package implements the OAuth client role. Applications and operators still
 own their consent experience, issuer configuration, external callback routes,

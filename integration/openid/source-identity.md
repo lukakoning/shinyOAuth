@@ -57,6 +57,11 @@ the independently regenerated archive hash. It rejects mixed revisions, dirty
 runs, missing source proof and altered installation inputs. The GitHub workflow
 runs this check against `GITHUB_SHA` after browser execution.
 
+Working-tree line endings can differ across platforms. Validate each snapshot
+internally and bind combined source evidence to the selected revision/tree and
+canonical LF archive; do not require identical raw working-tree fingerprints
+across operating systems.
+
 This command checks source policy. It does not check matrix completeness or
 authenticate supplied JSON artifacts. Artifact provenance and profile-specific
 revalidation still matter; SA08 retains complete release aggregation and durable
@@ -113,3 +118,37 @@ completed successfully after browser execution. An independent implementation
 review found no actionable defects in the tested source.
 SA02's OIDF source and installation acceptance is complete.
 Matrix completeness and durable release evidence remain SA08 work.
+
+**Private regression-namespace acceptance: 2026-11-19**
+
+The correction at `be2abdbc75acef61aa4f5141c9c5b41d97fa5dfd` passed actual
+fresh-Rscript entrypoints from detached clean worktrees. The unchanged default
+global package was `0.6.1.9000`, which lacks `state_transport`; no pkgload or
+global installation update supplied the tested API. Both platforms had already
+passed 7,320 evidence assertions from private development installations, with
+zero failures, errors, test warnings or skips and unchanged inventories.
+
+| Clean Windows entrypoint | Accepted result | Module-loop seconds |
+| --- | --- | ---: |
+| Message Signing / sync | All 29 modules and application checks passed | 306.94 |
+| API | All fifteen plan inventories/probes; no client-flow credit | Not a client loop |
+| Shared pool / mirai | Four selections, eight passing modules, worker isolation/control and cleanup | 47.53 |
+
+The Message Signing and API reports preserve identical initial, post-regression
+and final installation records. Shared-pool checks enforce the post-regression
+comparison and retain matching initial/final inventories across all four
+selections. All runs identify the same clean commit/tree and canonical archive
+SHA-256 `37f846aaf3900a5a7142af29d1f68ee5cd243e46b7cf5032739490b17d6593c5`.
+The actual installed 39-file inventories and receipt were independently checked.
+Each source snapshot remained unchanged; a separate review reconciled Windows
+CRLF snapshot bytes with the canonical LF archive and verified its hashes.
+
+The release-source CLI accepted the Message Signing and shared-pool reports
+together, including the nested selections. It rejected the otherwise passing
+API report as expected. The global installation stayed unchanged and all owned
+Docker services stopped. The API and Message Signing commands overlapped;
+loop timings are individual observations on a shared host, not benchmarks.
+Private reports remain in ignored `codex/message-signing-clean-source/` and
+`codex/shared-pool-clean-source/` worktrees. The earlier failed `f9056d9b`
+no-browser attempt is retained without credit. These checks cover the stated
+entrypoints, not the complete SA08 release matrix or certification.

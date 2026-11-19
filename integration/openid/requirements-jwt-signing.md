@@ -17,6 +17,10 @@ Message Signing/mirai result at clean source
 That schema-3 result establishes its recorded selection. The later
 [schema-4 source policy](source-identity.md) does not retrospectively qualify
 it or establish a complete release matrix. No row establishes certification.
+The release review also records the separate schema-4 Message Signing/sync
+follow-up at `f9056d9b12fd8f11e24eacfcb2c1317ac9b8261b`: all 29 modules,
+application checks and the independently repeated release-source check passed.
+It keeps its own source identity and does not cover later implementation changes.
 
 ## Configuration and evidence boundaries
 
