@@ -2199,6 +2199,30 @@ mTLS, selected PKI/self-signed/revocation/refresh profiles, additional resource
 combinations and complete inherited-security/deployment audits remain explicit
 limits. SA04 and the source-qualified release matrix remain open.
 
+SA04 JWT purpose corpus G2 (2026-11-19): the new corpus reuses identical real
+RS256 JWTs across ID-token, JARM and public signed-UserInfo receivers with one
+trusted issuer/key/client audience. Forty-eight receiver cells cover native
+shapes and absent/generic/profile-specific types. Actual module/public-API
+controls separately exercise login nonce, JARM state/shape and a cryptographically
+validated ID-token subject baseline. HTTP is the only substituted boundary.
+
+The corpus records accepted nonce-free ID-token/UserInfo shape overlap, rather
+than treating every substitution as a mandatory failure. Same-subject binding
+does not identify JWT purpose. Tested nonce-bound callbacks reject missing or
+other-transaction nonces before UserInfo/authentication; ordinary ID/UserInfo
+shapes fail JARM before token traffic or state consumption; subject swaps fail
+the public UserInfo binding check. These outcomes do not establish attacker
+control of a trusted endpoint, an exploit or unconditional mutually exclusive
+validation for every extended claim set. No default or production code changed;
+broader purpose-policy claims still need a reviewed OP/RP/deployment contract.
+
+Windows and Linux each passed 482 focused purpose/locator/type/subject
+assertions, including 238 new assertions, with zero failures, errors, test
+warnings or skips. Formatting, jarl, whitespace, local links and independent
+review passed. Results remain under ignored `codex/jwt-purpose-separation/`.
+G2's corpus is implemented with its purpose-policy assessment explicitly
+limited; G3 and the overall SA04/source-qualified release work remain open.
+
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second
