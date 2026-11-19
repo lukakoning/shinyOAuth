@@ -59,8 +59,9 @@ limits, with regression and retained-report validation. SA06’s milestone
 status now distinguishes completed public/S256 interoperability from the
 OIDF public variant limit; C06 warm-cache acceptance remains open. SA07
 now implements rejected-callback URL cleanup with versioned browser
-evidence; cross-site HTTPS acceptance remains open. SA03 and SA08 remain
-pending. See the [release
+evidence; cross-site HTTPS acceptance remains open. SA08 now implements
+a declared OIDF selection gate; full matrix execution and durable
+retention remain open. SA03 remains conditional. See the [release
 review](https://lukakoning.github.io/integration/openid/release-review.md).
 
 | Milestone | Current implemented scope | Remaining boundary |
@@ -72,7 +73,7 @@ review](https://lukakoning.github.io/integration/openid/release-review.md).
 | C11-C12 | Four full mTLS selections and the 29-module Message Signing selection | mTLS simulated-server enforcement/registration limits and exact signing/callback configurations remain explicit. |
 | C13-C14 | Pinned second-provider public/confidential code/refresh/browser flows and the declared advanced-flow/lifecycle selections | These are interoperability evidence, not additional OIDF certification profiles. |
 | C15 | Rejected-callback URL cleanup, versioned browser proof and requirement-selected regressions | HTTPS cross-site acceptance and the remaining named browser/cryptography gaps stay open. |
-| C16 / SA08 | CI smoke, manual larger selections, acquisition/source checks | One final revision’s declared aggregate matrix and durable release evidence remain. |
+| C16 / SA08 | CI smoke, manual larger selections, acquisition/source checks and a declared OIDF aggregate gate | Execution of every declared selection at one revision, other provider/platform evidence and durable release retention remain. |
 
 Use the implemented commands in the [environment
 README](https://lukakoning.github.io/integration/openid/README.md).
@@ -2882,6 +2883,124 @@ named SA04/browser gaps, SA08 aggregate completeness/durable retention
 and optional SA03 certification remain open. Workflow artifact retention
 is still seven days; these selected results establish no complete
 release or certification claim.
+
+SA07 HTTPS cross-site Form Post implementation (2026-11-20): the new
+[`form-post-cross-site`
+selection](https://lukakoning.github.io/integration/openid/cross-site-form-post.md)
+uses the pinned Comprehensive static/Basic/code/form_post variant. An
+actual owned API probe resolved its full 30-module inventory with null
+per-module variants. Only the normal client module and
+`oidcc-client-test-form-post-error` are selected; upstream-plan and
+coverage completion remain false. This reconciles the previously
+deferred error module without changing the Basic Form Post selection or
+authentication profiles’ public-client capability probes.
+
+Each case requires actual HTTPS localhost-provider to 127.0.0.1-app POST
+navigation, matching Origin/Sec-Fetch-Site, a preexisting Secure Strict
+binding cookie absent on that POST, verified app CA readiness and
+wrong-SPKI browser rejection. The accepted continuation restores browser
+binding. Success requires validated identity and exactly one
+token/UserInfo request; mirai must use a verified worker. Valid
+`login_required` denial consumes its own state exactly once through the
+existing main-process `audit_error_state_consumed` event, leaves no
+pending record, identity or token/UserInfo traffic, dispatches no
+protocol worker and renders a safe denial. It cannot substitute
+malformed HTTP rejection, which preserves pending state.
+
+New gate and existing auth tests passed 280 assertions on each OS (96
+new and 184 existing), with zero failures, errors, test warnings or
+skips. Independent review corrected an ambiguous collector conditional
+and added independent extra-token/UserInfo controls. Windows development
+sync and mirai each passed both suite modules and application checks;
+sync predates that collector tightening, while mirai used the corrected
+helper. These runs deliberately reused the accepted private 8cd runtime
+and earn no new clean-source credit. The earlier wrong-event development
+attempt remains failed. Private receipts are under
+`codex/form-post-cross-site/`; canonical acceptance follows separately.
+No package runtime changed. The manual workflow now exposes the
+selection and its sanitized report path. Production TLS, other
+browsers/proxies and other cross-site deployments retain their own
+limits.
+
+SA08 declared OIDF aggregation implementation (2026-11-20):
+[`release-matrix.json`](https://lukakoning.github.io/integration/openid/release-matrix.json)
+declares 39 profile/transport pairs: all eighteen profiles in
+sync/mirai, smoke/refresh in future and shared-pool in mirai. The [new
+CLI](https://lukakoning.github.io/integration/openid/release-matrix.md)
+requires exactly one original top-level report per pair and revalidates
+protocol outcomes, scoped assessments and source/installation proof.
+Shared children cannot replace standalone rows; smoke cannot replace a
+full selection. Every report must bind the selected clean revision/tree,
+common package version and canonical LF archive. Stored
+pass/coverage/assessment fields cannot override recomputed evidence.
+
+The command obtains its matrix, profiles, suite lock and package version
+from the independently selected commit’s Git blobs, so later
+working-tree edits cannot reduce that revision’s requirements. The
+shared runner now retains its already verified post-regression
+installation record in the parent and all children. Aggregate
+qualification requires initial/regression/final equality within each
+report; separate coherent checkout/installed fingerprints can differ
+across platforms. JSON object order is immaterial; array order remains
+meaningful. Existing source-only/historical validation is unchanged.
+
+Passing and failed summaries retain requested source and original input
+hashes, committed policy hashes and recomputed scoped assessments
+without input paths or private data. They assess declared OIDF
+selections only: preflight/API provenance authentication, OS coverage,
+second-provider execution, durable publication and certification remain
+separate. No complete release claim is derived from these tests.
+
+Independent sealed synthetic validation passed 274 assertions (246
+matrix and 28 actual CLI subprocess assertions), with zero failures,
+errors, test warnings or skips. All 42 copied harness files/runner and
+the reused private 8cd installation stayed unchanged. The CLI tests
+change working-copy policy, reject a revision without committed policy,
+prevent overwriting input, require the selected DESCRIPTION version and
+bind both pass/fail receipts to exact input bytes. An earlier fixture
+expected the working-copy matrix hash rather than its committed LF blob;
+the preserved failure diagnosed only CRLF byte normalization. The
+fixture now hashes the actual selected Git blob without changing Git
+configuration. Accepted evidence remains ignored under
+`codex/release-matrix-cli-focused-sealed-accepted-20261120/`; earlier
+attempts remain preserved. This is synthetic/development evidence, not
+execution of the 39-row matrix. SA08 remains partial until that
+execution and durable retention are demonstrated.
+
+SA06 native-provider warm-cache selection implementation (2026-11-20):
+[`run-jwks-rotation.R`](https://lukakoning.github.io/integration/oidc-provider/jwks-rotation.md)
+reuses the pinned oidc-provider and unchanged package default JWKS cache
+across three real code/S256 logins. The intended live sequence requires
+population, an observed hit without another native JWKS request, an
+owned provider restart with a new signing key at the same issuer/port,
+then exactly one unknown-key refresh while the old cache entry is still
+usable. Native request/key/process observations corroborate the
+package’s pass-through fetch trace. Old/new-key rogue signatures must
+fail without extra endpoint traffic after the refresh.
+
+The native endpoint’s actual Cache-Control and Expires headers are
+absent. This deliberately exercises the unchanged default one-hour
+backend policy, not a fabricated positive origin max-age. No header,
+cache entry or lifetime is overridden. The optional provider observer
+records native responses without replacing handlers; client observers
+delegate to actual fetch/request functions. Proof checks require exact
+digests, scalar finite timestamps, native run/process identities, key
+transition, state consumption and throttle evidence.
+
+Focused evidence/type mutations passed 212 R assertions with zero
+failures, errors, test warnings or skips. All eight pinned Node fixture
+tests passed, including native header/public-key and opt-in-observer
+controls. Root review strengthened malformed digest/process/time
+handling before freezing the files. This headless testServer/HTTP
+interaction selection bypasses browser-token checking explicitly and
+claims no Chrome, browser-cookie, mirai/shared-cache, Keycloak or OIDF
+execution. Its dedicated schema-1 report cannot fill an OIDF
+release-matrix row. Required setup failures fail rather than skip. The
+manual provider workflow exposes this sync-only selection and sanitized
+report path; retention is still seven days. The original Keycloak
+no-cache and OIDF no-store tests are unchanged. Canonical live
+acceptance follows separately; C06’s observed warm-cache gap is not
+closed merely by these synthetic checks.
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
