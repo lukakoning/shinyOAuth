@@ -49,7 +49,7 @@ neither its signature nor AS acceptance.
 | PA3 / [2, audience guidance](https://www.rfc-editor.org/rfc/rfc9126.html#section-2) | Prefer the issuer as a JWT client-assertion audience. | C1/C3 prefer the configured issuer at PAR, including mTLS aliases; without one they retain the canonical PAR URL. Tests inspect the signed claim and explicit override. The AS's obligation to accept its issuer/token/PAR endpoint identifiers is an AS duty. A configured override needs agreement with that AS; FAPI's stricter issuer-string rule remains separate. |
 | PA4 / [2.2](https://www.rfc-editor.org/rfc/rfc9126.html#section-2.2), [2.3](https://www.rfc-editor.org/rfc/rfc9126.html#section-2.3) | Consume the successful reference/lifetime contract; stop on PAR failure. | P1 requires 201 JSON, one usable absolute reference without a fragment, and a positive integer lifetime. Duplicate/array/malformed data and already-expired responses fail before pending-state registration. Tests check a conservative deadline from the successful attempt start. Status/body generation, reference entropy and client binding are AS duties; their presence in a response does not prove those properties. |
 | PA5 / [3](https://www.rfc-editor.org/rfc/rfc9126.html#section-3) | With JAR, place authorization parameters inside `request`; keep client-authentication data in the form. | P2 decodes both JWT purposes and checks body placement, client ID and absence of copied authorization fields. The [JAR map](requirements-jwt-signing.md) retains signing/encryption and Request Object validation dependencies. Optional caller-published references use a different route and are rejected when PAR is required. |
-| PA6 / [4](https://www.rfc-editor.org/rfc/rfc9126.html#section-4) | Build authorization from the returned reference and use it for one authorization attempt. | P1 produces client-ID/reference browser parameters; minimal mode adds no authorization payload. Each preparation generates fresh transaction values and performs PAR. [prepare_authorization_request.R](../../R/prepare_authorization_request.R) documents one-login-attempt results and preserves expiry metadata. P3's deliberate URI replay tests AS rejection, not a normal second client attempt. Custom callers must not cache/reopen a returned authorization request. A repeated-preparation regression is identified below. |
+| PA6 / [4](https://www.rfc-editor.org/rfc/rfc9126.html#section-4) | Build authorization from the returned reference and use it for one authorization attempt. | P1 produces client-ID/reference browser parameters; minimal mode adds no authorization payload. [test-par-transaction-freshness.R](../../tests/testthat/test-par-transaction-freshness.R) prepares two attempts for the same public client with encrypted/reference state: two PAR posts, fresh state/nonce/S256 pairs, distinct intact pending records, and each HTTP stub's exact reference in its own minimal browser URL. [prepare_authorization_request.R](../../R/prepare_authorization_request.R) documents one-login-attempt results and preserves expiry metadata. P3's deliberate URI replay tests AS rejection separately. Custom callers must not cache/reopen a returned authorization request. |
 | PA7 / [4](https://www.rfc-editor.org/rfc/rfc9126.html#section-4), [5](https://www.rfc-editor.org/rfc/rfc9126.html#section-5), [6](https://www.rfc-editor.org/rfc/rfc9126.html#section-6) | Respect configured/discovered required-PAR policy. | Discovery retains the endpoint/boolean and rejects required PAR without an endpoint. P2 prevents caller-managed references from bypassing required PAR. `test-par.R` checks that unrelated OIDC `request_uri` capability/registration flags do not veto AS-issued PAR references. Static registration/operator policy still owns the per-client requirement; no dynamic-registration implementation is claimed. |
 | PA8 / [7.5](https://www.rfc-editor.org/rfc/rfc9126.html#section-7.5) | Bind the pushed transaction against reference swapping with PKCE, state or nonce. | P1/P3 generate and bind these values, including inside JAR; R1 checks actual S256 pairs and nonce/state relationships. Outer-parameter and browser/callback cases supply distinct rejection evidence. Headless tests alone do not establish the cookie boundary. Disabling the relevant client protections cannot earn this credit. |
 
@@ -126,14 +126,28 @@ and signature regression produced five assertion failures, with the fresh
 controls succeeding. These are development results for the observed local
 fixture, not source-qualified release results or a new hosted conformance run.
 
-## Focused follow-ups
+## Focused preparation regression
 
-PA6 would also benefit from one focused public preparation test: prepare two
-authorization attempts for the same client, let the fixture issue distinct
-references, and inspect two PAR posts, fresh transaction values and the exact
-reference selected for each browser request. The existing deliberate URI replay
-test proves provider rejection; it should not be counted as normal client
-single-use behavior. Custom callers still own their exported browser requests.
+The repeated-preparation gap in PA6 now has a focused regression through public
+`prepare_call()`. For each state transport, the same public OAuth client prepares
+two attempts. Only `httr2::req_perform()` is stubbed, returning a different PAR
+reference for each request. The test checks the actual request objects, client
+ID and pushed fields, independently recomputes each S256 challenge from its
+retained verifier, and compares the nonce with its pending record. Both states,
+nonces and verifiers must differ; the first record remains unchanged after the
+second preparation. Each browser URL contains exactly one client ID and its own
+returned reference, with no pushed authorization parameters copied into it.
+
+On 2026-11-19, all 136 new assertions passed on Windows and Linux. The relevant
+PAR/state/callback and parameter-handling scope passed 758 assertions on each
+platform, including those 136, with zero failures, errors, test warnings or
+skips. Local results are retained under
+`codex/par-transaction-freshness/{windows-final,linux-final}/results.csv`.
+Windows retained its existing locale messages during R startup. These are unit
+results for request construction and state retention, without a live AS,
+browser navigation, reference-entropy assessment or server single-use proof.
+P3's deliberate URI replay remains separate provider evidence; custom callers
+still own their exported browser requests.
 
 No new hosted OIDF or Keycloak run accompanies this map. Retain the original
 report/source identities and [source-policy boundary](source-identity.md) when

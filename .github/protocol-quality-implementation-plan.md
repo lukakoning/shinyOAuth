@@ -2160,6 +2160,27 @@ absence/presence, so that suggested duplicate was removed from the OIDC map.
 This remains development regression evidence, not a new conformance run or
 source-qualified release matrix.
 
+SA04 PAR transaction freshness (2026-11-19): two successful public preparations
+for the same client now have explicit regression coverage with both encrypted
+and reference state. Normal request construction/response validation and state
+storage run; only the HTTP response boundary is stubbed. Two actual PAR request
+objects are required, each browser URL selects its own returned reference and
+contains exactly one client ID and one request URI, and no credential/pushed
+transaction fields enter that minimal front channel. Independently recomputed
+S256 challenges match the retained verifiers. State, nonce and PKCE values are
+fresh, while the first distinct pending record remains unchanged after the
+second preparation.
+
+Windows and Linux each passed 758 relevant PAR/state/callback assertions,
+including 136 new assertions, with zero failures, test warnings or skips.
+Formatting, whitespace, local links and independent review passed. Results and
+development-source snapshots remain under ignored
+`codex/par-transaction-freshness/`. PA6's proposed normal-preparation regression
+is now covered. This proves the client's preparation/data-retention behavior;
+it does not establish AS reference entropy or single-use denial, TLS, a browser
+flow, formal certification or source-qualified release completeness. No runtime
+defect or production code change was needed.
+
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second
