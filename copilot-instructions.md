@@ -305,7 +305,7 @@
   stay accurate
 - `.onLoad()` already registers S7 methods (R/zzz.R); when adding
   generics ensure
-  [`S7::methods_register()`](https://rconsortium.github.io/S7/reference/methods_register.html)
+  [`S7::methods_register()`](https://rconsortium.github.io/S7/reference/S7_on_load.html)
   is triggered and namespace imports remain consistent.
 - Linting: run `jarl check .` to check for errors; use
   `jarl check . --fix --allow-dirty` to check & fix

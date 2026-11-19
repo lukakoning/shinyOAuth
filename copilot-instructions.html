@@ -162,7 +162,7 @@
 <li>Make documentation cross-references clickable: use roxygen links such as <code>[OAuthToken]</code> and <code>[oauth_client()]</code>, and explicit reference-page links in vignettes. Link vignette mentions to their articles rather than leaving only a <code>?topic</code> or <code><a href="https://rdrr.io/r/utils/vignette.html" class="external-link">vignette()</a></code> command.</li>
 <li>Update examples and vignettes alongside API changes so pkgdown docs stay accurate</li>
 <li>
-<code>.onLoad()</code> already registers S7 methods (R/zzz.R); when adding generics ensure <code><a href="https://rconsortium.github.io/S7/reference/methods_register.html" class="external-link">S7::methods_register()</a></code> is triggered and namespace imports remain consistent.</li>
+<code>.onLoad()</code> already registers S7 methods (R/zzz.R); when adding generics ensure <code><a href="https://rconsortium.github.io/S7/reference/S7_on_load.html" class="external-link">S7::methods_register()</a></code> is triggered and namespace imports remain consistent.</li>
 <li>Linting: run <code>jarl check .</code> to check for errors; use <code>jarl check . --fix --allow-dirty</code> to check &amp; fix</li>
 <li>Formatting: run <code>air format .</code> to format all files</li>
 </ul></div>

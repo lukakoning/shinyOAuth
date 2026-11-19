@@ -44,15 +44,16 @@ Signing passed with verified acquisition reports and recorded timings.
 SA04 is partial: the [requirement
 maps](https://lukakoning.github.io/integration/openid/requirements.md)
 account for FAPI’s 20 client clauses, relevant network/cryptography
-duties, OIDC code/discovery, OAuth code/refresh/metadata and JWT/Message
-Signing. OAuth extension and security clauses retain explicit partial
-accounting. SA06’s Keycloak follow-up now proves no-cache revalidation
-and rotation; C06 warm-cache acceptance remains open. SA05 now separates
-upstream execution from local coverage and categorized limits, with
-regression and retained-report validation. SA06’s milestone status now
-distinguishes completed public/S256 interoperability from the OIDF
-public variant limit; C06 warm-cache acceptance remains open. SA03 and
-SA07-SA08 remain pending. See the [release
+duties, OIDC code/discovery, OAuth code/refresh/metadata, PAR/JWT client
+authentication and JWT/Message Signing. The remaining
+mTLS/DPoP/resource-indicator and OAuth security clauses retain explicit
+partial accounting. SA06’s Keycloak follow-up now proves no-cache
+revalidation and rotation; C06 warm-cache acceptance remains open. SA05
+now separates upstream execution from local coverage and categorized
+limits, with regression and retained-report validation. SA06’s milestone
+status now distinguishes completed public/S256 interoperability from the
+OIDF public variant limit; C06 warm-cache acceptance remains open. SA03
+and SA07-SA08 remain pending. See the [release
 review](https://lukakoning.github.io/integration/openid/release-review.md).
 
 | Milestone | Current implemented scope | Remaining boundary |
@@ -2364,6 +2365,54 @@ image changed, and warnings were not suppressed. Initial results remain
 separately under ignored `codex/response-mode-case/`; Windows retains
 the known R startup locale messages. These are development checks, not a
 new OIDF browser run or complete source-qualified release matrix.
+
+SA04 PAR and JWT-authentication map (2026-11-19): the new [direct-clause
+map](https://lukakoning.github.io/integration/openid/requirements-par-auth.md)
+accounts for eight grouped PAR and nine JWT client-authentication duties
+from RFC 9126, RFC 7521 and RFC 7523. It links actual
+construction/validation assertions, transport/signature collectors and
+retained reports, distinguishing client, assertion-producer, AS and
+operator duties. Request Objects and authentication assertions remain
+distinct JWT purposes. Unsupported assertion grants/SAML, third-party
+issuance, registration/deployment obligations and complete inherited
+crypto/security audits remain explicit. Mapping a duty does not
+establish a new execution or close the overall SA04/release matrix.
+
+That audit identified a concrete independent-fixture error: invalid
+client assertions reached the generic `invalid_request` handler. The
+strict AS now classifies assertion parsing/claim failures, invalid
+signatures and competing credentials as `invalid_client`, with a
+specific signature reason. The assertion-profile rule in RFC 7521
+section 4.2.1 is kept distinct from generic OAuth error wording. Request
+Object and unrelated grant processing stay outside the authentication
+boundary; the existing unknown-code `invalid_request` / `invalid_code`
+behavior is explicitly retained as a separate fixture limitation.
+
+The new real-HTTPS regression deliberately expires correctly signed
+RS256 and RS384 client-authentication assertions at PAR and token
+endpoints, verifies the signatures independently, and checks exact
+denial bodies/headers. Failed PAR registers no pending state or usable
+reference; failed token exchange consumes the callback state and blocks
+replay without another request. Neither path retains an authenticated
+token or connection. Fresh assertions and a new public preparation then
+succeed against the same server. Separate controls cover invalid
+signatures, competing nonempty credentials, expired Request Objects and
+unknown codes.
+
+Windows and Linux each passed 111 assertions across five focused cases,
+with zero failures, errors, test warnings or skips. They used private
+installations of dirty source
+`d287b56f763fd8331c9978d5068adb9ac544e3d6`; Windows retained its known R
+startup locale warnings. The initial protocol reproduction had five
+expected expiry/signature classification failures with successful fresh
+controls. Accepted results and earlier harness diagnostics remain
+separately under ignored `codex/client-assertion-expiry/`. Python
+syntax, air, jarl, whitespace and independent review passed; the new
+map’s 45 local links and 41 official RFC anchors were checked.
+Disposable servers/container were removed. This is in-process
+module/independent-fixture evidence with simulated fresh cookie
+acknowledgement, not a real-browser, worker, hosted-suite or
+source-qualified release result. Overall SA04 and SA08 remain open.
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
