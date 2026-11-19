@@ -86,6 +86,13 @@ The wrapper receives the login result before the Shiny session starts,
 then sends the browser to a clean app URL. Raw callback values stay out
 of that URL. The server module completes the usual login checks.
 
+Package validation failures first redirect to an opaque, single-use
+error URL, then return their rejection status and a bounded public
+diagnosis before the application renders. Error records are bounded per
+R process, separate from pending login state. Another worker, expiry or
+replay returns a generic 400 response; existing audit diagnostics remain
+available. Application HTTP responses keep their normal behavior.
+
 ## Advanced callback storage
 
 Responses are held briefly in the client's state store under single-use
