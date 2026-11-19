@@ -2414,6 +2414,27 @@ module/independent-fixture evidence with simulated fresh cookie
 acknowledgement, not a real-browser, worker, hosted-suite or
 source-qualified release result. Overall SA04 and SA08 remain open.
 
+SA04 Unicode comparison regression (2026-11-19): strict requested-claim
+checks now have explicit composed/decomposed and case-sensitive Unicode
+controls for ID-token and UserInfo targets, with scalar `value` and
+array `values` policies. Literal UTF-8 JSON and JSON escapes
+representing the same code points match; canonically equivalent
+different sequences remain unequal. The test uses the standard free-text
+`name` claim, not a non-ASCII client identifier. It exercises normal
+selected claim policy after JSON parsing without claiming all
+identifier, metadata, signature or browser behavior. No runtime defect
+was found.
+
+All 115 focused claim assertions passed on Windows and Linux, including
+40 new assertions, with zero failures, test warnings or skips. Jarl and
+formatting passed. Docker Desktop was restarted for the Linux check; Git
+trust was limited to the mounted workspace in that container, without
+global configuration changes. Existing strict essential-claim tests
+already cover requested `auth_time` absence/presence, so that suggested
+duplicate was removed from the OIDC map. This remains development
+regression evidence, not a new conformance run or source-qualified
+release matrix.
+
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
 interoperability with a second full provider. Add another mock server
