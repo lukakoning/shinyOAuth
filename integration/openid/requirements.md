@@ -9,7 +9,7 @@ the supported OIDC/OAuth paths and JWT/Message Signing duties:
 | --- | --- |
 | [OIDC](requirements-oidc.md) | Discovery, authorization code, all 13 ID-token validation steps, UserInfo and refresh; optional features and deployment duties are named separately. |
 | [OAuth](requirements-oauth.md) | Code/refresh, client authentication, bearer transport, S256, metadata and callback issuer; related extensions have their own scoped maps below. |
-| [OAuth security (partial)](requirements-security.md) | RFC 9700 sections 2.1–2.2 and 4.2–4.8: redirect/code flow, replay, leakage, mix-up, injection, CSRF and PKCE downgrade; the remaining sections and browser/deployment gaps stay open. |
+| [OAuth security](requirements-security.md) | RFC 9700 sections 2–4, including attacker assumptions, redirects, token/refresh restrictions, authentication, browser/proxy duties and threat-specific protections; concrete runtime and deployment gaps remain open. |
 | [PAR and JWT client authentication](requirements-par-auth.md) | Applicable RFC 9126/7521/7523 client/assertion-producer clauses, optional features, AS/operator duties and focused evidence gaps. |
 | [Sender constraints and resources](requirements-sender-constraints.md) | Direct RFC 8705/9449/8707 client duties, separating authentication, token binding, aliases, nonce/proof handling and audience signaling from AS/RS/operator enforcement. |
 | [JWT and Message Signing](requirements-jwt-signing.md) | Final Message Signing client clauses, JAR, JARM and all 12 JWT BCP sections; unsupported optional features and specific regression gaps remain explicit. |

@@ -41,7 +41,8 @@ OAuth code/refresh/metadata, PAR/JWT client authentication and JWT/Message
 Signing. Direct mTLS/DPoP/resource-indicator client clauses now have a companion
 map. G1-G4 now have their recorded regressions; G3 adds a named Message Signing
 configuration assessment, while G2 retains its observed purpose-policy limits.
-The partial RFC 9700 map adds redirect/replay and selected attack protections;
+The RFC 9700 map now accounts for sections 2–4, including attacker assumptions
+and explicit implementation, evidence and deployment gaps;
 remaining inherited-security and aggregate coverage work stays open. SA06's Keycloak follow-up now
 proves no-cache revalidation and rotation; C06 warm-cache acceptance remains
 open. SA05 now separates upstream execution from local coverage and categorized
@@ -2382,6 +2383,24 @@ separate from these `be2abdbc` results. No mixed-revision or complete-matrix
 claim follows; remaining RFC 9700 sections, SA07 browser work and SA08
 aggregation/durable retention remain open.
 
+
+SA04 remaining RFC 9700 clause accounting (2026-11-19): the
+[OAuth security map](../integration/openid/requirements-security.md) now accounts
+for sections 2–4, including 2.3–2.6, 4.1, 4.9–4.17 and the attacker-model
+assumptions. Added rows distinguish local code/test observations from AS/RS,
+registration, proxy, framing, key custody and browser-message duties. Unsupported
+flows and unresolved deployment/lifecycle checks remain explicit. This closes
+the map's missing-clause accounting without claiming those requirements are
+satisfied or closing overall SA04.
+
+Independent review corrected one evidence label: the linked strict-cookie CSP
+test covers accepted transition documents, including a valid OAuth denial;
+its malformed HTTP rejection assertion only establishes no refresh tag. All
+54 local links and 53 official RFC URLs/anchors passed author and independent
+checks. The remaining-clause audit describes `5f218e22`; no new runtime or
+execution credit follows. SA07 callback cleanup is being implemented separately,
+with its own pending acceptance. SA08 aggregate qualification and durable
+retention remain open.
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second
