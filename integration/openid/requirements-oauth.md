@@ -91,10 +91,10 @@ registration or correct request syntax alone does not prove browser binding.
 ## Optional extension duties
 
 These entries index implemented client behavior and selected evidence. The
-[PAR and JWT-authentication map](requirements-par-auth.md) accounts for their
-direct client clauses. The mTLS, DPoP and resource-indicator maps remain partial,
-including their registration, AS/RS and deployment provisions. The FAPI map
-applies additional profile rules,
+[PAR and JWT-authentication map](requirements-par-auth.md) and
+[sender-constraints/resource map](requirements-sender-constraints.md) account
+for direct client clauses, with explicit registration, AS/RS, deployment and
+inherited-security boundaries. The FAPI map applies additional profile rules,
 including minimal PAR browser parameters and stricter authentication/algorithms.
 
 | ID / extension clause | Conditional client behavior and concrete evidence | Remaining role or scope limit |

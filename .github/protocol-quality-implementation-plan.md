@@ -38,8 +38,8 @@ passed with verified acquisition reports and recorded timings. SA04 is partial:
 the [requirement maps](../integration/openid/requirements.md) account for FAPI's
 20 client clauses, relevant network/cryptography duties, OIDC code/discovery,
 OAuth code/refresh/metadata, PAR/JWT client authentication and JWT/Message
-Signing. The remaining mTLS/DPoP/resource-indicator and OAuth security clauses
-retain explicit partial accounting. SA06's Keycloak follow-up now
+Signing. Direct mTLS/DPoP/resource-indicator client clauses now have a companion
+map; inherited-security and configuration/coverage work remains open. SA06's Keycloak follow-up now
 proves no-cache revalidation and rotation; C06 warm-cache acceptance remains
 open. SA05 now separates upstream execution from local coverage and categorized
 limits, with regression and retained-report validation. SA06's milestone status
@@ -2180,6 +2180,24 @@ is now covered. This proves the client's preparation/data-retention behavior;
 it does not establish AS reference entropy or single-use denial, TLS, a browser
 flow, formal certification or source-qualified release completeness. No runtime
 defect or production code change was needed.
+
+SA04 sender-constraint/resource client map (2026-11-19):
+[requirements-sender-constraints.md](../integration/openid/requirements-sender-constraints.md)
+accounts for directly applicable RFC 8705, RFC 9449 and RFC 8707 client duties
+and their conditional security provisions. It separates mTLS authentication,
+token binding and endpoint aliases; DPoP proof/nonces from client authentication;
+and resource signaling from AS/RS audience enforcement. It links concrete
+assertions and historical enforcing-provider records, including target-specific
+resource contracts, while keeping Microsoft-mode behavior separate. No new
+fixture run or broad compliance claim follows from writing the map.
+
+All 51 local links and 61 official RFC anchors were checked. A suspected DPoP
+metadata-folding issue was ruled out: the existing case-sensitive JOSE guard
+runs before internal normalization. A public-constructor regression for that
+already implemented guard remains a narrow coverage candidate. Alias-only
+mTLS, selected PKI/self-signed/revocation/refresh profiles, additional resource
+combinations and complete inherited-security/deployment audits remain explicit
+limits. SA04 and the source-qualified release matrix remain open.
 
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,

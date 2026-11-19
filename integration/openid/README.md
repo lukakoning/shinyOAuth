@@ -3,7 +3,9 @@
 The [requirement-to-evidence maps](requirements.md) relate FAPI, OIDC, OAuth and
 JWT/Message Signing client clauses to package behavior, tests and remaining
 limits, including the [PAR/JWT-authentication map](requirements-par-auth.md).
-The mTLS, DPoP and resource-indicator maps remain partial; the [scope map](scope.md)
+The [sender-constraints/resource map](requirements-sender-constraints.md) covers
+the direct mTLS, DPoP and resource-indicator client clauses. Inherited-security
+and configuration/coverage gaps remain explicit; the [scope map](scope.md)
 records the separate suite-module outcomes.
 
 See [interpreting client evidence](assessment.md) for the independent
