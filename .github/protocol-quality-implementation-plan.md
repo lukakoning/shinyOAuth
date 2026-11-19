@@ -2557,6 +2557,40 @@ SA03 certification remain open. Workflow artifact retention is still seven
 days; these selected results establish no complete release or certification
 claim.
 
+SA07 HTTPS cross-site Form Post implementation (2026-11-20): the new
+[`form-post-cross-site` selection](../integration/openid/cross-site-form-post.md)
+uses the pinned Comprehensive static/Basic/code/form_post variant. An actual
+owned API probe resolved its full 30-module inventory with null per-module
+variants. Only the normal client module and `oidcc-client-test-form-post-error`
+are selected; upstream-plan and coverage completion remain false. This
+reconciles the previously deferred error module without changing the Basic
+Form Post selection or authentication profiles' public-client capability
+probes.
+
+Each case requires actual HTTPS localhost-provider to 127.0.0.1-app POST
+navigation, matching Origin/Sec-Fetch-Site, a preexisting Secure Strict binding
+cookie absent on that POST, verified app CA readiness and wrong-SPKI browser
+rejection. The accepted continuation restores browser binding. Success requires
+validated identity and exactly one token/UserInfo request; mirai must use a
+verified worker. Valid `login_required` denial consumes its own state exactly
+once through the existing main-process `audit_error_state_consumed` event,
+leaves no pending record, identity or token/UserInfo traffic, dispatches no
+protocol worker and renders a safe denial. It cannot substitute malformed
+HTTP rejection, which preserves pending state.
+
+New gate and existing auth tests passed 280 assertions on each OS (96 new and
+184 existing), with zero failures, errors, test warnings or skips. Independent
+review corrected an ambiguous collector conditional and added independent
+extra-token/UserInfo controls. Windows development sync and mirai each passed
+both suite modules and application checks; sync predates that collector
+tightening, while mirai used the corrected helper. These runs deliberately
+reused the accepted private 8cd runtime and earn no new clean-source credit.
+The earlier wrong-event development attempt remains failed. Private receipts
+are under `codex/form-post-cross-site/`; canonical acceptance follows separately.
+No package runtime changed. The manual workflow now exposes the selection and
+its sanitized report path. Production TLS, other browsers/proxies and other
+cross-site deployments retain their own limits.
+
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second
 full provider. Add another mock server only when a remaining test case justifies

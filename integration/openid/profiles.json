@@ -245,6 +245,49 @@
       ],
       "client_assertion_alg": "ES256"
     },
+    "form-post-cross-site": {
+      "plan": "oidcc-client-test-plan",
+      "plan_variant": {
+        "client_registration": "static_client",
+        "request_type": "plain_http_request",
+        "client_auth_type": "client_secret_basic",
+        "response_type": "code",
+        "response_mode": "form_post"
+      },
+      "module_variant": null,
+      "available_modules": [
+        "oidcc-client-test",
+        "oidcc-client-test-nonce-invalid",
+        "oidcc-client-test-client-secret-basic",
+        "oidcc-client-test-scope-userinfo-claims",
+        "oidcc-client-test-kid-absent-single-jwks",
+        "oidcc-client-test-kid-absent-multiple-jwks",
+        "oidcc-client-test-missing-iat",
+        "oidcc-client-test-missing-aud",
+        "oidcc-client-test-invalid-aud",
+        "oidcc-client-test-idtoken-sig-none",
+        "oidcc-client-test-idtoken-sig-rs256",
+        "oidcc-client-test-missing-sub",
+        "oidcc-client-test-invalid-sig-rs256",
+        "oidcc-client-test-invalid-iss",
+        "oidcc-client-test-userinfo-invalid-sub",
+        "oidcc-client-test-userinfo-bearer-header",
+        "oidcc-client-test-userinfo-bearer-body",
+        "oidcc-client-test-form-post-error",
+        "oidcc-client-test-invalid-sig-hs256",
+        "oidcc-client-test-invalid-sig-es256",
+        "oidcc-client-test-aggregated-claims",
+        "oidcc-client-test-distributed-claims",
+        "oidcc-client-test-discovery-openid-config",
+        "oidcc-client-test-discovery-jwks-uri-keys",
+        "oidcc-client-test-discovery-issuer-mismatch",
+        "oidcc-client-test-signing-key-rotation-just-before-signing",
+        "oidcc-client-test-signing-key-rotation",
+        "oidcc-client-test-discovery-webfinger-acct",
+        "oidcc-client-test-discovery-webfinger-url",
+        "oidcc-client-test-userinfo-signed"
+      ]
+    },
     "auth-post": {
       "plan": "oidcc-client-test-plan",
       "plan_variant": {
@@ -1174,6 +1217,25 @@
         {"module": "fapi2-security-profile-final-client-test-happy-path", "outcome": "authenticated"},
         {"module": "fapi2-security-profile-final-client-test-happy-path-no-dpop-nonce", "outcome": "authenticated"},
         {"module": "fapi2-security-profile-final-client-test-invalid-iss", "outcome": "rejected", "claim": "iss"}
+      ]
+    },
+    "form-post-cross-site": {
+      "plan": "form-post-cross-site",
+      "complete_profile": false,
+      "coverage_limitations": [
+        "comprehensive_plan_selection_only",
+        "https_cross_site_loopback_form_post_only"
+      ],
+      "modules": [
+        {
+          "module": "oidcc-client-test",
+          "outcome": "authenticated"
+        },
+        {
+          "module": "oidcc-client-test-form-post-error",
+          "outcome": "authorization_error",
+          "error_code": "login_required"
+        }
       ]
     },
     "auth-post": {

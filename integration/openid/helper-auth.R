@@ -1,3 +1,130 @@
+openid_form_post_requests <- function(logs, module, plan, expectation) {
+  if (
+    !length(logs) ||
+      !all(vapply(
+        logs,
+        function(entry) {
+          identical(entry[["testId"]], module[["id"]])
+        },
+        logical(1)
+      ))
+  ) {
+    stop("Form Post logs do not belong to this suite instance")
+  }
+  path <- sub("^https://[^/]+", "", module[["issuer"]])
+  requests <- function(endpoint) {
+    Filter(
+      function(entry) {
+        identical(entry[["http"]], "incoming") &&
+          identical(entry[["incoming_path"]], paste0(path, endpoint))
+      },
+      logs
+    )
+  }
+  authorization <- requests("authorize")
+  token <- requests("token")
+  userinfo <- requests("userinfo")
+  denied <- identical(expectation[["outcome"]], "authorization_error")
+  expected_count <- if (denied) 0L else 1L
+  if (
+    length(authorization) != 1L ||
+      length(token) != expected_count ||
+      length(userinfo) != expected_count
+  ) {
+    stop("Unexpected authorization, token or UserInfo request count")
+  }
+  query <- authorization[[1L]][["incoming_query_string_params"]]
+  challenge <- query[["code_challenge"]]
+  request_valid <- identical(authorization[[1L]][["incoming_method"]], "GET") &&
+    identical(query[["response_type"]], "code") &&
+    identical(query[["response_mode"]], "form_post") &&
+    identical(
+      query[["redirect_uri"]],
+      plan[["registration"]][["redirect_uri"]]
+    ) &&
+    identical(query[["client_id"]], plan[["registration"]][["client_id"]]) &&
+    openid_string(query[["state"]]) &&
+    openid_string(query[["nonce"]]) &&
+    identical(query[["code_challenge_method"]], "S256") &&
+    openid_string(challenge) &&
+    grepl("^[A-Za-z0-9_-]{43}$", challenge)
+  controls_valid <- if (denied) {
+    identical(query[["prompt"]], "none") &&
+      identical(as.character(query[["max_age"]]), "0")
+  } else {
+    is.null(query[["prompt"]]) && is.null(query[["max_age"]])
+  }
+  pair <- basic <- NULL
+  if (!denied) {
+    request <- token[[1L]]
+    form <- request[["incoming_body_form_params"]]
+    verifier <- form[["code_verifier"]]
+    pair <- openid_string(verifier) &&
+      grepl("^[A-Za-z0-9._~-]{43,128}$", verifier) &&
+      identical(
+        challenge,
+        sub(
+          "=+$",
+          "",
+          chartr(
+            "+/",
+            "-_",
+            as.character(
+              openssl::base64_encode(openssl::sha256(charToRaw(verifier)))
+            )
+          )
+        )
+      )
+    header <- request[["incoming_headers"]][["authorization"]]
+    expected <- paste0(
+      "Basic ",
+      as.character(openssl::base64_encode(charToRaw(
+        paste0(
+          plan[["registration"]][["client_id"]],
+          ":",
+          plan[["credentials"]][["client_secret"]]
+        )
+      )))
+    )
+    basic <- identical(header, expected) &&
+      identical(request[["incoming_method"]], "POST") &&
+      identical(form[["grant_type"]], "authorization_code") &&
+      openid_string(form[["code"]]) &&
+      is.null(form[["client_secret"]]) &&
+      is.null(form[["client_assertion"]])
+  }
+  list(
+    schema_version = 1L,
+    suite_id = module[["id"]],
+    authorization_request_count = length(authorization),
+    token_request_count = length(token),
+    userinfo_request_count = length(userinfo),
+    authorization_request_valid = request_valid,
+    authorization_controls_valid = controls_valid,
+    pkce_pair_verified = pair,
+    basic_auth_verified = basic
+  )
+}
+
+openid_form_post_requests_match <- function(result, expectation) {
+  proof <- result[["form_post_requests"]]
+  denied <- identical(expectation[["outcome"]], "authorization_error")
+  identical(proof[["schema_version"]], 1L) &&
+    identical(proof[["suite_id"]], result[["suite_id"]]) &&
+    identical(proof[["authorization_request_count"]], 1L) &&
+    identical(proof[["token_request_count"]], if (denied) 0L else 1L) &&
+    identical(proof[["userinfo_request_count"]], if (denied) 0L else 1L) &&
+    isTRUE(proof[["authorization_request_valid"]]) &&
+    isTRUE(proof[["authorization_controls_valid"]]) &&
+    if (denied) {
+      is.null(proof[["pkce_pair_verified"]]) &&
+        is.null(proof[["basic_auth_verified"]])
+    } else {
+      isTRUE(proof[["pkce_pair_verified"]]) &&
+        isTRUE(proof[["basic_auth_verified"]])
+    }
+}
+
 openid_auth_checks <- function(method) {
   if (identical(method, "client_secret_post")) {
     return(c(

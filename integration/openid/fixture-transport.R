@@ -13,6 +13,7 @@ openid_fixture_hook <- function(
       "audit_login_success",
       "audit_login_failed",
       "audit_callback_validation_success",
+      "audit_error_state_consumed",
       "audit_token_refresh",
       "audit_session_cleared",
       "audit_callback_iss_missing",
@@ -268,6 +269,7 @@ openid_fixture_audit <- function(directory, run_id, version, probes) {
     "audit_login_success",
     "audit_login_failed",
     "audit_callback_validation_success",
+    "audit_error_state_consumed",
     "audit_token_refresh",
     "audit_session_cleared"
   )

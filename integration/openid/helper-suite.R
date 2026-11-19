@@ -2,6 +2,10 @@ openid_string <- function(value) {
   is.character(value) && length(value) == 1L && !is.na(value) && nzchar(value)
 }
 
+openid_auth_profile <- function(profile) {
+  profile %in% c("auth-post", "auth-secret-jwt", "auth-private-jwt")
+}
+
 openid_fapi_plan <- function(name) {
   isTRUE(
     name %in%

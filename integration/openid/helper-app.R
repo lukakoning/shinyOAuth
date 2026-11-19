@@ -93,8 +93,12 @@ openid_app_transport <- function(
   root,
   stack,
   target_port,
-  .env = parent.frame()
+  .env = parent.frame(),
+  host = "localhost"
 ) {
+  if (!identical(host, "localhost") && !identical(host, "127.0.0.1")) {
+    stop("OpenID app transport requires an approved loopback host")
+  }
   python <- Sys.which(
     if (.Platform[["OS.type"]] == "windows") "py" else "python3"
   )
@@ -141,7 +145,7 @@ openid_app_transport <- function(
     stop("Invalid app TLS port")
   }
   list(
-    origin = paste0("https://localhost:", port),
+    origin = paste0("https://", host, ":", port),
     target_port = target_port,
     process = proxy
   )
@@ -298,7 +302,26 @@ openid_app_start <- function(
     "OpenID fixture app",
     60
   )
-  list(process = app, config = config, origin = transport[["origin"]])
+  list(
+    process = app,
+    config = config,
+    origin = transport[["origin"]],
+    tls_verified = TRUE
+  )
+}
+
+openid_app_wrong_pin <- function(stack, origin) {
+  other <- openid_browser(as.character(openssl::base64_encode(openssl::rand_bytes(
+    32
+  ))))
+  tab <- other[["new_session"]]()
+  navigation <- tab[["Page"]][["navigate"]](paste0(origin, "/"))
+  if (
+    !identical(navigation[["errorText"]], "net::ERR_CERT_AUTHORITY_INVALID")
+  ) {
+    stop("Chrome accepted the app certificate without its matching pin")
+  }
+  TRUE
 }
 
 openid_browser_value <- function(tab, js) {

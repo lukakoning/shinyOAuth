@@ -168,7 +168,10 @@ openid_run_case <- function(
 ) {
   module <- openid_suite_module(stack, plan, expectation[["module"]])
   form_post <- identical(
-    plan[["spec"]][["module_variant"]][["response_mode"]],
+    utils::modifyList(
+      plan[["spec"]][["plan_variant"]],
+      as.list(plan[["spec"]][["module_variant"]])
+    )[["response_mode"]],
     "form_post"
   )
   config <- list(
@@ -216,6 +219,17 @@ openid_run_case <- function(
       "query"
     },
     provider_origin = stack[["origin"]],
+    cross_site_form_post = identical(
+      context[["profile"]],
+      "form-post-cross-site"
+    ),
+    extra_auth_params = if (
+      identical(expectation[["outcome"]], "authorization_error")
+    ) {
+      list(prompt = "none", max_age = 0)
+    } else {
+      NULL
+    },
     transport = context[["transport"]],
     run_id = paste0(context[["run_id"]], "-", module[["id"]]),
     preload_jwks = isTRUE(expectation[["preload_jwks"]]),
@@ -410,11 +424,40 @@ openid_run_case <- function(
   }
   row[["app"]] <- snapshot
   row[["callback_http"]] <- callback_http
-  if (identical(plan[["spec"]][["plan"]], "oidcc-client-test-plan")) {
+  if (openid_auth_profile(context[["profile"]])) {
     row[["client_auth"]] <- openid_auth_evidence(
       openid_api(stack, paste0("/api/log/", module[["id"]])),
       module,
       plan
+    )
+  }
+  if (identical(context[["profile"]], "form-post-cross-site")) {
+    if (identical(expectation[["outcome"]], "authorization_error")) {
+      row[["form_post_error"]] <- list(
+        visible = identical(
+          openid_browser_value(
+            tab,
+            "document.querySelector('#authorization_error').textContent"
+          ),
+          "Authorization requires login."
+        ),
+        provider_description_absent = !grepl(
+          "This is a login_required error response",
+          openid_browser_value(tab, "document.body.textContent"),
+          fixed = TRUE
+        )
+      )
+    }
+    row[["form_post_tls"]] <- list(
+      app_origin = app[["origin"]],
+      ca_verified = isTRUE(app[["tls_verified"]]),
+      wrong_pin_rejected = openid_app_wrong_pin(stack, app[["origin"]])
+    )
+    row[["form_post_requests"]] <- openid_form_post_requests(
+      openid_api(stack, paste0("/api/log/", module[["id"]])),
+      module,
+      plan,
+      expectation
     )
   }
   row[["browser_version"]] <- chrome

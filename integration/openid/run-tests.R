@@ -6,7 +6,7 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
       setequal(args[c(1L, 3L)], c("--profile", "--transport"))
     if (!valid) {
       stop(
-        "Usage: Rscript integration/openid/run-tests.R --check-api | --profile smoke|basic|config|form-post|refresh|auth-post|auth-secret-jwt|auth-private-jwt|fapi-dpop|fapi-dpop-full|fapi-oauth-dpop|fapi-oauth-dpop-reference|fapi-oauth-mtls|fapi-oauth-mtls-auth|fapi-mtls|fapi-mtls-auth|fapi-message-signing --transport sync|mirai|future"
+        "Usage: Rscript integration/openid/run-tests.R --check-api | --profile smoke|basic|config|form-post|form-post-cross-site|refresh|auth-post|auth-secret-jwt|auth-private-jwt|fapi-dpop|fapi-dpop-full|fapi-oauth-dpop|fapi-oauth-dpop-reference|fapi-oauth-mtls|fapi-oauth-mtls-auth|fapi-mtls|fapi-mtls-auth|fapi-message-signing --transport sync|mirai|future"
       )
     }
     options <- setNames(args[c(2L, 4L)], args[c(1L, 3L)])
@@ -17,6 +17,7 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
           "basic",
           "config",
           "form-post",
+          "form-post-cross-site",
           "refresh",
           "auth-post",
           "auth-secret-jwt",
@@ -127,7 +128,16 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
     report[["regression_installation_after"]] <- regression_installation
     context <- report
     stack <- openid_start(".", output)
-    transport <- openid_app_transport(".", stack, httpuv::randomPort())
+    transport <- openid_app_transport(
+      ".",
+      stack,
+      httpuv::randomPort(),
+      host = if (identical(profile, "form-post-cross-site")) {
+        "127.0.0.1"
+      } else {
+        "localhost"
+      }
+    )
     context[["provider_origin"]] <- report[["provider_origin"]] <- stack[[
       "origin"
     ]]

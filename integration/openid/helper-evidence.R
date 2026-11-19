@@ -121,6 +121,40 @@ openid_app_matches <- function(app, expectation, case_id, package_version) {
         ))
     )
   }
+  if (identical(expectation[["outcome"]], "authorization_error")) {
+    return(
+      identical(expectation[["error_code"]], "login_required") &&
+        identical(app[["error_code"]], "login_required") &&
+        !length(app[["error_classes"]]) &&
+        all(vapply(
+          c(
+            "authenticated",
+            "has_token",
+            "id_token_present",
+            "id_token_validated",
+            "userinfo_present"
+          ),
+          function(name) {
+            identical(app[[name]], FALSE)
+          },
+          logical(1)
+        )) &&
+        identical(app[["pending_state_count"]], 0L) &&
+        identical(
+          app[["operations"]][["audit_callback_validation_success"]],
+          0L
+        ) &&
+        identical(app[["operations"]][["audit_error_state_consumed"]], 1L) &&
+        isTRUE(app[["authorization_error_sanitized"]]) &&
+        all(vapply(
+          c("audit_token_exchange", "audit_userinfo", "audit_login_success"),
+          function(name) {
+            identical(app[["operations"]][[name]], 0L)
+          },
+          logical(1)
+        ))
+    )
+  }
   if (identical(expectation[["outcome"]], "authenticated")) {
     return(
       isTRUE(app[["authenticated"]]) &&
@@ -427,8 +461,14 @@ openid_form_post_matches <- function(result, context) {
     return(FALSE)
   }
   origins <- c(context[["provider_origin"]], context[["app_origin"]])
+  cross_site <- identical(context[["profile"]], "form-post-cross-site")
   if (
-    !all(grepl("^https://localhost:[0-9]+$", origins)) ||
+    !(if (cross_site) {
+      grepl("^https://localhost:[0-9]+$", origins[[1L]]) &&
+        grepl("^https://127\\.0\\.0\\.1:[0-9]+$", origins[[2L]])
+    } else {
+      all(grepl("^https://localhost:[0-9]+$", origins))
+    }) ||
       identical(origins[[1L]], origins[[2L]])
   ) {
     return(FALSE)
@@ -443,6 +483,9 @@ openid_form_post_matches <- function(result, context) {
     identical(callback[["method"]], "POST") &&
     isTRUE(callback[["origin_matched"]]) &&
     isTRUE(callback[["form_urlencoded"]]) &&
+    (!cross_site ||
+      (identical(callback[["sec_fetch_site"]], "cross-site") &&
+        isTRUE(callback[["binding_cookie_absent"]]))) &&
     openid_string(callback[["sec_fetch_site"]]) &&
     callback[["sec_fetch_site"]] %in% c("same-site", "cross-site") &&
     identical(
@@ -452,10 +495,23 @@ openid_form_post_matches <- function(result, context) {
     openid_count(cookie[["binding_cookie_count"]], 1L) &&
     isTRUE(cookie[["secure"]]) &&
     identical(cookie[["same_site"]], "Strict") &&
-    openid_count(
-      result[["app"]][["operations"]][["audit_callback_validation_success"]],
-      1L
-    )
+    (if (
+      cross_site && identical(result[["app"]][["error_code"]], "login_required")
+    ) {
+      identical(
+        result[["app"]][["operations"]][["audit_callback_validation_success"]],
+        0L
+      ) &&
+        identical(
+          result[["app"]][["operations"]][["audit_error_state_consumed"]],
+          1L
+        )
+    } else {
+      openid_count(
+        result[["app"]][["operations"]][["audit_callback_validation_success"]],
+        1L
+      )
+    })
 }
 
 openid_transport_matches <- function(result, expectation, context) {
@@ -520,6 +576,19 @@ openid_transport_matches <- function(result, expectation, context) {
     }
   }
   pids <- unlist(evidence[["worker_pids"]])
+  if (
+    identical(expectation[["outcome"]], "authorization_error") &&
+      (!identical(
+        evidence[["main_operations"]][["audit_error_state_consumed"]],
+        1L
+      ) ||
+        !identical(
+          evidence[["worker_operations"]][["audit_error_state_consumed"]],
+          0L
+        ))
+  ) {
+    return(FALSE)
+  }
   probes <- evidence[["probes"]]
   if (!async) {
     return(length(pids) == 0L && length(probes) == 0L)
@@ -562,14 +631,20 @@ openid_transport_matches <- function(result, expectation, context) {
   if (identical(expectation[["action"]], "discovery")) {
     return(length(pids) == 0L)
   }
-  if (identical(expectation[["outcome"]], "callback_rejected")) {
-    return(all(vapply(
-      c("audit_token_exchange", "audit_userinfo"),
-      function(name) {
-        evidence[["worker_operations"]][[name]] == 0L
-      },
-      logical(1)
-    )))
+  if (
+    expectation[["outcome"]] %in% c("callback_rejected", "authorization_error")
+  ) {
+    return(
+      (!identical(expectation[["outcome"]], "authorization_error") ||
+        !length(pids)) &&
+        all(vapply(
+          c("audit_token_exchange", "audit_userinfo"),
+          function(name) {
+            evidence[["worker_operations"]][[name]] == 0L
+          },
+          logical(1)
+        ))
+    )
   }
   if (!length(pids)) {
     return(FALSE)
@@ -644,7 +719,8 @@ openid_assessment_limitations <- function(limitations) {
       "mtls_client_authentication_not_selected",
       "resource_request_in_main_process",
       "unsigned_authorization_server_metadata_only",
-      "shared_pool_sequential_reuse_only"
+      "shared_pool_sequential_reuse_only",
+      "https_cross_site_loopback_form_post_only"
     ),
     interoperability_advisories = "oauth_state_length_over_128_warning",
     provider_limitations = c(
@@ -777,7 +853,7 @@ openid_check_report <- function(report, context, manifest) {
         stop("Unknown evidence profile")
       }
       spec <- openid_plan_spec(manifest, context[["profile"]])
-      auth_profile <- identical(spec[["plan"]], "oidcc-client-test-plan")
+      auth_profile <- openid_auth_profile(context[["profile"]])
       if (auth_profile) {
         for (name in c("public_probe_plan_id", "public_probe_suite_id")) {
           if (!identical(report[[name]], context[[name]])) {
@@ -795,7 +871,7 @@ openid_check_report <- function(report, context, manifest) {
       ) {
         stop("Missing pinned public-client capability gap evidence")
       }
-      if (identical(context[["profile"]], "form-post")) {
+      if (context[["profile"]] %in% c("form-post", "form-post-cross-site")) {
         for (name in c("provider_origin", "app_origin")) {
           if (
             !openid_string(context[[name]]) ||
@@ -981,10 +1057,35 @@ openid_check_report <- function(report, context, manifest) {
           stop("Missing browser navigation evidence")
         }
         if (
-          identical(context[["profile"]], "form-post") &&
+          context[["profile"]] %in%
+            c("form-post", "form-post-cross-site") &&
             !openid_form_post_matches(result, context)
         ) {
           stop("Missing real-browser Form Post, bridge or binding evidence")
+        }
+        if (
+          identical(context[["profile"]], "form-post-cross-site") &&
+            (!openid_form_post_requests_match(result, expectation) ||
+              !identical(result[["app"]][["pending_state_count"]], 0L) ||
+              !identical(
+                result[["form_post_tls"]][["app_origin"]],
+                context[["app_origin"]]
+              ) ||
+              !isTRUE(result[["form_post_tls"]][["ca_verified"]]) ||
+              !isTRUE(result[["form_post_tls"]][["wrong_pin_rejected"]]))
+        ) {
+          stop(
+            "Missing cross-site Form Post request, denial or state-consumption evidence"
+          )
+        }
+        if (
+          identical(expectation[["outcome"]], "authorization_error") &&
+            (!isTRUE(result[["form_post_error"]][["visible"]]) ||
+              !isTRUE(result[["form_post_error"]][[
+                "provider_description_absent"
+              ]]))
+        ) {
+          stop("Missing safe browser-visible authorization error")
         }
         if (!openid_transport_matches(result, expectation, context)) {
           stop(

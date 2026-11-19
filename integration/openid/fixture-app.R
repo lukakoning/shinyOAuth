@@ -46,7 +46,14 @@ openid_fixture_app <- function(config) {
         logical(1)
       )) ||
       !startsWith(config[["issuer"]], "https://") ||
-      !grepl("^https://localhost:[0-9]+$", config[["origin"]]) ||
+      !grepl(
+        if (isTRUE(config[["cross_site_form_post"]])) {
+          "^https://127\\.0\\.0\\.1:[0-9]+$"
+        } else {
+          "^https://localhost:[0-9]+$"
+        },
+        config[["origin"]]
+      ) ||
       !config[["response_mode"]] %in% c("query", "form_post", "jwt")
   ) {
     stop("Invalid private OpenID fixture configuration")
@@ -164,7 +171,9 @@ openid_fixture_app <- function(config) {
     authenticated = FALSE,
     error = NULL,
     session_number = 0L,
-    refresh = NULL
+    refresh = NULL,
+    error_description = NULL,
+    error_uri = NULL
   ) {
     observed <- openid_fixture_audit(
       config[["audit_directory"]],
@@ -229,6 +238,18 @@ openid_fixture_app <- function(config) {
           NULL
         } else {
           client@state_transport
+        },
+        pending_state_count = if (isTRUE(config[["cross_site_form_post"]])) {
+          length(client@state_store[["keys"]]())
+        } else {
+          NULL
+        },
+        authorization_error_sanitized = if (
+          isTRUE(config[["cross_site_form_post"]])
+        ) {
+          is.null(error_description) && is.null(error_uri)
+        } else {
+          NULL
         },
         oauth_only_configured = !is.null(provider) &&
           !provider@infer_oidc_from_issuer &&
@@ -454,6 +475,9 @@ openid_fixture_app <- function(config) {
     shiny::actionButton("login", "Log in"),
     shiny::actionButton("logout", "Log out"),
     shiny::actionButton("refresh", "Refresh"),
+    if (isTRUE(config[["cross_site_form_post"]])) {
+      shiny::textOutput("authorization_error")
+    },
     if (
       isTRUE(config[["fapi"]]) ||
         !is.null(advanced) ||
@@ -493,6 +517,7 @@ openid_fixture_app <- function(config) {
         site <- "missing_or_unknown"
       }
       content_type <- req[["CONTENT_TYPE"]]
+      cookies <- strsplit(req[["HTTP_COOKIE"]] %||% "", ";", fixed = TRUE)[[1L]]
       audit[["form_post"]] <- list(
         method = "POST",
         origin_matched = identical(
@@ -500,6 +525,10 @@ openid_fixture_app <- function(config) {
           config[["provider_origin"]]
         ),
         sec_fetch_site = site,
+        binding_cookie_absent = !any(startsWith(
+          trimws(cookies),
+          "__Host-shinyOAuth_sid-auth-"
+        )),
         form_urlencoded = is.character(content_type) &&
           length(content_type) == 1L &&
           !is.na(content_type) &&
@@ -840,6 +869,13 @@ openid_fixture_app <- function(config) {
       auth[["request_login"]](),
       ignoreInit = TRUE
     )
+    output[["authorization_error"]] <- shiny::renderText({
+      if (identical(auth[["error"]], "login_required")) {
+        "Authorization requires login."
+      } else {
+        ""
+      }
+    })
     shiny::observeEvent(
       input[["logout"]],
       auth[["logout"]](),
@@ -859,7 +895,9 @@ openid_fixture_app <- function(config) {
         isTRUE(auth[["authenticated"]]),
         auth[["error"]],
         session_number,
-        refresh
+        refresh,
+        auth[["error_description"]],
+        auth[["error_uri"]]
       )
     })
   }
