@@ -61,7 +61,7 @@ for (post in c(FALSE, TRUE)) {
               req[["CONTENT_TYPE"]] <- "application/x-www-form-urlencoded"
               req[["rook.input"]] <- list(read = function(n) charToRaw(encoded))
             }
-            response <- ui(req)
+            response <- callback_rejection_terminal(ui, req)
             expect_identical(response[["status"]], 200L)
             expect_null(response[["headers"]][["Location"]])
             expect_null(response[["headers"]][["Set-Cookie"]])
@@ -104,22 +104,36 @@ for (post in c(FALSE, TRUE)) {
               path = "/callback/a",
               query = url_raw_query(location)
             )
-            expect_equal(ui(continuation)[["status"]], 200L)
+            expect_equal(
+              callback_rejection_terminal(ui, continuation)[["status"]],
+              200L
+            )
             expect_length(ctl[["records"]](), 0L)
             expect_no_error(state_store_get(client, state))
             continuation[["HTTP_COOKIE"]] <- NULL
-            expect_identical(ui(continuation)[["status"]], 400L)
-            expect_null(ui(continuation)[["headers"]][["Set-Cookie"]])
+            expect_identical(
+              callback_rejection_terminal(ui, continuation)[["status"]],
+              400L
+            )
+            expect_null(callback_rejection_terminal(ui, continuation)[[
+              "headers"
+            ]][["Set-Cookie"]])
             expect_true(manager[["state"]][["owners"]][["revoke"]](owner))
             continuation[["HTTP_COOKIE"]] <- cookie
-            expect_identical(ui(continuation)[["status"]], 400L)
+            expect_identical(
+              callback_rejection_terminal(ui, continuation)[["status"]],
+              400L
+            )
             expect_no_error(state_store_get(client, state))
           })
         )
-        invalid <- ui(manager_test_request(
-          path = "/callback/a",
-          query = "code=invalid&state=invalid"
-        ))
+        invalid <- callback_rejection_terminal(
+          ui,
+          manager_test_request(
+            path = "/callback/a",
+            query = "code=invalid&state=invalid"
+          )
+        )
         expect_identical(invalid[["status"]], 400L)
         expect_false(grepl(
           'http-equiv="refresh"',

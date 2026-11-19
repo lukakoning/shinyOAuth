@@ -51,7 +51,8 @@ make_jarm_test_client <- function(
 test_that("signed JARM rejects lossy strings before using response parameters", {
   secret <- strrep("s", 32)
   client <- make_jarm_test_client(
-    jarm_signed_response_alg = "HS256", client_secret = secret
+    jarm_signed_response_alg = "HS256",
+    client_secret = secret
   )
   payload <- paste0(
     '{"iss":"https://issuer.example.com","aud":"abc","exp":',
@@ -61,7 +62,8 @@ test_that("signed JARM rejects lossy strings before using response parameters", 
   sign <- function(payload) {
     input <- paste(
       shinyOAuth:::base64url_encode(charToRaw('{"alg":"HS256"}')),
-      shinyOAuth:::base64url_encode(charToRaw(payload)), sep = "."
+      shinyOAuth:::base64url_encode(charToRaw(payload)),
+      sep = "."
     )
     signature <- openssl::sha256(charToRaw(input), key = charToRaw(secret))
     paste(input, shinyOAuth:::base64url_encode(signature), sep = ".")
@@ -77,7 +79,8 @@ test_that("signed JARM rejects lossy strings before using response parameters", 
   )) {
     expect_error(
       shinyOAuth:::validate_jarm_response(client, sign(text)),
-      "JARM payload could not be parsed", class = "shinyOAuth_state_error"
+      "JARM payload could not be parsed",
+      class = "shinyOAuth_state_error"
     )
   }
 })
@@ -240,7 +243,7 @@ make_compact_jwe_with_header <- function(header_json) {
   )
 }
 
-test_that("JARM algorithm mismatches respect diagnostic exposure through form_post UI", {
+test_that("JARM HTTP errors omit raw values while direct diagnostics respect exposure", {
   local_options(shinyOAuth.telemetry_path_scrubber = NULL)
   encrypted_client <- make_jarm_test_client(
     response_mode = "form_post.jwt",
@@ -271,8 +274,12 @@ test_that("JARM algorithm mismatches respect diagnostic exposure through form_po
     paste0("private-received-{literal}", strrep("x", 900), "truncated-marker")
   )
   local_mocked_bindings(
-    jwe_compact_decrypt = function(...) fail("Mismatched algorithms reached decryption"),
-    fetch_jwks = function(...) fail("Mismatched algorithms reached JWKS lookup"),
+    jwe_compact_decrypt = function(...) {
+      fail("Mismatched algorithms reached decryption")
+    },
+    fetch_jwks = function(...) {
+      fail("Mismatched algorithms reached JWKS lookup")
+    },
     .package = "shinyOAuth"
   )
   for (expose in c(FALSE, TRUE)) {
@@ -301,22 +308,32 @@ test_that("JARM algorithm mismatches respect diagnostic exposure through form_po
         )
         expect_s3_class(error, "shinyOAuth_state_error")
         expect_match(conditionMessage(error), case[["message"]], fixed = TRUE)
-        result <- ui(make_jarm_form_post_req(
-          body = httr2::url_query_build(list(response = response))
-        ))
+        result <- callback_rejection_terminal(
+          ui,
+          make_jarm_form_post_req(
+            body = httr2::url_query_build(list(response = response))
+          )
+        )
         expect_identical(result[["status"]], 400L)
         expect_match(result[["content"]], case[["message"]], fixed = TRUE)
         expect_false("Location" %in% names(result[["headers"]]))
         expect_identical(sort(client@state_store[["keys"]]()), keys_before)
         for (message in c(conditionMessage(error), result[["content"]])) {
-          expect_no_match(message, "password|secret-marker|fragment|truncated-marker")
+          expect_no_match(
+            message,
+            "password|secret-marker|fragment|truncated-marker"
+          )
           expect_lt(nchar(message, type = "bytes"), 1500L)
-          for (marker in c("received.example.test", "private-received-{literal}")) {
-            expect_identical(
-              grepl(marker, message, fixed = TRUE),
-              expose && grepl(marker, value, fixed = TRUE)
-            )
-          }
+        }
+        for (marker in c(
+          "received.example.test",
+          "private-received-{literal}"
+        )) {
+          expect_identical(
+            grepl(marker, conditionMessage(error), fixed = TRUE),
+            expose && grepl(marker, value, fixed = TRUE)
+          )
+          expect_no_match(result[["content"]], marker, fixed = TRUE)
         }
       }
     }
@@ -3105,9 +3122,12 @@ test_that("oauth_form_post_ui returns 400 for malformed encrypted JARM callbacks
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = client)
   keys_before <- sort(client@state_store[["keys"]]())
 
-  resp <- ui(make_jarm_form_post_req(
-    body = "response=a.b.c.d.e"
-  ))
+  resp <- callback_rejection_terminal(
+    ui,
+    make_jarm_form_post_req(
+      body = "response=a.b.c.d.e"
+    )
+  )
 
   expect_identical(resp[["status"]], 400L)
   expect_match(
@@ -3500,12 +3520,15 @@ test_that("oauth_form_post_ui rejects form_post.jwt bodies that mix response wit
   })
   on.exit(options(old), add = TRUE)
 
-  resp <- ui(make_jarm_form_post_req(
-    body = paste0(
-      "response=header.payload.signature",
-      "&code=attack"
+  resp <- callback_rejection_terminal(
+    ui,
+    make_jarm_form_post_req(
+      body = paste0(
+        "response=header.payload.signature",
+        "&code=attack"
+      )
     )
-  ))
+  )
 
   expect_identical(resp[["status"]], 400L)
   expect_identical(
@@ -3538,14 +3561,17 @@ test_that("oauth_form_post_ui rejects direct form_post callbacks for form_post.j
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = client)
   keys_before <- sort(client@state_store[["keys"]]())
 
-  resp <- ui(make_jarm_form_post_req(
-    body = paste0(
-      "code=attack",
-      "&state=state-1",
-      "&iss=",
-      utils::URLencode(client@provider@issuer, reserved = TRUE)
+  resp <- callback_rejection_terminal(
+    ui,
+    make_jarm_form_post_req(
+      body = paste0(
+        "code=attack",
+        "&state=state-1",
+        "&iss=",
+        utils::URLencode(client@provider@issuer, reserved = TRUE)
+      )
     )
-  ))
+  )
 
   expect_identical(resp[["status"]], 400L)
   expect_identical(
@@ -3593,9 +3619,12 @@ test_that("oauth_form_post_ui rejects prefixed response fields for form_post.jwt
     },
     .package = "shinyOAuth",
     {
-      resp <- ui(make_jarm_form_post_req(
-        body = paste0("response_alias=", response)
-      ))
+      resp <- callback_rejection_terminal(
+        ui,
+        make_jarm_form_post_req(
+          body = paste0("response_alias=", response)
+        )
+      )
 
       expect_identical(resp[["status"]], 400L)
       expect_identical(
@@ -3823,14 +3852,17 @@ test_that("oauth_form_post_ui rejects mismatched outer iss in form_post.jwt bodi
     },
     .package = "shinyOAuth",
     {
-      ui(make_jarm_form_post_req(
-        body = paste0(
-          "response=",
-          utils::URLencode(response, reserved = TRUE),
-          "&iss=",
-          utils::URLencode("https://evil.example.com", reserved = TRUE)
+      callback_rejection_terminal(
+        ui,
+        make_jarm_form_post_req(
+          body = paste0(
+            "response=",
+            utils::URLencode(response, reserved = TRUE),
+            "&iss=",
+            utils::URLencode("https://evil.example.com", reserved = TRUE)
+          )
         )
-      ))
+      )
     }
   )
 
@@ -3867,15 +3899,21 @@ test_that("oauth_form_post_ui rejects form_post.jwt bodies with invalid inner st
     fetch_jwks = function(...) jwks,
     .package = "shinyOAuth",
     {
-      resp <- ui(make_jarm_form_post_req(
-        body = paste0(
-          "response=",
-          utils::URLencode(response, reserved = TRUE)
+      resp <- callback_rejection_terminal(
+        ui,
+        make_jarm_form_post_req(
+          body = paste0(
+            "response=",
+            utils::URLencode(response, reserved = TRUE)
+          )
         )
-      ))
+      )
 
       expect_identical(resp[["status"]], 400L)
-      expect_match(resp[["content"]], "Invalid OAuth state", fixed = TRUE)
+      expect_identical(
+        resp[["content"]],
+        "State payload decryption or validation failed"
+      )
       expect_false("Location" %in% names(resp[["headers"]]))
       expect_identical(sort(client@state_store[["keys"]]()), keys_before)
     }
@@ -3908,15 +3946,21 @@ test_that("oauth_form_post_ui emits one audit event for invalid inner-state form
     fetch_jwks = function(...) jwks,
     .package = "shinyOAuth",
     {
-      resp <- ui(make_jarm_form_post_req(
-        body = paste0(
-          "response=",
-          utils::URLencode(response, reserved = TRUE)
+      resp <- callback_rejection_terminal(
+        ui,
+        make_jarm_form_post_req(
+          body = paste0(
+            "response=",
+            utils::URLencode(response, reserved = TRUE)
+          )
         )
-      ))
+      )
 
       expect_identical(resp[["status"]], 400L)
-      expect_match(resp[["content"]], "Invalid OAuth state", fixed = TRUE)
+      expect_identical(
+        resp[["content"]],
+        "State payload decryption or validation failed"
+      )
     }
   )
 
@@ -3959,12 +4003,15 @@ test_that("oauth_form_post_ui audits form_post.jwt validation failures", {
     fetch_jwks = function(...) jwks,
     .package = "shinyOAuth",
     {
-      resp <- ui(make_jarm_form_post_req(
-        body = paste0(
-          "response=",
-          utils::URLencode(response, reserved = TRUE)
+      resp <- callback_rejection_terminal(
+        ui,
+        make_jarm_form_post_req(
+          body = paste0(
+            "response=",
+            utils::URLencode(response, reserved = TRUE)
+          )
         )
-      ))
+      )
 
       expect_identical(resp[["status"]], 400L)
       expect_match(
@@ -4627,12 +4674,15 @@ test_that("oauth_module_server rejects bridged form_post JARM callbacks for quer
             kid = "sig-1"
           )
 
-          post_resp <- ui(make_jarm_form_post_req(
-            body = paste0(
-              "response=",
-              utils::URLencode(response, reserved = TRUE)
+          post_resp <- callback_rejection_terminal(
+            ui,
+            make_jarm_form_post_req(
+              body = paste0(
+                "response=",
+                utils::URLencode(response, reserved = TRUE)
+              )
             )
-          ))
+          )
           expect_identical(post_resp[["status"]], 400L)
           expect_match(
             post_resp[["content"]],
@@ -4700,12 +4750,15 @@ test_that("oauth_module_server rejects bridged form_post.jwt aud mismatches with
 
           expect_length(client@state_store[["keys"]](), 1L)
 
-          bad_post_resp <- ui(make_jarm_form_post_req(
-            body = paste0(
-              "response=",
-              utils::URLencode(bad_response, reserved = TRUE)
+          bad_post_resp <- callback_rejection_terminal(
+            ui,
+            make_jarm_form_post_req(
+              body = paste0(
+                "response=",
+                utils::URLencode(bad_response, reserved = TRUE)
+              )
             )
-          ))
+          )
           expect_identical(bad_post_resp[["status"]], 400L)
           expect_match(
             bad_post_resp[["content"]],
@@ -4813,9 +4866,12 @@ test_that("signed and encrypted form_post JARM keep response candidates independ
                   cty = "JWT"
                 )
               }
-              ui(make_jarm_form_post_req(
-                body = httr2::url_query_build(list(response = response))
-              ))
+              callback_rejection_terminal(
+                ui,
+                make_jarm_form_post_req(
+                  body = httr2::url_query_build(list(response = response))
+                )
+              )
             },
             first_error = first_error,
             follow_first = follow_first,

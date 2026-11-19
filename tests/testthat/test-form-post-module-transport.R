@@ -123,6 +123,14 @@ test_that("single-client and registry wrappers admit only configured transports"
           "rook.input" = list(read = function(n) charToRaw(body))
         )
         responses[[transport]] <- ui(req)
+        if (transport != mode) {
+          expect_identical(responses[[transport]][["status"]], 303L)
+          responses[[transport]] <- callback_rejection_terminal(
+            ui,
+            req,
+            responses[[transport]]
+          )
+        }
         expect_identical(
           responses[[transport]][["status"]],
           if (transport == mode) 303L else 400L

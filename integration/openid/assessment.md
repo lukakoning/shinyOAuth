@@ -50,12 +50,40 @@ and missing cleanup still fail the gate.
 | `selection_scope` | A subset of upstream modules, one authentication/sender-constraint pairing, unsigned metadata over verified TLS, resource requests in the main process or sequential shared-pool reuse. These describe tested scope. They do not each imply a specification violation. |
 | `interoperability_advisories` | The verified encrypted-state length warning. Keep its evidence and explain its scope independently of module completion. |
 | `provider_limitations` | The pinned suite's `no-store` JWKS, simulated resource server's missing certificate-misuse denial, exact certificate registration, incomplete mTLS authentication denial checks and comprehensive-plan public-client/PKCE limitations. These findings concern the test environment and the evidence it can supply. |
-| `client_limitations` | Rejected HTTP callbacks retaining query material in the browser address bar. This remains a package improvement to implement. |
+| `client_limitations` | Historical HTTP callback rejections retaining query material. Legacy evidence keeps this limit; current cleanup evidence must establish the new policy before it is removed. |
 
 The checker adds `upstream_module_selection_only` when a successful selection
 does not cover the whole pinned module list. Every emitted limitation must have
 an explicit category; an unreviewed code fails assessment rather than silently
-disappearing. Raw `coverage_limitations` remain unchanged for older consumers.
+disappearing. Historical `coverage_limitations` keep their original meaning.
+
+## Rejected callback cleanup
+
+New client contexts declare `callback_rejection_policy = "opaque_error_v1"`.
+Each rejected HTTP callback then requires `callback_http.schema_version = 2`
+and the same policy. The gate binds that policy to the trusted context and
+requires the original rejection audit, zero exchange/resource traffic, an
+unchanged nonempty pending state store, and a main-frame browser chain from
+303 to the terminal 400. Both responses require privacy headers. The final
+browser URL must match the observed network URL and contain only the expected
+opaque error locator with an empty fragment. No callback values enter the report.
+
+The fixture checks the original long credential values against both response
+bodies and headers; it does not infer nonreflection from the locator-only
+follow-up query. Separate package tests cover additional rejection and browser
+inputs. The safe diagnostic is local to the serving UI/process; another worker,
+expiry, eviction or unavailable cache returns a generic 400 without resuming
+authorization. The original audit remains the source of the rejection reason.
+
+Older reports remain valid only with their legacy proof and
+`callback_cleaned = false`; they retain `http_callback_rejection_retains_query`.
+They cannot acquire cleanup credit by changing the flag or retaining partial
+new-proof fields. Consumers requiring cleanup must require the new policy in
+their trusted context; report schema 4 alone does not establish it. The checker
+removes the old query-retention limitation only after the selected callback
+cases satisfy the new policy. A clean final address bar is not proof that the
+original callback never entered browser history, server logs or synchronized
+history.
 
 The shared-pool report recomputes every child selection before aggregating.
 Its counts sum the four selected plan/variant instances, including repeated

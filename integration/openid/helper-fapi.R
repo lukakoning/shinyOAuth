@@ -743,18 +743,51 @@ openid_fapi_pre_token_matches <- function(result, expectation) {
     all(vapply(checks, isTRUE, logical(1)))
 }
 
+openid_error_continuation_url <- function(url, origin) {
+  prefix <- paste0(origin, "/")
+  openid_string(origin) &&
+    openid_string(url) &&
+    startsWith(url, prefix) &&
+    grepl(
+      "^\\?shinyOAuth_callback_error=ce1_[A-Za-z0-9_-]{43}#?$",
+      substring(url, nchar(prefix) + 1L)
+    )
+}
+
 openid_observe_http_callback <- function(tab, origin) {
   observation <- new.env(parent = emptyenv())
+  frame <- tab[["Page"]][["getFrameTree"]]()[["frameTree"]][["frame"]][["id"]]
   tab[["Network"]][["enable"]]()
+  tab[["Network"]][["requestWillBeSent"]](function(params) {
+    response <- params[["redirectResponse"]]
+    if (
+      identical(params[["type"]], "Document") &&
+        identical(params[["frameId"]], frame) &&
+        !is.null(response) &&
+        startsWith(response[["url"]], paste0(origin, "/")) &&
+        openid_error_continuation_url(params[["request"]][["url"]], origin)
+    ) {
+      observation[["redirect_id"]] <- params[["requestId"]]
+      observation[["redirect_target"]] <- params[["request"]][["url"]]
+      observation[["redirect_status"]] <- as.integer(response[["status"]])
+      observation[["redirect_headers"]] <- response[["headers"]]
+      observation[["redirect_request_headers"]] <- params[["request"]][[
+        "headers"
+      ]]
+    }
+    invisible(NULL)
+  })
   tab[["Network"]][["responseReceived"]](function(params) {
     response <- params[["response"]]
     if (
       identical(params[["type"]], "Document") &&
+        identical(params[["frameId"]], frame) &&
         startsWith(response[["url"]], paste0(origin, "/"))
     ) {
       observation[["request_id"]] <- params[["requestId"]]
       observation[["status"]] <- response[["status"]]
       observation[["headers"]] <- response[["headers"]]
+      observation[["url"]] <- response[["url"]]
     }
     invisible(NULL)
   })
@@ -787,6 +820,8 @@ openid_wait_http_callback <- function(app, browser, tab, initial, observation) {
         return(NULL)
       }
       http <- snapshot[["http_rejection"]]
+      http[["schema_version"]] <- 2L
+      http[["policy"]] <- "opaque_error_v1"
       http[["body_matches"]] <- identical(
         http[["content_digest"]],
         paste(openssl::sha256(charToRaw(trimws(content))), collapse = "")
@@ -804,6 +839,45 @@ openid_wait_http_callback <- function(app, browser, tab, initial, observation) {
       ) &&
         identical(headers[["referrer-policy"]], "no-referrer") &&
         startsWith(headers[["content-type"]], "text/plain")
+      redirect_headers <- observation[["redirect_headers"]]
+      names(redirect_headers) <- tolower(names(redirect_headers))
+      request_headers <- observation[["redirect_request_headers"]]
+      names(request_headers) <- tolower(names(request_headers))
+      http[["redirect_status"]] <- observation[["redirect_status"]]
+      http[["redirect_headers_verified"]] <- identical(
+        redirect_headers[["cache-control"]],
+        "no-store"
+      ) &&
+        identical(redirect_headers[["referrer-policy"]], "no-referrer")
+      http[["redirect_chain_verified"]] <-
+        openid_string(observation[["redirect_id"]]) &&
+        identical(observation[["redirect_id"]], observation[["request_id"]]) &&
+        identical(observation[["redirect_target"]], observation[["url"]])
+      http[["final_request_no_referrer"]] <-
+        isTRUE(http[["final_request_no_referrer"]]) &&
+        !is.null(observation[["redirect_request_headers"]]) &&
+        (is.null(request_headers[["referer"]]) ||
+          identical(request_headers[["referer"]], ""))
+      final_url <- openid_browser_value(tab, "location.href")
+      http[["final_url_verified"]] <-
+        openid_error_continuation_url(final_url, app[["origin"]]) &&
+        identical(sub("#$", "", final_url), observation[["url"]])
+      # Response headers can arrive before the redirected document commits.
+      # Keep polling until the audited terminal body and navigation agree.
+      if (
+        !all(vapply(
+          c(
+            "body_matches",
+            "browser_status_400",
+            "redirect_chain_verified",
+            "final_url_verified"
+          ),
+          function(name) isTRUE(http[[name]]),
+          logical(1)
+        ))
+      ) {
+        return(NULL)
+      }
       http[["no_callback_module"]] <- is.null(openid_app_snapshot(
         tab,
         app[["config"]][["run_id"]]
@@ -821,7 +895,45 @@ openid_wait_http_callback <- function(app, browser, tab, initial, observation) {
 
 openid_http_callback_matches <- function(result, expectation) {
   http <- result[["callback_http"]]
-  identical(result[["callback_cleaned"]], FALSE) &&
+  current <- identical(http[["schema_version"]], 2L)
+  if (current) {
+    if (
+      !identical(http[["policy"]], "opaque_error_v1") ||
+        !identical(http[["redirect_status"]], 303L) ||
+        !all(vapply(
+          c(
+            "redirect_headers_verified",
+            "redirect_credentials_absent",
+            "redirect_chain_verified",
+            "final_url_verified",
+            "final_request_no_referrer",
+            "pending_state_preserved"
+          ),
+          function(name) isTRUE(http[[name]]),
+          logical(1)
+        ))
+    ) {
+      return(FALSE)
+    }
+  } else if (
+    any(
+      c(
+        "schema_version",
+        "policy",
+        "redirect_status",
+        "redirect_headers_verified",
+        "redirect_credentials_absent",
+        "redirect_chain_verified",
+        "final_url_verified",
+        "final_request_no_referrer",
+        "pending_state_preserved"
+      ) %in%
+        names(http)
+    )
+  ) {
+    return(FALSE)
+  }
+  identical(result[["callback_cleaned"]], current) &&
     (is.null(expectation[["jarm_error"]]) ||
       identical(http[["jarm_error"]], expectation[["jarm_error"]])) &&
     identical(http[["status"]], 400L) &&

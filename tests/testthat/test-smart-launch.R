@@ -46,7 +46,10 @@ smart_launch_test_entry <- function(
     "&launch=",
     utils::URLencode(handle, reserved = TRUE)
   )
-  f[["ui"]](manager_test_request(cookie, path = "/launch", query = query))
+  callback_rejection_terminal(
+    f[["ui"]],
+    manager_test_request(cookie, path = "/launch", query = query)
+  )
 }
 
 test_that("EHR HTTP entry redirects before UI and binds an encrypted launch to its owner", {
@@ -63,7 +66,10 @@ test_that("EHR HTTP entry redirects before UI and binds an encrypted launch to i
   cookie <- sub(";.*$", "", response[["headers"]][["Set-Cookie"]])
   expect_match(cookie, "^__Host-")
   query <- sub("^.*[?]", "", response[["headers"]][["Location"]])
-  continuation <- f[["ui"]](manager_test_request(cookie, query = query))
+  continuation <- callback_rejection_terminal(
+    f[["ui"]],
+    manager_test_request(cookie, query = query)
+  )
   expect_equal(continuation[["status"]], 200L)
   expect_identical(f[["rendered"]][["count"]], 1L)
   expect_identical(f[["rendered"]][["query"]], "")
@@ -96,12 +102,18 @@ test_that("EHR HTTP entry redirects before UI and binds an encrypted launch to i
     fixed = TRUE
   ))
   expect_identical(
-    f[["ui"]](manager_test_request(query = query))[["status"]],
+    callback_rejection_terminal(
+      f[["ui"]],
+      manager_test_request(query = query)
+    )[["status"]],
     400L
   )
   foreign <- manager_test_cookie(f)
   expect_identical(
-    f[["ui"]](manager_test_request(foreign, query = query))[["status"]],
+    callback_rejection_terminal(
+      f[["ui"]],
+      manager_test_request(foreign, query = query)
+    )[["status"]],
     400L
   )
   expect_length(f[["manager"]][["state"]][["launches"]], 1L)
@@ -130,11 +142,14 @@ test_that("SMART-enabled HTTP entry bounds queries before scanning on every rout
       expect_gt(nchar(query, type = "bytes"), limit)
       for (path in c("/", "/launch", "/callback", "/wrong-route")) {
         for (method in c("GET", "HEAD", "POST")) {
-          response <- f[["ui"]](manager_test_request(
-            method = method,
-            path = path,
-            query = query
-          ))
+          response <- callback_rejection_terminal(
+            f[["ui"]],
+            manager_test_request(
+              method = method,
+              path = path,
+              query = query
+            )
+          )
           expect_identical(response[["status"]], 400L)
           expect_identical(response[["headers"]][["Cache-Control"]], "no-store")
           expect_null(response[["headers"]][["Set-Cookie"]])
@@ -165,11 +180,14 @@ test_that("SMART-enabled HTTP entry rejects malformed query shapes before scanni
   )) {
     for (path in c("/", "/launch", "/callback")) {
       for (method in c("GET", "HEAD", "POST")) {
-        response <- f[["ui"]](manager_test_request(
-          method = method,
-          path = path,
-          query = query
-        ))
+        response <- callback_rejection_terminal(
+          f[["ui"]],
+          manager_test_request(
+            method = method,
+            path = path,
+            query = query
+          )
+        )
         expect_identical(response[["status"]], 400L)
         expect_identical(response[["headers"]][["Cache-Control"]], "no-store")
         expect_null(response[["headers"]][["Set-Cookie"]])
@@ -204,27 +222,39 @@ test_that("unapproved and mixed EHR entry fails before network or UI", {
     "iss=https://ehr.example/fhir/R4&launch=%0A"
   )) {
     expect_identical(
-      f[["ui"]](manager_test_request(path = "/launch", query = query))[[
+      callback_rejection_terminal(
+        f[["ui"]],
+        manager_test_request(path = "/launch", query = query)
+      )[[
         "status"
       ]],
       400L
     )
   }
   expect_identical(
-    f[["ui"]](manager_test_request(
-      method = "POST",
-      path = "/launch",
-      query = base
-    ))[["status"]],
+    callback_rejection_terminal(
+      f[["ui"]],
+      manager_test_request(
+        method = "POST",
+        path = "/launch",
+        query = base
+      )
+    )[["status"]],
     400L
   )
   iframe <- manager_test_request(path = "/launch", query = base)
   iframe[["HTTP_SEC_FETCH_DEST"]] <- "iframe"
-  expect_identical(f[["ui"]](iframe)[["status"]], 400L)
+  expect_identical(
+    callback_rejection_terminal(f[["ui"]], iframe)[["status"]],
+    400L
+  )
   expect_identical(f[["rendered"]][["count"]], 0L)
   expect_length(f[["manager"]][["state"]][["launches"]], 0L)
   expect_identical(
-    f[["ui"]](manager_test_request(path = "/callback", query = base))[[
+    callback_rejection_terminal(
+      f[["ui"]],
+      manager_test_request(path = "/callback", query = base)
+    )[[
       "status"
     ]],
     400L
@@ -303,7 +333,10 @@ test_that("escaped launch paths use the same spelling for routing and collisions
   query <- "iss=https%3A%2F%2Fehr.example%2Ffhir%2FR4&launch=example"
   for (path in c("/launch", "/%6caunch", "/%6Caunch")) {
     expect_identical(
-      f[["ui"]](manager_test_request(path = path, query = query))[["status"]],
+      callback_rejection_terminal(
+        f[["ui"]],
+        manager_test_request(path = path, query = query)
+      )[["status"]],
       303L
     )
   }
@@ -638,21 +671,27 @@ test_that("EHR admission limits each owner across routes without displacing pend
     ),
     "&launch=synthetic-launch"
   )
-  alternate <- f[["ui"]](manager_test_request(
-    cookie,
-    path = "/another-launch",
-    query = query
-  ))
+  alternate <- callback_rejection_terminal(
+    f[["ui"]],
+    manager_test_request(
+      cookie,
+      path = "/another-launch",
+      query = query
+    )
+  )
   expect_identical(alternate[["status"]], 303L)
   pending <- as.list(f[["manager"]][["state"]][["launches"]])
   expect_length(pending, 8L)
 
   for (path in c("/launch", "/another-launch")) {
-    response <- f[["ui"]](manager_test_request(
-      cookie,
-      path = path,
-      query = query
-    ))
+    response <- callback_rejection_terminal(
+      f[["ui"]],
+      manager_test_request(
+        cookie,
+        path = path,
+        query = query
+      )
+    )
     expect_identical(response[["status"]], 400L)
     expect_null(response[["headers"]][["Set-Cookie"]])
     expect_identical(as.list(f[["manager"]][["state"]][["launches"]]), pending)

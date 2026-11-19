@@ -2402,6 +2402,56 @@ execution credit follows. SA07 callback cleanup is being implemented separately,
 with its own pending acceptance. SA08 aggregate qualification and durable
 retention remain open.
 
+SA07 rejected-callback cleanup implementation (2026-11-19): package-owned HTTP
+validation failures now issue an empty-body 303 to a query-only opaque error
+locator with an explicit empty fragment. The wrapper consumes it before app,
+registry, SMART or owner rendering, then returns the rejection status and an
+approved public diagnosis. The independent rejection cache is bounded to 128
+entries, 1 MiB and 120 seconds per UI/process; missing, expired, replayed or
+unavailable entries fail closed to a generic 400. It neither stores callback
+payloads/conditions nor consumes logical OAuth state or accepted handles.
+Application-provided HTTP errors retain their own behavior. The locator name
+is reserved in registered redirect queries.
+
+Tests cover malformed/mixed/encoded markers, replay, path mismatch, expiry,
+cache pressure/failure, manager routing and a genuine accepted continuation's
+later single token redemption. Real Chrome GET/POST navigation tests use
+responses produced by the wrapper and verify query/fragment removal; they do
+not claim independent provider execution. Review identified and resolved
+malformed-path handling and diagnostic spoofing/formatting cases. Typed parse
+parents, ANSI stripping and bounded primary-message parsing preserve approved
+diagnoses without copying opt-in received values into the public error page.
+
+The OIDF collector now binds original private rejection facts to the final
+400, requires a main-frame 303-to-400 request/URL chain, both-hop privacy and
+long-credential nonreflection, actual endpoint Referer absence, and a preserved
+nonempty pending-state snapshot. It waits for the terminal DOM/body rather
+than treating response headers as a committed page. New contexts require
+`opaque_error_v1` and schema-2 HTTP proof. Legacy schema-3/4 reports retain
+their original query limit and cannot acquire cleanup credit from a flag
+change or partial new proof. Three saved real schema-4 reports passed unchanged
+under the updated checker, with original hashes and no added cleanup credit.
+
+Windows and Linux each passed 3,803 assertions across 22 related package files,
+with actual browser tests and Ed25519 coverage enabled, and 584 focused
+collector/policy assertions. Failures, errors, test warnings and skips were
+zero; source snapshots matched before/after and across the package runs.
+Independent reviews, formatting, jarl and whitespace checks passed. Accepted
+development results are in ignored `codex/callback-rejection-cleanup/*-accepted-2/`
+and `codex/callback-cleanup-focus-*-final-results.csv`. Earlier failing attempts
+remain preserved. Native libsodium was installed only in a disposable Linux
+container; its native hashes and correct non-root identity were recorded.
+Chrome checks/timeouts and the global R installation were not changed.
+
+A preceding Windows private-install evidence run passed 7,902 assertions before
+the final two server-Referer controls were added. The Linux dirty build stopped
+before tests because R's copy phase tried to read permission-protected ignored
+TLS artifacts. That attempt earns no test/source credit and permissions remain
+unchanged. Clean commit archives will supply the full current 7,904-assertion
+evidence and live acceptance below; filtered development-build staging is a
+named source-tooling follow-up. This implements the callback-cleanup slice;
+SA07 cross-site HTTPS/browser work, overall SA04 and SA08 remain open.
+
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second
 full provider. Add another mock server only when a remaining test case justifies

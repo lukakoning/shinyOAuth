@@ -25,6 +25,13 @@
 #' then sends the browser to a clean app URL. Raw callback values stay out of
 #' that URL. The server module completes the usual login checks.
 #'
+#' Package validation failures first redirect to an opaque, single-use error
+#' URL, then return their rejection status and a bounded public diagnosis before
+#' the application renders. Error records are bounded per R process, separate
+#' from pending login state. Another worker, expiry or replay returns a generic
+#' 400 response; existing audit diagnostics remain available. Application
+#' HTTP responses keep their normal behavior.
+#'
 #' @section Advanced callback storage:
 #' Responses are held briefly in the client's state store under single-use
 #' handles. They expire after at most 120 seconds, or sooner if the state policy
@@ -661,7 +668,10 @@ oauth_form_post_parse_body <- function(
       "OAuth form_post callback body"
     ),
     shinyOAuth_parse_error = function(e) {
-      err_form_post_http(conditionMessage(e))
+      err_form_post_http(
+        "OAuth form_post callback body could not be parsed.",
+        parent = e
+      )
     }
   )
 
@@ -1521,11 +1531,12 @@ oauth_form_post_should_expose_error_message <- function(e) {
   )
 }
 
-err_form_post_http <- function(message, status = 400L) {
+err_form_post_http <- function(message, status = 400L, parent = NULL) {
   rlang::abort(
     message,
     class = "shinyOAuth_form_post_http_error",
-    status = as.integer(status)
+    status = as.integer(status),
+    parent = parent
   )
 }
 
@@ -1552,13 +1563,20 @@ oauth_form_post_error_response <- function(
     "OAuth form_post callback could not be processed."
   }
 
-  shiny::httpResponse(
-    status = as.integer(status),
-    content_type = "text/plain; charset=UTF-8",
-    content = content,
-    headers = stats::setNames(
-      as.list(c("no-store", "no-cache", "no-referrer")),
-      c("Cache-Control", "Pragma", "Referrer-Policy")
-    )
+  oauth_callback_rejection_mark(
+    shiny::httpResponse(
+      status = as.integer(status),
+      content_type = "text/plain; charset=UTF-8",
+      content = content,
+      headers = stats::setNames(
+        as.list(c("no-store", "no-cache", "no-referrer")),
+        c("Cache-Control", "Pragma", "Referrer-Policy")
+      )
+    ),
+    if (isTRUE(expose_message)) {
+      oauth_callback_rejection_message(e, status)
+    } else {
+      content
+    }
   )
 }

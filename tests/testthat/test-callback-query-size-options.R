@@ -207,11 +207,14 @@ test_that("HTTP entrypoints reject oversized queries before any scanning", {
   for (handler in entrypoints) {
     for (method in c("GET", "HEAD", "POST")) {
       for (key in c("code", "theme", shiny_request_object_param)) {
-        response <- handler(list(
-          REQUEST_METHOD = method,
-          PATH_INFO = "/",
-          QUERY_STRING = paste0(key, "=", strrep("x", 65L))
-        ))
+        response <- callback_rejection_terminal(
+          handler,
+          list(
+            REQUEST_METHOD = method,
+            PATH_INFO = "/",
+            QUERY_STRING = paste0(key, "=", strrep("x", 65L))
+          )
+        )
         expect_identical(response[["status"]], 400L)
         expect_identical(response[["headers"]][["Cache-Control"]], "no-store")
         if (method == "HEAD") expect_identical(response[["content"]], "")

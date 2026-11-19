@@ -41,6 +41,13 @@
 #' before page resources load. A meta tag alone may be read too late to protect
 #' early requests. A web server may set the same headers.
 #'
+#' Package validation failures first redirect to an opaque, single-use error
+#' URL, then return their rejection status and a bounded public diagnosis before
+#' the application renders. Error records are bounded per R process, separate
+#' from pending login state. Another worker, expiry or replay returns a generic
+#' 400 response; existing audit diagnostics remain available. Application
+#' HTTP responses keep their normal behavior.
+#'
 #' @param base_ui Your app's complete UI, such as a `fluidPage()` or `tagList()`.
 #'   Can also be a UI function, optionally accepting the Shiny request.
 #' @param id Shiny module ID, required with `client` for GET callbacks.
@@ -80,7 +87,8 @@ oauth_ui_impl <- function(
   request_uri_resolver = NULL,
   clients = NULL,
   allow_shared_issuer = FALSE,
-  select_client = NULL
+  select_client = NULL,
+  rejection_cache = NULL
 ) {
   registry <- if (!is.null(clients)) {
     if (!is.null(id) || !is.null(client)) {
@@ -208,7 +216,7 @@ oauth_ui_impl <- function(
     "DELETE",
     "OPTIONS"
   ))
-  ui
+  oauth_callback_rejection_wrap(ui, rejection_cache)
 }
 
 oauth_get_query_is_callback <- function(query, client = NULL) {
@@ -250,15 +258,18 @@ oauth_http_query_guard <- function(req) {
 }
 
 oauth_get_setup_error <- function(message) {
-  shiny::httpResponse(
-    400L,
-    "text/plain; charset=UTF-8",
-    message,
-    headers = list(
-      "Cache-Control" = "no-store",
-      "Pragma" = "no-cache",
-      "Referrer-Policy" = "no-referrer"
-    )
+  oauth_callback_rejection_mark(
+    shiny::httpResponse(
+      400L,
+      "text/plain; charset=UTF-8",
+      message,
+      headers = list(
+        "Cache-Control" = "no-store",
+        "Pragma" = "no-cache",
+        "Referrer-Policy" = "no-referrer"
+      )
+    ),
+    message
   )
 }
 

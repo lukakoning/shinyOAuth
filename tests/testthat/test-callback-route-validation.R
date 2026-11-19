@@ -95,9 +95,9 @@ test_that("HTTP callback bridge rejects a decoded route without consuming state"
       state = state
     ))
   )
-  expect_identical(ui(req)[["status"]], 400L)
+  expect_identical(callback_rejection_terminal(ui, req)[["status"]], 400L)
   req[["PATH_INFO"]] <- "/cb%2Fa"
-  expect_identical(ui(req)[["status"]], 303L)
+  expect_identical(callback_rejection_terminal(ui, req)[["status"]], 303L)
 })
 
 test_that("wrong-route callback transports are ignored before dispatch", {

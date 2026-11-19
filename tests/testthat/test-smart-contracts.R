@@ -134,11 +134,13 @@ test_that("a new legacy Shiny session starts without the preceding session's tok
 })
 
 test_that("legacy callback classification does not accept an EHR launch", {
-  response <- oauth_ui(
+  ui <- oauth_ui(
     shiny::fluidPage("App"),
     id = "auth",
     client = make_test_client()
-  )(
+  )
+  response <- callback_rejection_terminal(
+    ui,
     list(
       REQUEST_METHOD = "GET",
       PATH_INFO = "/",

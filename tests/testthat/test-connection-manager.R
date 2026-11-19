@@ -228,7 +228,7 @@ test_that("every client declares all canonical manager callback routes", {
 
 test_that("browser UI establishes and clears cookies only at the ordinary HTTP boundary", {
   f <- manager_test_fixture()
-  response <- f[["ui"]](manager_test_request())
+  response <- callback_rejection_terminal(f[["ui"]], manager_test_request())
   expect_equal(response[["status"]], 200L)
   expect_match(
     response[["headers"]][["Set-Cookie"]],
@@ -240,33 +240,51 @@ test_that("browser UI establishes and clears cookies only at the ordinary HTTP b
     response[["headers"]][["Set-Cookie"]]
   ))
   cookie <- sub(";.*$", "", response[["headers"]][["Set-Cookie"]])
-  expect_null(f[["ui"]](manager_test_request(cookie))[["headers"]][[
+  expect_null(callback_rejection_terminal(
+    f[["ui"]],
+    manager_test_request(cookie)
+  )[["headers"]][[
     "Set-Cookie"
   ]])
   bad_origin <- manager_test_request()
   bad_origin[["HTTP_HOST"]] <- "other.example"
-  expect_identical(f[["ui"]](bad_origin)[["status"]], 400L)
+  expect_identical(
+    callback_rejection_terminal(f[["ui"]], bad_origin)[["status"]],
+    400L
+  )
   cross_origin <- manager_test_request()
   cross_origin[["HTTP_ORIGIN"]] <- "https://other.example"
-  expect_identical(f[["ui"]](cross_origin)[["status"]], 400L)
+  expect_identical(
+    callback_rejection_terminal(f[["ui"]], cross_origin)[["status"]],
+    400L
+  )
   unknown <- paste0(
     f[["manager"]][["state"]][["owners"]][["cookie_name"]],
     "=",
     random_urlsafe(43L)
   )
-  cleared <- f[["ui"]](manager_test_request(unknown))
+  cleared <- callback_rejection_terminal(
+    f[["ui"]],
+    manager_test_request(unknown)
+  )
   expect_identical(cleared[["status"]], 303L)
   expect_match(cleared[["headers"]][["Set-Cookie"]], "Max-Age=0")
   expect_identical(cleared[["headers"]][["Location"]], "https://app.example/")
   continuation <- paste0(oauth_form_post_handle_param, "=", random_urlsafe(32L))
   expect_identical(
-    f[["ui"]](manager_test_request(query = continuation))[["status"]],
+    callback_rejection_terminal(
+      f[["ui"]],
+      manager_test_request(query = continuation)
+    )[["status"]],
     400L
   )
-  raw <- f[["ui"]](manager_test_request(
-    path = "/callback/a",
-    query = "code=invalid&state=invalid"
-  ))
+  raw <- callback_rejection_terminal(
+    f[["ui"]],
+    manager_test_request(
+      path = "/callback/a",
+      query = "code=invalid&state=invalid"
+    )
+  )
   expect_null(raw[["headers"]][["Set-Cookie"]])
   plain <- manager_test_fixture("shiny")
   expect_null(plain[["ui"]](manager_test_request())[["headers"]][[
@@ -278,14 +296,20 @@ test_that("a browser cookie from a previous process clears and recovers", {
   before <- manager_test_fixture()
   old_cookie <- manager_test_cookie(before)
   manager <- oauth_connections(
-    before[["manager"]][["clients"]], "https://app.example",
-    retention = "browser", owner_policy = oauth_browser_owner(),
+    before[["manager"]][["clients"]],
+    "https://app.example",
+    retention = "browser",
+    owner_policy = oauth_browser_owner(),
     store = oauth_connection_store_memory(),
     keys = before[["manager"]][["keys"]]
   )
   restarted <- list(
     manager = manager,
-    ui = oauth_connections_ui(shiny::fluidPage("Connections"), "health", manager)
+    ui = oauth_connections_ui(
+      shiny::fluidPage("Connections"),
+      "health",
+      manager
+    )
   )
   response <- restarted[["ui"]](manager_test_request(old_cookie))
   expect_identical(response[["status"]], 303L)
@@ -294,9 +318,12 @@ test_that("a browser cookie from a previous process clears and recovers", {
   fresh_cookie <- manager_test_cookie(restarted)
   expect_false(identical(fresh_cookie, old_cookie))
   expect_equal(
-    restarted[["ui"]](manager_test_request(fresh_cookie))[["status"]], 200L
+    restarted[["ui"]](manager_test_request(fresh_cookie))[["status"]],
+    200L
   )
-  expect_null(restarted[["ui"]](manager_test_request(fresh_cookie))[["headers"]][["Set-Cookie"]])
+  expect_null(restarted[["ui"]](manager_test_request(fresh_cookie))[[
+    "headers"
+  ]][["Set-Cookie"]])
   shiny::testServer(
     oauth_connections_server,
     args = list(id = "health", manager = restarted[["manager"]]),
@@ -322,13 +349,21 @@ test_that("browser owner capacity is configurable independently of the store", {
       health <- session[["getReturned"]]()
       expect_identical(health[["connection"]](id)[["is_usable"]](), TRUE)
       for (i in seq_len(5L)) {
-        expect_equal(f[["ui"]](manager_test_request())[["status"]], 200L)
+        expect_equal(
+          callback_rejection_terminal(f[["ui"]], manager_test_request())[[
+            "status"
+          ]],
+          200L
+        )
       }
       expect_identical(health[["connection"]](id)[["is_usable"]](), TRUE)
       health[["logout"]](revoke = FALSE, reload = FALSE)
     }
   )
-  expect_equal(f[["ui"]](manager_test_request())[["status"]], 200L)
+  expect_equal(
+    callback_rejection_terminal(f[["ui"]], manager_test_request())[["status"]],
+    200L
+  )
 })
 
 test_that("configured account capacity includes logged-out generations", {
@@ -812,7 +847,9 @@ test_that("account restoration requires the trusted current login and stable sub
     3600
   )
   f <- manager_test_fixture("account", owner)
-  expect_null(f[["ui"]](manager_test_request())[["headers"]][["Set-Cookie"]])
+  expect_null(callback_rejection_terminal(f[["ui"]], manager_test_request())[[
+    "headers"
+  ]][["Set-Cookie"]])
   kept <- new.env(parent = emptyenv())
   server <- function(input, output, session) {
     ctl <- connection_manager_controller(f[["manager"]], session)
@@ -1425,11 +1462,14 @@ test_that("HTTP continuations route to the manager's nested module namespace", {
           modules[[site]][["build_auth_url"]](),
           "state"
         )
-        response <- f[["ui"]](manager_test_request(
-          cookie,
-          path = paste0("/callback/", site),
-          query = paste0("code=ok&state=", state)
-        ))
+        response <- callback_rejection_terminal(
+          f[["ui"]],
+          manager_test_request(
+            cookie,
+            path = paste0("/callback/", site),
+            query = paste0("code=ok&state=", state)
+          )
+        )
         expect_identical(response[["status"]], 303L)
         query <- response[["headers"]][["Location"]]
         expect_match(query, paste0("health-", site), fixed = TRUE)
@@ -1454,7 +1494,10 @@ test_that("HTTP continuations route to the manager's nested module namespace", {
 
 test_that("nested callback documents load dependencies from the public app directory", {
   f <- manager_test_fixture()
-  response <- f[["ui"]](manager_test_request(path = "/callback/a"))
+  response <- callback_rejection_terminal(
+    f[["ui"]],
+    manager_test_request(path = "/callback/a")
+  )
   expect_match(
     response[["content"]],
     '<head><base href="https://app.example/">',

@@ -456,10 +456,11 @@ openid_run_case <- function(
   if (discovery) {
     row[["no_callback"]] <- TRUE
   } else {
-    row[["callback_cleaned"]] <- identical(
-      openid_browser_value(tab, "location.search"),
-      ""
-    )
+    row[["callback_cleaned"]] <- if (!is.null(callback_http)) {
+      isTRUE(callback_http[["final_url_verified"]])
+    } else {
+      identical(openid_browser_value(tab, "location.search"), "")
+    }
   }
   row[["initial"]] <- initial
   row[["steps"]] <- steps

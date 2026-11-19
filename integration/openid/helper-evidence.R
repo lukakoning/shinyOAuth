@@ -742,6 +742,14 @@ openid_check_report <- function(report, context, manifest) {
       if (identical(report[["schema_version"]], 4L)) {
         openid_check_source(report, context)
       }
+      callback_policy <- context[["callback_rejection_policy"]]
+      if (
+        (!is.null(callback_policy) &&
+          !identical(callback_policy, "opaque_error_v1")) ||
+          !identical(report[["callback_rejection_policy"]], callback_policy)
+      ) {
+        stop("Missing or unrelated HTTP callback rejection policy")
+      }
       for (name in c(
         "run_id",
         "attempt_id",
@@ -938,6 +946,18 @@ openid_check_report <- function(report, context, manifest) {
           }
         }
         refreshing <- identical(expectation[["action"]], "refresh")
+        if (identical(expectation[["outcome"]], "callback_rejected")) {
+          if (
+            !identical(
+              result[["callback_http"]][["schema_version"]],
+              if (identical(callback_policy, "opaque_error_v1")) 2L else NULL
+            )
+          ) {
+            stop(
+              "HTTP callback evidence does not establish the required cleanup policy"
+            )
+          }
+        }
         if (
           !identical(
             result[["action"]],
@@ -1039,6 +1059,22 @@ openid_check_report <- function(report, context, manifest) {
         function(e) identical(e[["advisory_policy"]], "state_length_over_128"),
         logical(1)
       ))
+      profile_limitations <- unlist(profile[["coverage_limitations"]])
+      if (
+        identical(callback_policy, "opaque_error_v1") &&
+          any(vapply(
+            expected,
+            function(e) {
+              identical(e[["outcome"]], "callback_rejected")
+            },
+            logical(1)
+          ))
+      ) {
+        profile_limitations <- setdiff(
+          profile_limitations,
+          "http_callback_rejection_retains_query"
+        )
+      }
       check <- list(
         gate_passed = TRUE,
         selection_complete = TRUE,
@@ -1047,7 +1083,7 @@ openid_check_report <- function(report, context, manifest) {
           !mtls_limited &&
           !advisory_limited,
         coverage_limitations = as.list(unique(c(
-          unlist(profile[["coverage_limitations"]]),
+          profile_limitations,
           if (advisory_limited) "oauth_state_length_over_128_warning",
           if (mtls_limited) "mtls_resource_denial_not_established",
           if (
@@ -1116,6 +1152,7 @@ openid_report_context <- function(root, profile, transport, package_version) {
     images = lock[["images"]],
     profile = profile,
     transport = transport,
+    callback_rejection_policy = "opaque_error_v1",
     package_version = package_version,
     r_version = as.character(getRversion()),
     dependency_versions = setNames(

@@ -331,11 +331,16 @@ fixture supplies no expiry and changes no token state. Resource work stays in
 the Shiny process.
 
 Malformed callbacks are rejected by the public UI's HTTP handler before a
-callback Shiny session starts. The gate checks the actual HTTP 400 browser
-response, privacy headers, body match, absence of reflected credentials and
-allowlisted audit label. These error pages retain the callback query in the
-address bar; reports record `callback_cleaned = false` for those four cases.
-No callback session, token exchange or authenticated identity is credited.
+callback Shiny session starts. Current runner contexts require an opaque,
+single-use error continuation: a browser-observed 303 followed by a terminal
+400 at a credential-free URL. The gate binds both hops to the same main-frame
+navigation, checks privacy headers, body/audit match, long-credential
+nonreflection and unchanged nonempty pending state, and requires
+`callback_cleaned = true`. No callback session, token exchange or authenticated
+identity is credited. The
+[assessment policy](assessment.md#rejected-callback-cleanup) retains legacy
+reports with their original query-retention limit and distinguishes final-URL
+cleanup from browser-history/deployment claims.
 
 Complete coverage for this selection means the pinned OIDC/private-key-JWT/DPoP
 module set. Other sender constraints, refresh and certification

@@ -134,10 +134,12 @@ oauth_connections_ui <- function(
     err_config("A request URI resolver must be a function")
   }
   smart_launch_routes_validate(launch_routes, manager, app_base_path, clients)
+  rejection_cache <- oauth_callback_rejection_cache()
   callback_handler <- oauth_ui_impl(
     base_ui,
     clients = clients,
     request_uri_resolver = resolver,
+    rejection_cache = rejection_cache,
     allow_shared_issuer = identical(
       manager[["callback_policy"]],
       "shared_routes"
@@ -251,7 +253,11 @@ oauth_connections_ui <- function(
         }
         if (identical(manager[["owner"]][["same_site"]], "Strict")) {
           recovery <- connection_manager_owner_recovery(
-            req, uri, owner, cookie, manager[["app_origin"]]
+            req,
+            uri,
+            owner,
+            cookie,
+            manager[["app_origin"]]
           )
           if (!is.null(recovery)) {
             return(recovery)
@@ -290,7 +296,7 @@ oauth_connections_ui <- function(
     "http_methods_supported",
     exact = TRUE
   )
-  ui
+  oauth_callback_rejection_wrap(ui, rejection_cache)
 }
 
 # A missing Strict cookie on an external entry is ambiguous: the browser may
@@ -311,25 +317,33 @@ connection_manager_owner_recovery <- function(req, uri, owner, cookie, origin) {
   }
   if (any(marked)) {
     if (
-      sum(marked) != 1L || !identical(unname(fields[marked]), list("1")) ||
+      sum(marked) != 1L ||
+        !identical(unname(fields[marked]), list("1")) ||
         !same_origin
     ) {
-      return(oauth_get_setup_error("The browser owner recovery request is invalid."))
+      return(oauth_get_setup_error(
+        "The browser owner recovery request is invalid."
+      ))
     }
     # Preserve every application query byte, including repeated parameters.
     parts <- utils::head(
-      strsplit(paste0(query, "&sentinel"), "&", fixed = TRUE)[[1L]], -1L
+      strsplit(paste0(query, "&sentinel"), "&", fixed = TRUE)[[1L]],
+      -1L
     )
     marked_parts <- rep(FALSE, length(parts))
     marked_parts[nzchar(parts)] <- marked
     clean <- paste(parts[!marked_parts], collapse = "&")
     location <- paste0(
-      sub("[?#].*$", "", uri), if (nzchar(clean)) paste0("?", clean) else ""
+      sub("[?#].*$", "", uri),
+      if (nzchar(clean)) paste0("?", clean) else ""
     )
     return(shiny::httpResponse(
-      303L, "text/plain", "",
+      303L,
+      "text/plain",
+      "",
       headers = list(
-        Location = location, "Cache-Control" = "no-store",
+        Location = location,
+        "Cache-Control" = "no-store",
         "Referrer-Policy" = "origin"
       )
     ))
@@ -338,20 +352,30 @@ connection_manager_owner_recovery <- function(req, uri, owner, cookie, origin) {
     return(NULL)
   }
   location <- paste0(
-    sub("[?#].*$", "", uri), "?", query, if (nzchar(query)) "&",
-    connection_owner_recovery_param, "=1"
+    sub("[?#].*$", "", uri),
+    "?",
+    query,
+    if (nzchar(query)) "&",
+    connection_owner_recovery_param,
+    "=1"
   )
   location <- htmltools::htmlEscape(location, attribute = TRUE)
   shiny::httpResponse(
-    200L, "text/html; charset=UTF-8",
+    200L,
+    "text/html; charset=UTF-8",
     paste0(
       '<!doctype html><html><head><meta name="referrer" content="origin">',
-      '<meta http-equiv="refresh" content="0;url=', location, '">',
+      '<meta http-equiv="refresh" content="0;url=',
+      location,
+      '">',
       '<title>Continue to application</title></head><body>',
-      '<a href="', location, '">Continue</a></body></html>'
+      '<a href="',
+      location,
+      '">Continue</a></body></html>'
     ),
     headers = list(
-      "Cache-Control" = "no-store", "Pragma" = "no-cache",
+      "Cache-Control" = "no-store",
+      "Pragma" = "no-cache",
       "Referrer-Policy" = "origin",
       "Content-Security-Policy" = "default-src 'none'; base-uri 'none'; frame-ancestors 'none'"
     )

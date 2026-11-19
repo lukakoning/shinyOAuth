@@ -123,7 +123,7 @@ for (shared in c(FALSE, TRUE)) {
               req[["CONTENT_TYPE"]] <- "application/x-www-form-urlencoded"
               req[["rook.input"]] <- list(read = function(n) charToRaw(encoded))
             }
-            response <- ui(req)
+            response <- callback_rejection_terminal(ui, req)
             expect_identical(
               response[["status"]],
               303L,
@@ -249,7 +249,7 @@ for (post in c(FALSE, TRUE)) {
           req[["CONTENT_TYPE"]] <- "application/x-www-form-urlencoded"
           req[["rook.input"]] <- list(read = function(n) charToRaw(encoded))
         }
-        ui(req)
+        callback_rejection_terminal(ui, req)
       }
       local_mocked_bindings(
         swap_code_for_token_set = function(...) stop("Unexpected exchange"),
@@ -404,12 +404,15 @@ test_that("registry validates configuration and does not render unrecognized GET
     "distinct issuers"
   )
   ui <- oauth_ui(function(req) stop("must not render"), clients = clients)
-  response <- ui(list(
-    REQUEST_METHOD = "GET",
-    PATH_INFO = "/unregistered",
-    QUERY_STRING = "error=access_denied",
-    rook.url_scheme = "https",
-    HTTP_HOST = "app.example"
-  ))
+  response <- callback_rejection_terminal(
+    ui,
+    list(
+      REQUEST_METHOD = "GET",
+      PATH_INFO = "/unregistered",
+      QUERY_STRING = "error=access_denied",
+      rook.url_scheme = "https",
+      HTTP_HOST = "app.example"
+    )
+  )
   expect_identical(response[["status"]], 400L)
 })

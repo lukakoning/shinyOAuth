@@ -498,7 +498,9 @@ test_that("oauth_form_post_store_take rejects expired handles", {
     },
     info = function() list(max_age = 3600),
     set_if_absent = function(key, value, ttl = NULL) {
-      if (exists(key, envir = backing, inherits = FALSE)) return(FALSE)
+      if (exists(key, envir = backing, inherits = FALSE)) {
+        return(FALSE)
+      }
       assign(key, value, envir = backing)
       TRUE
     }
@@ -548,10 +550,13 @@ test_that("oauth_form_post_ui rejects invalid callback POST bodies", {
   url <- prepare_call(cli, browser_token = valid_browser_token())
   enc_state <- parse_query_param(url, "state")
 
-  bad_type <- ui(make_form_post_req(
-    body = paste0("code=ok&state=", enc_state),
-    content_type = "application/json"
-  ))
+  bad_type <- callback_rejection_terminal(
+    ui,
+    make_form_post_req(
+      body = paste0("code=ok&state=", enc_state),
+      content_type = "application/json"
+    )
+  )
   expect_identical(bad_type[["status"]], 415L)
   expect_match(bad_type[["content"]], "application/x-www-form-urlencoded")
   form_post_reject_events <- Filter(
@@ -563,12 +568,18 @@ test_that("oauth_form_post_ui rejects invalid callback POST bodies", {
   )
   expect_length(form_post_reject_events, 1L)
 
-  duplicate <- ui(make_form_post_req(
-    body = paste0("code=ok&code=again&state=", enc_state)
-  ))
+  duplicate <- callback_rejection_terminal(
+    ui,
+    make_form_post_req(
+      body = paste0("code=ok&code=again&state=", enc_state)
+    )
+  )
   expect_identical(duplicate[["status"]], 400L)
 
-  malformed_name <- ui(make_form_post_req(body = "st%ZZate=x"))
+  malformed_name <- callback_rejection_terminal(
+    ui,
+    make_form_post_req(body = "st%ZZate=x")
+  )
   expect_identical(malformed_name[["status"]], 400L)
   expect_match(
     malformed_name[["content"]],
@@ -576,9 +587,12 @@ test_that("oauth_form_post_ui rejects invalid callback POST bodies", {
     fixed = TRUE
   )
 
-  malformed_value <- ui(make_form_post_req(
-    body = paste0("code=%ZZ&state=", enc_state)
-  ))
+  malformed_value <- callback_rejection_terminal(
+    ui,
+    make_form_post_req(
+      body = paste0("code=%ZZ&state=", enc_state)
+    )
+  )
   expect_identical(malformed_value[["status"]], 400L)
   expect_match(
     malformed_value[["content"]],
@@ -586,22 +600,22 @@ test_that("oauth_form_post_ui rejects invalid callback POST bodies", {
     fixed = TRUE
   )
 
-  missing_state <- ui(make_form_post_req(body = "code=ok"))
+  missing_state <- callback_rejection_terminal(
+    ui,
+    make_form_post_req(body = "code=ok")
+  )
   expect_identical(missing_state[["status"]], 400L)
 
-  invalid_state <- ui(make_form_post_req(
-    body = "code=ok&state=definitely-not-a-valid-state"
-  ))
-  expect_identical(invalid_state[["status"]], 400L)
-  expect_match(
-    invalid_state[["content"]],
-    "Invalid OAuth state",
-    fixed = TRUE
+  invalid_state <- callback_rejection_terminal(
+    ui,
+    make_form_post_req(
+      body = "code=ok&state=definitely-not-a-valid-state"
+    )
   )
-  expect_match(
+  expect_identical(invalid_state[["status"]], 400L)
+  expect_identical(
     invalid_state[["content"]],
-    "State payload decryption or validation failed",
-    fixed = TRUE
+    "State payload decryption or validation failed"
   )
   expect_false(grepl(
     "definitely-not-a-valid-state",
@@ -627,21 +641,22 @@ test_that("oauth_form_post_ui audits issuer failures at the POST boundary", {
   enc_state <- parse_query_param(url, "state")
   keys_before <- sort(cli@state_store[["keys"]]())
 
-  resp <- ui(make_form_post_req(
-    body = paste0(
-      "code=ok&state=",
-      enc_state,
-      "&iss=",
-      utils::URLencode(received_issuer, reserved = TRUE)
+  resp <- callback_rejection_terminal(
+    ui,
+    make_form_post_req(
+      body = paste0(
+        "code=ok&state=",
+        enc_state,
+        "&iss=",
+        utils::URLencode(received_issuer, reserved = TRUE)
+      )
     )
-  ))
+  )
 
   expect_identical(resp[["status"]], 400L)
-  expect_match(resp[["content"]], "Invalid OAuth state", fixed = TRUE)
-  expect_match(
+  expect_identical(
     resp[["content"]],
-    "Callback iss parameter does not match expected issuer",
-    fixed = TRUE
+    "Callback iss parameter does not match expected issuer (RFC 9207)"
   )
   expect_identical(sort(cli@state_store[["keys"]]()), keys_before)
 
@@ -695,10 +710,13 @@ test_that("GET and POST bridges compare issuers independently of required presen
     for (response in c("code=ok", "error=access_denied")) {
       fields <- paste0(response, "&state=", state)
       expect_identical(
-        ui(request(paste0(
-          fields,
-          "&iss=https%3A%2F%2Fdifferent.example"
-        )))[["status"]],
+        callback_rejection_terminal(
+          ui,
+          request(paste0(
+            fields,
+            "&iss=https%3A%2F%2Fdifferent.example"
+          ))
+        )[["status"]],
         400L
       )
       expect_identical(ui(request(fields))[["status"]], 303L)
@@ -716,10 +734,13 @@ test_that("oauth_form_post_ui rejects oversized callback query before storing", 
   enc_state <- parse_query_param(url, "state")
   keys_before <- sort(cli@state_store[["keys"]]())
 
-  resp <- ui(make_form_post_req(
-    query = paste0("pad=", strrep("x", 80)),
-    body = paste0("code=ok&state=", enc_state)
-  ))
+  resp <- callback_rejection_terminal(
+    ui,
+    make_form_post_req(
+      query = paste0("pad=", strrep("x", 80)),
+      body = paste0("code=ok&state=", enc_state)
+    )
+  )
 
   expect_identical(resp[["status"]], 400L)
   expect_match(
@@ -741,9 +762,12 @@ test_that("oauth_form_post_ui rejects oversized callback bodies before storing",
   enc_state <- parse_query_param(url, "state")
   keys_before <- sort(cli@state_store[["keys"]]())
 
-  resp <- ui(make_form_post_req(
-    body = paste0("code=ok&state=", enc_state, "&pad=", strrep("x", 80))
-  ))
+  resp <- callback_rejection_terminal(
+    ui,
+    make_form_post_req(
+      body = paste0("code=ok&state=", enc_state, "&pad=", strrep("x", 80))
+    )
+  )
 
   expect_identical(resp[["status"]], 413L)
   expect_match(resp[["content"]], "body exceeded maximum length", fixed = TRUE)
@@ -826,9 +850,12 @@ test_that("oauth_form_post_ui hides internal callback POST failures", {
   }
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
 
-  resp <- ui(make_form_post_req(
-    body = paste0("code=ok&state=", enc_state)
-  ))
+  resp <- callback_rejection_terminal(
+    ui,
+    make_form_post_req(
+      body = paste0("code=ok&state=", enc_state)
+    )
+  )
 
   expect_identical(resp[["status"]], 400L)
   expect_identical(
@@ -1978,10 +2005,14 @@ test_that("repeated POSTs have bounded independent candidates and consumed state
   second <- ui(make_form_post_req(body = paste0("code=other&state=", enc)))
   expect_identical(second[["status"]], 303L)
   expect_false(identical(
-    second[["headers"]][["Location"]], first[["headers"]][["Location"]]
+    second[["headers"]][["Location"]],
+    first[["headers"]][["Location"]]
   ))
   for (i in seq_len(20L)) {
-    again <- ui(make_form_post_req(body = paste0("code=other&state=", enc)))
+    again <- callback_rejection_terminal(
+      ui,
+      make_form_post_req(body = paste0("code=other&state=", enc))
+    )
     expect_identical(again[["status"]], 400L)
     expect_null(again[["headers"]][["Location"]])
     expect_length(cli@state_store[["keys"]](), 3L)
@@ -1990,9 +2021,14 @@ test_that("repeated POSTs have bounded independent candidates and consumed state
   handle <- shiny::parseQueryString(first[["headers"]][["Location"]])[[
     "shinyOAuth_form_post"
   ]]
-  expect_identical(shinyOAuth:::oauth_form_post_store_take(
-    cli, "auth", handle
-  )[["code"]], "ok")
+  expect_identical(
+    shinyOAuth:::oauth_form_post_store_take(
+      cli,
+      "auth",
+      handle
+    )[["code"]],
+    "ok"
+  )
   latest_handle <- shiny::parseQueryString(
     second[["headers"]][["Location"]]
   )[["shinyOAuth_form_post"]]
@@ -2002,7 +2038,10 @@ test_that("repeated POSTs have bounded independent candidates and consumed state
   shinyOAuth:::state_store_get_remove(cli, state_payload[["state"]])
   for (i in seq_len(5L)) {
     expect_identical(
-      ui(make_form_post_req(body = paste0("code=ok&state=", enc)))[["status"]],
+      callback_rejection_terminal(
+        ui,
+        make_form_post_req(body = paste0("code=ok&state=", enc))
+      )[["status"]],
       400L
     )
   }
@@ -2024,7 +2063,10 @@ test_that("form_post binds each browser redirect to its own response candidate",
           client,
           post_candidate = function(fields) {
             fields[["iss"]] <- client@provider@issuer
-            ui(make_form_post_req(body = httr2::url_query_build(fields)))
+            callback_rejection_terminal(
+              ui,
+              make_form_post_req(body = httr2::url_query_build(fields))
+            )
           },
           first_error = first_error,
           follow_first = follow_first,
@@ -2097,7 +2139,9 @@ test_that("replaying a colliding transaction preserves another browser's pending
       url <- prepare_call(client, browser_token = browser)
       state <- parse_query_param(url, "state", decode = TRUE)
       payload <- shinyOAuth:::state_payload_decrypt_validate(client, state)
-      partition <- as.character(oauth_form_post_candidate_slots(payload[["state"]])[[1L]])
+      partition <- as.character(oauth_form_post_candidate_slots(payload[[
+        "state"
+      ]])[[1L]])
       candidate <- list(state = state, payload = payload)
       if (!is.null(seen[[partition]])) {
         pair <- list(victim = seen[[partition]], attacker = candidate)
@@ -2107,50 +2151,90 @@ test_that("replaying a colliding transaction preserves another browser's pending
     }
     expect_false(is.null(pair))
     ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = client)
-    post <- function(candidate, code) ui(make_form_post_req(
-      body = httr2::url_query_build(list(code = code, state = candidate[["state"]]))
-    ))
+    post <- function(candidate, code) {
+      ui(make_form_post_req(
+        body = httr2::url_query_build(list(
+          code = code,
+          state = candidate[["state"]]
+        ))
+      ))
+    }
     victim <- post(pair[["victim"]], "victim-code")
     expect_identical(victim[["status"]], 303L)
     handle <- parse_query_param(
-      victim[["headers"]][["Location"]], "shinyOAuth_form_post", decode = TRUE
+      victim[["headers"]][["Location"]],
+      "shinyOAuth_form_post",
+      decode = TRUE
     )
     key <- oauth_form_post_cache_key("auth", handle, client)
     original <- client@state_store[["get"]](key)
     attacker <- post(pair[["attacker"]], "attacker-code")
     expect_identical(attacker[["status"]], 303L)
     for (i in seq_len(8L)) {
-      expect_identical(post(pair[["attacker"]], "attacker-code")[["status"]], 400L)
+      request <- make_form_post_req(
+        body = httr2::url_query_build(list(
+          code = "attacker-code",
+          state = pair[["attacker"]][["state"]]
+        ))
+      )
+      expect_identical(
+        callback_rejection_terminal(ui, request)[["status"]],
+        400L
+      )
     }
     expect_identical(client@state_store[["get"]](key), original)
-    expect_silent(shinyOAuth:::state_store_get(client, pair[["victim"]][["payload"]][["state"]]))
+    expect_silent(shinyOAuth:::state_store_get(
+      client,
+      pair[["victim"]][["payload"]][["state"]]
+    ))
 
     exchanges <- 0L
     testthat::local_mocked_bindings(
       swap_code_for_token_set = function(client, code, code_verifier) {
         exchanges <<- exchanges + 1L
         expect_identical(code, "victim-code")
-        list(access_token = "victim-access", token_type = "Bearer", expires_in = 300)
+        list(
+          access_token = "victim-access",
+          token_type = "Bearer",
+          expires_in = 300
+        )
       },
       .package = "shinyOAuth"
     )
-    shiny::testServer(oauth_module_server, args = list(
-      id = "auth", client = client, auto_redirect = FALSE, indefinite_session = TRUE
-    ), expr = {
-      values[["browser_token"]] <- browser
-      values[[".process_query"]](victim[["headers"]][["Location"]])
-      session[["flushReact"]]()
-      expect_true(isTRUE(values[["authenticated"]]))
-      expect_identical(values[["token"]]@access_token, "victim-access")
-    })
+    shiny::testServer(
+      oauth_module_server,
+      args = list(
+        id = "auth",
+        client = client,
+        auto_redirect = FALSE,
+        indefinite_session = TRUE
+      ),
+      expr = {
+        values[["browser_token"]] <- browser
+        values[[".process_query"]](victim[["headers"]][["Location"]])
+        session[["flushReact"]]()
+        expect_true(isTRUE(values[["authenticated"]]))
+        expect_identical(values[["token"]]@access_token, "victim-access")
+      }
+    )
     expect_identical(exchanges, 1L)
-    expect_error(oauth_form_post_store_take(client, "auth", handle), "missing or already consumed")
+    expect_error(
+      oauth_form_post_store_take(client, "auth", handle),
+      "missing or already consumed"
+    )
     # Victim cleanup must preserve the colliding transaction's own candidate.
     attacker_handle <- parse_query_param(
-      attacker[["headers"]][["Location"]], "shinyOAuth_form_post", decode = TRUE
+      attacker[["headers"]][["Location"]],
+      "shinyOAuth_form_post",
+      decode = TRUE
     )
-    expect_identical(oauth_form_post_store_take(
-      client, "auth", attacker_handle
-    )[["code"]], "attacker-code")
+    expect_identical(
+      oauth_form_post_store_take(
+        client,
+        "auth",
+        attacker_handle
+      )[["code"]],
+      "attacker-code"
+    )
   }
 })

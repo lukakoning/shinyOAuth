@@ -89,7 +89,7 @@ for (response_mode in c("query.jwt", "form_post.jwt")) {
           id = "auth",
           client = client
         )
-        post_response <- function(response) {
+        post_response <- function(response, rejection = FALSE) {
           body <- httr2::url_query_build(list(response = response))
           request <- new.env(parent = emptyenv())
           request[["REQUEST_METHOD"]] <- "POST"
@@ -103,7 +103,12 @@ for (response_mode in c("query.jwt", "form_post.jwt")) {
             type = "bytes"
           ))
           request[["rook.input"]] <- list(read = function(n) charToRaw(body))
-          ui(request)
+          initial <- ui(request)
+          if (rejection) {
+            callback_rejection_terminal(ui, request, initial)
+          } else {
+            initial
+          }
         }
         shiny::testServer(
           oauth_module_server,
@@ -172,7 +177,7 @@ for (response_mode in c("query.jwt", "form_post.jwt")) {
                 fixed = TRUE
               )
             } else {
-              rejected <- post_response(bad_response)
+              rejected <- post_response(bad_response, rejection = TRUE)
               expect_identical(rejected[["status"]], 400L)
               expect_match(rejected[["content"]], expected_error, fixed = TRUE)
               expect_false("Location" %in% names(rejected[["headers"]]))

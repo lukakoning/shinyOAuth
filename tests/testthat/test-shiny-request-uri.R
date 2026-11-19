@@ -82,7 +82,7 @@ test_that("app handlers serve independent handles once without rendering UI", {
     bad[["QUERY_STRING"]],
     sep = "&"
   )
-  expect_identical(handler(bad)[["status"]], 400L)
+  expect_identical(callback_rejection_terminal(handler, bad)[["status"]], 400L)
   other <- client
   other@client_id <- "other-client"
   expect_identical(

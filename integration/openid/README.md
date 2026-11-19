@@ -361,13 +361,16 @@ usable connection with finite expiry. When the response omits `expires_in`,
 shinyOAuth applies its documented 3600-second fallback lifetime. The fixture
 uses that normal behavior without supplying an expiry or changing token state.
 
-The four malformed callbacks return HTTP 400 before a callback Shiny session
-starts. Evidence binds the browser's actual status, body and privacy headers
-to the fixture's observation of the public UI handler. It requires no-store,
-no-referrer, plain text, no reflected credentials and the matching audit label.
-The browser retains the callback query in its address bar on these error pages;
-the report records that limit explicitly. Successful callbacks and ID-token
-rejections still require a cleaned callback URL.
+The four malformed callbacks take an opaque, single-use error continuation
+before returning HTTP 400, without starting a callback Shiny session. Current
+evidence binds the browser's actual 303-to-400 chain, final credential-free URL,
+body and privacy headers to the public UI handler and original audit label.
+The pending OAuth state must remain present and unchanged; neither hop may
+reflect the original long credentials. The
+[cleanup assessment](assessment.md#rejected-callback-cleanup) explains its
+strict policy, historical-report compatibility, process-local diagnostic limit
+and separate browser-history/deployment boundaries. Successful callbacks and
+ID-token rejections also require a cleaned callback URL.
 
 `coverage_complete = true` for this selection means every module in the pinned
 OIDC/private-key-JWT/DPoP variant passed. Other FAPI variants and certification

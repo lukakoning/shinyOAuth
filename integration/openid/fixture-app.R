@@ -522,14 +522,58 @@ openid_fixture_app <- function(config) {
   ui <- wrap(ui, id = "auth", client = client, request_uri_resolver = resolver)
   if (isTRUE(config[["callback_rejection"]])) {
     wrapped_ui <- ui
+    rejection_request <- NULL
+    pending_snapshot <- function() {
+      keys <- sort(client@state_store[["keys"]]())
+      records <- lapply(keys, client@state_store[["get"]])
+      list(
+        count = length(keys),
+        digest = paste(
+          openssl::sha256(serialize(list(keys, records), NULL, version = 3)),
+          collapse = ""
+        )
+      )
+    }
+    response_contains <- function(response, sensitive) {
+      text <- c(
+        response[["content"]],
+        unlist(response[["headers"]], use.names = FALSE)
+      )
+      any(vapply(
+        sensitive,
+        function(secret) {
+          any(grepl(secret, text, fixed = TRUE))
+        },
+        logical(1)
+      ))
+    }
     ui <- function(req) {
+      before <- pending_snapshot()
       response <- wrapped_ui(req)
-      if (is.list(response) && identical(response[["status"]], 400L)) {
+      location <- response[["headers"]][["Location"]]
+      if (
+        is.list(response) &&
+          identical(response[["status"]], 303L) &&
+          is.character(location) &&
+          length(location) == 1L &&
+          grepl(
+            "^\\?shinyOAuth_callback_error=ce1_[A-Za-z0-9_-]{43}#$",
+            location
+          )
+      ) {
         params <- shiny::parseQueryString(req[["QUERY_STRING"]])
         sensitive <- unlist(
           params[intersect(
             names(params),
-            c("code", "state", "iss", "response")
+            c(
+              "code",
+              "state",
+              "iss",
+              "response",
+              "error",
+              "error_description",
+              "error_uri"
+            )
           )],
           use.names = FALSE
         )
@@ -547,6 +591,30 @@ openid_fixture_app <- function(config) {
           )
         }
         sensitive <- sensitive[nchar(sensitive) >= 16L]
+        continuation <- shiny::parseQueryString(sub("#$", "", location))
+        rejection_request <<- list(
+          handle = continuation[["shinyOAuth_callback_error"]],
+          sensitive = sensitive,
+          state_present = !is.null(params[["state"]]),
+          issuer_present = !is.null(params[["iss"]]),
+          redirect_credentials_absent = !response_contains(response, sensitive),
+          pending_state_preserved = before[["count"]] > 0L &&
+            identical(before, pending_snapshot()),
+          pending_before = before
+        )
+      }
+      params <- shiny::parseQueryString(req[["QUERY_STRING"]])
+      if (
+        is.list(response) &&
+          identical(response[["status"]], 400L) &&
+          !is.null(rejection_request) &&
+          identical(
+            params[["shinyOAuth_callback_error"]],
+            rejection_request[["handle"]]
+          )
+      ) {
+        original <- rejection_request
+        rejection_request <<- NULL
         headers <- response[["headers"]]
         names(headers) <- tolower(names(headers))
         content <- response[["content"]]
@@ -565,13 +633,21 @@ openid_fixture_app <- function(config) {
           no_store = identical(headers[["cache-control"]], "no-store"),
           no_referrer = identical(headers[["referrer-policy"]], "no-referrer"),
           plain_text = startsWith(response[["content_type"]], "text/plain"),
-          credentials_absent = !any(vapply(
-            sensitive,
-            function(secret) grepl(secret, content, fixed = TRUE),
-            logical(1)
-          )),
-          state_present = !is.null(params[["state"]]),
-          issuer_present = !is.null(params[["iss"]]),
+          credentials_absent = !response_contains(
+            response,
+            original[["sensitive"]]
+          ),
+          final_request_no_referrer = is.null(req[["HTTP_REFERER"]]) ||
+            identical(req[["HTTP_REFERER"]], ""),
+          redirect_credentials_absent = original[[
+            "redirect_credentials_absent"
+          ]],
+          pending_state_preserved = isTRUE(original[[
+            "pending_state_preserved"
+          ]]) &&
+            identical(original[["pending_before"]], pending_snapshot()),
+          state_present = original[["state_present"]],
+          issuer_present = original[["issuer_present"]],
           content_digest = openid_fixture_digest(trimws(content))
         )
         if (isTRUE(config[["message_signing"]]) || isTRUE(advanced[["jarm"]])) {

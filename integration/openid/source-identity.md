@@ -23,6 +23,12 @@ archive's SHA-256, package version and hashes of the installed package files.
 A private `Meta/openid-source.json` marker links the installation to the source
 snapshot. The marker itself is excluded from its file inventory.
 
+Development builds still use R's working-tree copy phase before build
+exclusions. A non-root artifact-heavy checkout can therefore fail on unreadable
+ignored TLS files before producing an archive. Such an attempt earns no source
+or test credit. Clean Git archives avoid that copy path; filtered development
+staging remains a source-tooling follow-up. Private file permissions stay intact.
+
 API, client and shared-pool regression checks load that private installation
 before exercising public package APIs. The runner verifies the namespace path
 and compares the installation inventory before and after the checks; client

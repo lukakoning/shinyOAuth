@@ -69,7 +69,7 @@ test_that("GET callback bridges accept prefixed Shiny queries in either paramete
           paste(parts, collapse = "&")
         )
         ui <- oauth_ui(shiny::fluidPage(), "auth", case[["client"]])
-        response <- ui(case[["req"]])
+        response <- callback_rejection_terminal(ui, case[["req"]])
         expect_identical(
           response[["status"]],
           303L,
@@ -97,7 +97,7 @@ test_that("GET code, error and JARM callbacks redirect before application render
       "auth",
       case[["client"]]
     )
-    response <- ui(case[["req"]])
+    response <- callback_rejection_terminal(ui, case[["req"]])
     expect_identical(response[["status"]], 303L, info = response[["content"]])
     expect_identical(rendered, 0L)
     expect_identical(response[["headers"]][["Cache-Control"]], "no-store")
@@ -111,7 +111,7 @@ test_that("GET code, error and JARM callbacks redirect before application render
     ))
     clean <- case[["req"]]
     clean[["QUERY_STRING"]] <- sub("^\\?", "", location)
-    expect_equal(ui(clean)[["status"]], 200L)
+    expect_equal(callback_rejection_terminal(ui, clean)[["status"]], 200L)
     expect_identical(rendered, 1L)
     handle <- parse_query_param(location, "shinyOAuth_form_post", decode = TRUE)
     payload <- oauth_form_post_store_take(case[["client"]], "auth", handle)
@@ -209,16 +209,20 @@ test_that("GET bridge callbacks retain the browser-binding check", {
 
 test_that("unconfigured, invalid and wrong-route GET callbacks never render the app", {
   render <- function(req) stop("application must not render")
+  unconfigured <- oauth_ui(render)
   for (query in c(
     "code=synthetic&state=synthetic",
     "error=access_denied&state=synthetic",
     "response=a.b.c"
   )) {
     expect_identical(
-      oauth_ui(render)(list(
-        REQUEST_METHOD = "GET",
-        QUERY_STRING = query
-      ))[["status"]],
+      callback_rejection_terminal(
+        unconfigured,
+        list(
+          REQUEST_METHOD = "GET",
+          QUERY_STRING = query
+        )
+      )[["status"]],
       400L
     )
   }
@@ -230,16 +234,16 @@ test_that("unconfigured, invalid and wrong-route GET callbacks never render the 
     "tenant=two",
     req[["QUERY_STRING"]]
   )
-  expect_identical(ui(req)[["status"]], 400L)
+  expect_identical(callback_rejection_terminal(ui, req)[["status"]], 400L)
   req <- case[["req"]]
   req[["QUERY_STRING"]] <- paste0(req[["QUERY_STRING"]], "&code=duplicate")
-  expect_identical(ui(req)[["status"]], 400L)
+  expect_identical(callback_rejection_terminal(ui, req)[["status"]], 400L)
   req <- case[["req"]]
   req[["QUERY_STRING"]] <- "tenant=one&tag=a&tag=b&code=synthetic&state=invalid"
-  expect_identical(ui(req)[["status"]], 400L)
+  expect_identical(callback_rejection_terminal(ui, req)[["status"]], 400L)
   req <- case[["req"]]
   req[["HTTP_HOST"]] <- "other.example"
-  expect_identical(ui(req)[["status"]], 400L)
+  expect_identical(callback_rejection_terminal(ui, req)[["status"]], 400L)
 })
 
 test_that("application scripts observe only clean GET bridge URLs in a browser", {
@@ -255,10 +259,10 @@ test_that("application scripts observe only clean GET bridge URLs in a browser",
       "auth",
       case[["client"]]
     )
-    bridge <- ui(case[["req"]])
+    bridge <- callback_rejection_terminal(ui, case[["req"]])
     req <- case[["req"]]
     req[["QUERY_STRING"]] <- sub("^\\?", "", bridge[["headers"]][["Location"]])
-    rendered <- ui(req)
+    rendered <- callback_rejection_terminal(ui, req)
     app <- webfakes::new_app()
     app[["locals"]][["bridge"]] <- bridge
     app[["locals"]][["rendered"]] <- rendered

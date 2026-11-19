@@ -262,13 +262,16 @@ for (post in c(FALSE, TRUE)) {
             client <- f[["manager"]][["clients"]][[id]]
             payload <- state_payload_decrypt_validate(client, auth[["state"]])
             before <- state_store_get(client, payload[["state"]])
-            response <- f[["ui"]](router_request(
-              f,
-              auth,
-              post = post,
-              jarm = jarm,
-              error = failure
-            ))
+            response <- callback_rejection_terminal(
+              f[["ui"]],
+              router_request(
+                f,
+                auth,
+                post = post,
+                jarm = jarm,
+                error = failure
+              )
+            )
             expect_identical(
               response[["status"]],
               303L,
@@ -372,14 +375,20 @@ test_that("routing cannot replace issuer, state, signature or registration verif
       if (!jarm && identical(request, bad[[2L]])) {
         next
       }
-      expect_identical(f[["ui"]](request)[["status"]], 400L)
+      expect_identical(
+        callback_rejection_terminal(f[["ui"]], request)[["status"]],
+        400L
+      )
       expect_identical(as.list(f[["manager"]][["state"]][["routes"]]), index)
       expect_identical(
         state_store_get(f[["manager"]][["clients"]][["a"]], logical_state),
         before
       )
     }
-    expect_identical(f[["ui"]](req)[["status"]], 303L)
+    expect_identical(
+      callback_rejection_terminal(f[["ui"]], req)[["status"]],
+      303L
+    )
   }
 })
 
@@ -541,7 +550,7 @@ for (post in c(FALSE, TRUE)) {
             request[["QUERY_STRING"]]
           }
           expect_identical(names(httr2::url_query_parse(encoded)), "response")
-          response <- f[["ui"]](request)
+          response <- callback_rejection_terminal(f[["ui"]], request)
           expect_identical(
             response[["status"]],
             303L,
@@ -696,7 +705,10 @@ test_that("route, transport, parsing bounds and issuer checks precede index look
       )
     )
   )) {
-    expect_identical(f[["ui"]](request)[["status"]], 400L)
+    expect_identical(
+      callback_rejection_terminal(f[["ui"]], request)[["status"]],
+      400L
+    )
   }
   expect_identical(lookups, 0L)
 })
@@ -722,12 +734,15 @@ test_that("selected signed JARM still requires signature, audience and expiry", 
       client@client_secret
     )
     expect_identical(
-      f[["ui"]](router_request(
-        f,
-        auth,
-        jarm = TRUE,
-        overrides = list(response = response)
-      ))[["status"]],
+      callback_rejection_terminal(
+        f[["ui"]],
+        router_request(
+          f,
+          auth,
+          jarm = TRUE,
+          overrides = list(response = response)
+        )
+      )[["status"]],
       400L
     )
     expect_length(f[["manager"]][["state"]][["routes"]], 1L)
@@ -737,16 +752,22 @@ test_that("selected signed JARM still requires signature, audience and expiry", 
     strrep("c", 64)
   )
   expect_identical(
-    f[["ui"]](router_request(
-      f,
-      auth,
-      jarm = TRUE,
-      overrides = list(response = response)
-    ))[["status"]],
+    callback_rejection_terminal(
+      f[["ui"]],
+      router_request(
+        f,
+        auth,
+        jarm = TRUE,
+        overrides = list(response = response)
+      )
+    )[["status"]],
     400L
   )
   expect_identical(
-    f[["ui"]](router_request(f, auth, jarm = TRUE))[["status"]],
+    callback_rejection_terminal(
+      f[["ui"]],
+      router_request(f, auth, jarm = TRUE)
+    )[["status"]],
     303L
   )
 })
@@ -775,7 +796,12 @@ test_that("one registration can retain distinct resource clients on its shared r
       )),
       paste0("health-", auth[["context"]][["client"]])
     )
-    expect_identical(f[["ui"]](router_request(f, auth))[["status"]], 303L)
+    expect_identical(
+      callback_rejection_terminal(f[["ui"]], router_request(f, auth))[[
+        "status"
+      ]],
+      303L
+    )
   }
   f[["controller"]][["disconnect_all"]](revoke = FALSE)
   expect_length(f[["manager"]][["state"]][["routes"]], 0L)

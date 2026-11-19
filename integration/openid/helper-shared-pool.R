@@ -336,6 +336,14 @@ openid_check_shared_report <- function(report, context, manifest) {
       if (identical(report[["schema_version"]], 4L)) {
         openid_check_source(report, context)
       }
+      if (
+        !identical(
+          report[["callback_rejection_policy"]],
+          context[["callback_rejection_policy"]]
+        )
+      ) {
+        stop("Unrelated shared-pool callback rejection policy")
+      }
       for (name in c(
         "schema_version",
         "run_id",

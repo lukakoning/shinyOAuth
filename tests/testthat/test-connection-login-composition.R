@@ -72,10 +72,13 @@ for (base in c("/", "/app/")) {
       code = "synthetic-code",
       state = prepared[["build_args"]][["payload"]]
     ))
-    callback <- ui(manager_test_request(
-      path = paste0(base, "login/callback"),
-      query = query
-    ))
+    callback <- callback_rejection_terminal(
+      ui,
+      manager_test_request(
+        path = paste0(base, "login/callback"),
+        query = query
+      )
+    )
     expect_identical(callback[["status"]], 303L)
     expect_identical(
       parse_query_param(
@@ -164,7 +167,7 @@ for (post in c(FALSE, TRUE)) {
             req[["CONTENT_TYPE"]] <- "application/x-www-form-urlencoded"
             req[["rook.input"]] <- list(read = function(n) charToRaw(encoded))
           }
-          response <- ui(req)
+          response <- callback_rejection_terminal(ui, req)
           expect_identical(response[["status"]], 303L)
           expect_identical(rendered, 0L)
           expect_identical(
@@ -288,7 +291,7 @@ for (post in c(FALSE, TRUE)) {
               req[["CONTENT_TYPE"]] <- "application/x-www-form-urlencoded"
               req[["rook.input"]] <- list(read = function(n) charToRaw(encoded))
             }
-            response <- ui(req)
+            response <- callback_rejection_terminal(ui, req)
             expect_identical(response[["status"]], 303L)
             continuations[[id]] <- sub(
               "^.*[?]",
@@ -300,19 +303,25 @@ for (post in c(FALSE, TRUE)) {
       )
       expect_true(manager[["state"]][["owners"]][["revoke"]](owner))
       for (sent_cookie in list(cookie, NULL)) {
-        ordinary <- ui(manager_test_request(
-          sent_cookie,
-          path = "/login/callback",
-          query = continuations[["login"]]
-        ))
+        ordinary <- callback_rejection_terminal(
+          ui,
+          manager_test_request(
+            sent_cookie,
+            path = "/login/callback",
+            query = continuations[["login"]]
+          )
+        )
         expect_equal(ordinary[["status"]], 200L)
         expect_match(ordinary[["headers"]][["Set-Cookie"]], "HttpOnly")
         expect_identical(
-          ui(manager_test_request(
-            sent_cookie,
-            path = "/fhir/callback",
-            query = continuations[["health-fhir"]]
-          ))[["status"]],
+          callback_rejection_terminal(
+            ui,
+            manager_test_request(
+              sent_cookie,
+              path = "/fhir/callback",
+              query = continuations[["health-fhir"]]
+            )
+          )[["status"]],
           400L
         )
       }
@@ -324,19 +333,25 @@ for (post in c(FALSE, TRUE)) {
         fixed = TRUE
       )
       expect_identical(
-        ui(manager_test_request(
-          cookie,
-          path = "/login/callback",
-          query = forged
-        ))[["status"]],
+        callback_rejection_terminal(
+          ui,
+          manager_test_request(
+            cookie,
+            path = "/login/callback",
+            query = forged
+          )
+        )[["status"]],
         400L
       )
       expect_identical(
-        ui(manager_test_request(
-          cookie,
-          path = "/fhir/callback",
-          query = continuations[["login"]]
-        ))[["status"]],
+        callback_rejection_terminal(
+          ui,
+          manager_test_request(
+            cookie,
+            path = "/fhir/callback",
+            query = continuations[["login"]]
+          )
+        )[["status"]],
         400L
       )
       handle <- parse_query_param(
@@ -349,11 +364,14 @@ for (post in c(FALSE, TRUE)) {
       state <- state_payload_decrypt_validate(login, payload[["state"]])
       expect_no_error(state_store_get(login, state[["state"]]))
       expect_identical(
-        ui(manager_test_request(
-          cookie,
-          path = "/login/callback",
-          query = continuations[["login"]]
-        ))[["status"]],
+        callback_rejection_terminal(
+          ui,
+          manager_test_request(
+            cookie,
+            path = "/login/callback",
+            query = continuations[["login"]]
+          )
+        )[["status"]],
         400L
       )
     }

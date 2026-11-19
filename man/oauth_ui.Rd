@@ -72,6 +72,13 @@ to its HTTP layer; the dependency alone does not process callbacks.
 The wrapper sets no-store cache headers and \code{Referrer-Policy: no-referrer}
 before page resources load. A meta tag alone may be read too late to protect
 early requests. A web server may set the same headers.
+
+Package validation failures first redirect to an opaque, single-use error
+URL, then return their rejection status and a bounded public diagnosis before
+the application renders. Error records are bounded per R process, separate
+from pending login state. Another worker, expiry or replay returns a generic
+400 response; existing audit diagnostics remain available. Application
+HTTP responses keep their normal behavior.
 }
 
 \examples{
