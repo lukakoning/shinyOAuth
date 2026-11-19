@@ -565,8 +565,10 @@ Raw JWTs, codes, nonces, keys and error text stay out of the reports.
 authentication methods, mTLS, algorithms, encrypted messages, Form Post,
 refresh and grant management remain outside this selection. Callback rejection
 runs before the Shiny callback session in the main process; mirai evidence
-does not claim worker execution of that rejection. HTTP error pages still
-retain their query, as tracked separately in C15.
+does not claim worker execution of that rejection. Current contexts require
+the [opaque error continuation proof](assessment.md#rejected-callback-cleanup);
+historical reports retain their query-retention limit. Final-URL cleanup does
+not establish erasure from browser history or operator logs.
 
 The [independent Python fixture](../conformance/README.md) also exercises signed
 JAR/PAR/JARM exchanges using RS256 and RS384, including the combined PAR/JARM
@@ -575,8 +577,8 @@ is a separate cryptographic and protocol comparison.
 
 The discovery helper reads unsigned JSON metadata over verified TLS. Signed
 metadata, refresh, other FAPI variants and certification remain separate. Resource
-requests still run in the Shiny process, and HTTP callback error pages retain
-their query as described above.
+requests still run in the Shiny process. Rejected HTTP callbacks have the
+cleanup and deployment boundaries described above.
 
 The [workflow](../../.github/workflows/openid-conformance.yml) runs preflight,
 API checks and smoke on pull requests affecting the package or this harness.
@@ -585,7 +587,8 @@ Manual dispatch offers `smoke`, `basic`, `config`, `form-post`, `refresh`,
 `fapi-dpop-full`, `fapi-oauth-dpop`, `fapi-oauth-dpop-reference`,
 `fapi-oauth-mtls`, `fapi-oauth-mtls-auth`, `fapi-mtls`, `fapi-mtls-auth` and
 `fapi-message-signing`;
-larger selections remain manual while GitHub runner timings are unmeasured.
+larger selections remain manual while CI tiering is reviewed; observed runner
+timings are recorded in the [release review](release-review.md).
 Manual transport choices are `sync`, `mirai` and the limited `future` parity
 selection. `shared-pool` requires mirai. Pull requests keep synchronous smoke.
 The workflow needs no external

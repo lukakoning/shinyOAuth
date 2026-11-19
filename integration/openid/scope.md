@@ -373,7 +373,8 @@ state-length advisory is expected. It earns execution and resource-use evidence
 without claiming complete warning-free OAuth-only coverage.
 Metadata is unsigned JSON fetched over verified TLS, with the RFC 8414 URL
 layout and exact issuer check. This adds no signed-metadata, refresh, mTLS or
-certification claim. Callback error-page query retention remains visible.
+certification claim. Current contexts require the rejected-callback cleanup
+proof described above; historical reports retain their query-retention limit.
 
 The `fapi-oauth-dpop-reference` selection runs the same eleven modules with
 `oauth_client(state_transport = "reference")`. All eleven must finish `PASSED`.

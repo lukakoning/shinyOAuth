@@ -48,8 +48,9 @@ proves no-cache revalidation and rotation; C06 warm-cache acceptance remains
 open. SA05 now separates upstream execution from local coverage and categorized
 limits, with regression and retained-report validation. SA06's milestone status
 now distinguishes completed public/S256 interoperability from the OIDF public
-variant limit; C06 warm-cache acceptance remains open. SA03 and SA07-SA08 remain
-pending. See the
+variant limit; C06 warm-cache acceptance remains open. SA07 now implements
+rejected-callback URL cleanup with versioned browser evidence; cross-site HTTPS
+acceptance remains open. SA03 and SA08 remain pending. See the
 [release review](../integration/openid/release-review.md).
 
 | Milestone | Current implemented scope | Remaining boundary |
@@ -60,7 +61,7 @@ pending. See the
 | C10 | All 23 OIDC DPoP modules and all 11 OAuth DPoP modules with encrypted/reference state | The encrypted-state advisory and FAPI configuration/requirement limits remain distinct from module execution. |
 | C11-C12 | Four full mTLS selections and the 29-module Message Signing selection | mTLS simulated-server enforcement/registration limits and exact signing/callback configurations remain explicit. |
 | C13-C14 | Pinned second-provider public/confidential code/refresh/browser flows and the declared advanced-flow/lifecycle selections | These are interoperability evidence, not additional OIDF certification profiles. |
-| C15 | Existing rejection/browser controls plus requirement-selected follow-ups | Callback-error URL cleanup, HTTPS cross-site acceptance and named cryptographic regressions remain. |
+| C15 | Rejected-callback URL cleanup, versioned browser proof and requirement-selected regressions | HTTPS cross-site acceptance and the remaining named browser/cryptography gaps stay open. |
 | C16 / SA08 | CI smoke, manual larger selections, acquisition/source checks | One final revision's declared aggregate matrix and durable release evidence remain. |
 
 Use the implemented commands in the [environment README](../integration/openid/README.md).
@@ -2490,6 +2491,71 @@ passed. Evidence is in ignored
 `codex/callback-rejection-cleanup/*-reference-header-final/`. The earlier 3,803-
 assertion scope is retained for its original source, rather than relabeled as
 execution of this correction. Fresh clean-source validation follows below.
+
+SA07 corrected-source acceptance (2026-11-19): source
+`8cd6d16698f89b443df5751806cb7c38d56e2aa1` passed all 11 OAuth/reference/sync
+modules and all 7,904 evidence assertions on Windows. Four selected malformed
+HTTP callbacks carry the required schema-2 cleanup evidence. The module loop
+took 99.10 seconds. The separate clean Linux private installation also passed
+all 7,904 evidence assertions with zero failures, errors, test warnings or
+skips; its source and installation records match before/after. Linux again
+used a temporary native clone from a Git bundle rather than an absolute-path
+Windows worktree. The final clean-source archive SHA-256 is
+`af55366316f3cba279a89fbbec965c203b1e8cbe9c7573bc56d62c555a8fde3b`.
+
+One scratch archive initially produced a different hash because it omitted the
+canonical `shinyOAuth/` prefix and Git archive settings. It was never the
+installation input. The actual Windows and Linux installation archives agree;
+the independent release-source command regenerates the selected commit using
+the canonical settings. Scratch output remains private and receives no source
+identity credit.
+
+The OAuth report is retained under ignored
+`codex/callback-clean-source/integration/openid/.artifacts/fapi-oauth-dpop-reference-20261119-193901-a64a8fe3e278/`;
+the Linux source, installation and regression records are in
+`codex/openid-installation/callback-cleanup-linux-header-canonical/`.
+Independent review checked the actual 39-file installations, all 988 Windows
+source hashes against the frozen clean worktree and all 988 Linux LF entries
+against the selected commit archive. A missing cleanup proof fails
+revalidation. The independent
+release-source CLI passed for the client report, with matrix completeness
+explicitly outside that check.
+
+The fresh Windows Message Signing/mirai selection at the same corrected
+revision passed all 29 modules, with ten complete schema-2 cleanup proofs and
+all 7,904 evidence assertions. Its module loop took 345.19 seconds. Independent
+inspection matched every HTTP rejection's private server-Referer witness and
+approved diagnosis, including the previously failing missing-reference-state
+case; each had zero token/UserInfo/resource traffic. Initial, regression and
+final source/installation records match the actual private 39-file package
+and canonical archive. The source CLI passed. The original failed attempt
+remains preserved without passing-run credit. Final corrected evidence is in
+`codex/callback-signing-clean-source/integration/openid/.artifacts/fapi-message-signing-20261119-193944-1969c0de0382/`.
+
+Fresh hosted [Message Signing/mirai run 44590006270](https://github.com/lukakoning/shinyOAuth/actions/runs/44590006270)
+also passed at `8cd6d166`, including the exact 29 modules, ten cleanup outcomes,
+verified worker execution and release-source gate. Fresh preflight pulled all
+three locked images and verified TLS/wrong-pin rejection; the API command
+checked all fifteen plan inventories/variants without claiming client-flow
+credit. Artifact SHA-256
+`dcc1214f2e2280d025a2a05a7f405cd013c8cc3dcada2d46ca0009ef273f6361`
+matched GitHub metadata. Independent local revalidation required exactly one
+preflight, API and client report, checked their common clean source and lock,
+required the current callback policy and regenerated the canonical archive.
+The hosted JSON records unchanged installation identities; physical installed
+files were checked locally rather than inferred from that download.
+
+The hosted job took 582 seconds after a four-second queue, including 45 seconds
+for dependencies, 47 for preflight, 108 for API/evidence and 339 for the browser
+command. Its 29-module loop took 236.61 seconds. Original sanitized reports,
+ZIP and private checks remain in ignored `.artifacts/hosted-44590006270/`.
+The [release review](../integration/openid/release-review.md#rejected-callback-cleanup-acceptance-2026-11-19)
+and security map now record selected cleanup acceptance while preserving
+historical query-retention findings. SA07 cross-site HTTPS, the other named
+SA04/browser gaps, SA08 aggregate completeness/durable retention and optional
+SA03 certification remain open. Workflow artifact retention is still seven
+days; these selected results establish no complete release or certification
+claim.
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second

@@ -195,3 +195,72 @@ under ignored `.artifacts/hosted-44568024103/`. Workflow artifact retention is
 still seven days. This is evidence for the exact selection and source above;
 the later regression-namespace correction has its own validation. These
 records do not establish the complete final release matrix or certification.
+
+## Rejected-callback cleanup acceptance: 2026-11-19
+
+The cleanup implementation and approved-diagnosis correction at
+`8cd6d16698f89b443df5751806cb7c38d56e2aa1` passed fresh hosted
+[Message Signing / mirai run 44590006270](https://github.com/lukakoning/shinyOAuth/actions/runs/44590006270).
+All 29 modules returned suite `PASSED`; the application, exact module/variant,
+worker, cleanup and release-source gates passed. Ten selected malformed HTTP
+callbacks provide the current
+[schema-2 cleanup proof](assessment.md#rejected-callback-cleanup): a browser
+303-to-400 transition to an opaque continuation, both-hop privacy checks,
+long-credential nonreflection, actual terminal-request Referer absence and unchanged
+nonempty pending state. Their expected rejection categories and zero
+token/UserInfo/resource traffic remain required.
+
+Fresh preflight acquired all three locked images by digest, checked TLS and
+wrong-pin rejection, then verified cleanup. The separate API report checked
+all fifteen plan inventories and combined-variant probes; it explicitly earns
+no client-flow credit. Independent artifact revalidation required one report
+for each role and checked the reports against their selected clean source,
+lock and current callback policy. Removing a required cleanup proof fails the
+client gate. The source CLI independently regenerated the selected commit's
+canonical archive and passed without claiming matrix completeness.
+
+All three hosted reports identify the same clean source/tree and matching
+before/after snapshots. The client also records unchanged private installation
+records and canonical archive SHA-256
+`af55366316f3cba279a89fbbec965c203b1e8cbe9c7573bc56d62c555a8fde3b`.
+The downloaded ZIP matched GitHub artifact digest
+`sha256:dcc1214f2e2280d025a2a05a7f405cd013c8cc3dcada2d46ca0009ef273f6361`.
+The hosted artifact contains sanitized JSON reports; physical installed-file
+checks are supplied separately by the local runs, rather than inferred from
+the hosted artifact.
+
+| Hosted Message Signing / mirai phase | Seconds |
+| --- | ---: |
+| Queue before runner assignment | 4 |
+| Complete job, excluding queue | 582 |
+| R setup | 30 |
+| Dependency setup | 45 |
+| Preflight | 47 |
+| API/evidence command | 108 |
+| Browser command, including regressions and setup | 339 |
+| 29-module loop within that command | 236.61 |
+
+The same revision passed all eleven Windows OAuth/reference/sync modules,
+including four selected cleanup cases, in a 99.10-second module loop. Windows
+and a separate canonical Linux private installation each passed all 7,904
+evidence assertions. Local independent review compared the actual 39-file
+installations with their recorded identities and the selected commit archive;
+source and installation records stayed unchanged. The diagnosis correction
+also passed 1,600 targeted package assertions on each OS. All these regression
+checks had zero failures, errors, test warnings or skips; Windows retained its
+documented R startup locale warnings. Earlier 3,803-assertion package runs
+belong to the preceding implementation revision and are recorded separately
+in the [implementation plan](../../.github/protocol-quality-implementation-plan.md).
+
+The failed pre-correction Message Signing attempt remains failed and receives
+no passing-run credit. Its stricter application gate exposed the nested
+missing-reference-state diagnosis; the fix preserved that gate and added real
+GET/POST JARM regressions. Its queued hosted attempt was cancelled before
+validation. The original sanitized reports, failed attempts, ZIP and private
+verification receipts remain ignored locally. Hosted reports are under
+`.artifacts/hosted-44590006270/`; workflow retention remains seven days.
+
+This acceptance covers the exact selected variants above. Initial callback
+history, operator/proxy logs, cross-site HTTPS browser acceptance, the final
+aggregate release matrix and durable release retention remain separate work.
+No certification claim follows.
