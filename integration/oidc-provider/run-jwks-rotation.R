@@ -59,11 +59,9 @@ run_jwks_rotation <- function(args = commandArgs(TRUE)) {
     reporter = "summary",
     env = new.env(parent = environment())
   )
-  regression <- as.data.frame(regression)
-  utils::write.csv(
+  regression <- rotation_write_regressions(
     regression,
-    file.path(output, "regression-results.csv"),
-    row.names = FALSE
+    file.path(output, "regression-results.csv")
   )
   rotation_require(
     nrow(regression) > 0L &&

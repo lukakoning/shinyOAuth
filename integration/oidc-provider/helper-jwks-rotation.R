@@ -12,6 +12,22 @@ rotation_hash <- function(value) {
   paste(openssl::sha256(serialize(value, NULL, version = 3)), collapse = "")
 }
 
+rotation_write_regressions <- function(results, path) {
+  # testthat also supplies a list-valued result column, which CSV cannot encode.
+  summary <- as.data.frame(results)[c(
+    "file",
+    "test",
+    "nb",
+    "failed",
+    "skipped",
+    "error",
+    "warning",
+    "passed"
+  )]
+  utils::write.csv(summary, path, row.names = FALSE)
+  summary
+}
+
 rotation_snapshot <- function(cache, key) {
   entry <- cache[["get"]](key, missing = NULL)
   if (is.null(entry)) {

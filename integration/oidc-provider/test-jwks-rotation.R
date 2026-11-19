@@ -7,6 +7,31 @@ source(
   local = TRUE
 )
 
+testthat::test_that("actual testthat results export with semantic counts intact", {
+  script <- tempfile("rotation-export-", fileext = ".R")
+  path <- tempfile("rotation-export-", fileext = ".csv")
+  withr::defer(unlink(c(script, path)))
+  writeLines(
+    c(
+      "testthat::test_that('export control', {",
+      "  testthat::expect_true(TRUE)",
+      "  testthat::expect_identical(1L, 1L)",
+      "})"
+    ),
+    script
+  )
+  actual <- testthat::test_file(script, reporter = "silent")
+  summary <- rotation_write_regressions(actual, path)
+  restored <- utils::read.csv(path)
+  testthat::expect_equal(nrow(restored), 1L)
+  testthat::expect_equal(restored[["nb"]], 2L)
+  testthat::expect_equal(restored[["passed"]], 2L)
+  testthat::expect_equal(restored[["failed"]], 0L)
+  testthat::expect_equal(restored[["warning"]], 0L)
+  testthat::expect_false(any(restored[["skipped"]]) || any(restored[["error"]]))
+  testthat::expect_equal(restored, summary)
+})
+
 rotation_example <- function() {
   old <- paste(rep("a", 32), collapse = "")
   new <- paste(rep("b", 32), collapse = "")

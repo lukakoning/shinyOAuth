@@ -2666,6 +2666,22 @@ retention is still seven days. The original Keycloak no-cache and OIDF no-store
 tests are unchanged. Canonical live acceptance follows separately; C06's
 observed warm-cache gap is not closed merely by these synthetic checks.
 
+SA06 regression-export correction (2026-11-20): the first clean native entrypoint
+at `d532cba3f4df7ce8c4cf9fa85211bf894899060f` passed all 212 focused assertions
+then stopped before starting the provider. Exporting the complete testthat
+data frame tried to encode its list-valued result column as CSV. The corresponding
+[hosted attempt 44640739414](https://github.com/lukakoning/shinyOAuth/actions/runs/44640739414)
+failed at the same operation; it had already completed when cancellation was
+attempted. Neither attempt earns native protocol or rotation credit.
+
+The narrow correction exports only the eight scalar summary columns. A new
+test runs an actual temporary testthat file, writes/reads that summary and
+checks its semantic assertion/outcome counts. All 219 focused assertions pass
+with zero failures, errors, test warnings or skips. The rotation proof, provider,
+cache policy and cryptographic gates are unchanged. Failed reports and private
+receipts remain preserved; clean native replay follows at the correction's own
+revision, separately from the already running OIDF selections at d532cba3.
+
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second
 full provider. Add another mock server only when a remaining test case justifies
