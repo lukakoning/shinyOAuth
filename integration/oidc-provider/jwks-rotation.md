@@ -18,6 +18,12 @@ fixture's normal startup creates a new RSA signing key. The client retains its
 old cache entry, and the next real login must refresh once for the unknown key
 while that entry is still usable, then validate the new signature.
 
+Native discovery enables PAR, which keeps state inside the pushed request.
+The driver binds the returned reference to the exact existing pending-cache
+key instead of requiring state on the outer authorization URL. The module
+still validates and consumes that record. The proof records the selected PAR
+transport and hidden front-channel state without publishing reference values.
+
 The proof binds the provider run/process identities and key IDs, unchanged
 cache identity and entry digest, exact native endpoint request counts, login
 state consumption, fetched/observed times and the unknown-key throttle record.

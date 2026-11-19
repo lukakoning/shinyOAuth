@@ -151,6 +151,29 @@ rotation_authorize <- function(url, stack, redirect_uri) {
   )
 }
 
+rotation_callback_state_matches <- function(sent, received, pending) {
+  reference <- received[["state"]]
+  if (
+    !is.character(reference) ||
+      length(reference) != 1L ||
+      is.na(reference) ||
+      !nzchar(reference) ||
+      length(pending) != 1L ||
+      !identical(shinyOAuth:::state_cache_key(reference), pending[[1L]])
+  ) {
+    return(FALSE)
+  }
+  if (!is.null(sent[["state"]])) {
+    return(identical(sent[["state"]], reference))
+  }
+  # With native PAR the state is in the pushed request, not the outer URL.
+  request_uri <- sent[["request_uri"]]
+  is.character(request_uri) &&
+    length(request_uri) == 1L &&
+    !is.na(request_uri) &&
+    nzchar(request_uri)
+}
+
 rotation_login <- function(client, stack) {
   result <- NULL
   shiny::testServer(
@@ -176,8 +199,9 @@ rotation_login <- function(client, stack) {
       )
       callback <- rotation_authorize(auth_url, stack, client@redirect_uri)
       received <- httr2::url_parse(callback)[["query"]]
+      state_matches <- rotation_callback_state_matches(sent, received, before)
       rotation_require(
-        identical(received[["state"]], sent[["state"]]) &&
+        state_matches &&
           is.character(received[["code"]]) &&
           nzchar(received[["code"]]),
         "Native code callback did not match the pending state"
@@ -205,7 +229,18 @@ rotation_login <- function(client, stack) {
           subject_matches = identical(claims[["sub"]], "local-test-account"),
           issuer_matches = identical(claims[["iss"]], stack[["origin"]]),
           audience_matches = identical(claims[["aud"]], client@client_id),
-          state_matches = identical(received[["state"]], sent[["state"]]),
+          state_matches = state_matches,
+          authorization_transport = if (is.null(sent[["request_uri"]])) {
+            "parameters"
+          } else {
+            "par"
+          },
+          native_par = !is.null(sent[["request_uri"]]),
+          frontchannel_state_hidden = is.null(sent[["state"]]),
+          returned_reference_key_matches = identical(
+            shinyOAuth:::state_cache_key(received[["state"]]),
+            before[[1L]]
+          ),
           pending_before = length(before),
           pending_after = length(client@state_store[["keys"]]())
         ),
@@ -322,9 +357,13 @@ rotation_check <- function(proof) {
           "subject_matches",
           "issuer_matches",
           "audience_matches",
-          "state_matches"
+          "state_matches",
+          "native_par",
+          "frontchannel_state_hidden",
+          "returned_reference_key_matches"
         )
       ) &&
+        identical(login[["authorization_transport"]], "par") &&
         identical(login[["pending_before"]], 1L) &&
         identical(login[["pending_after"]], 0L)
     )

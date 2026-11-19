@@ -58,6 +58,10 @@ rotation_example <- function() {
       issuer_matches = TRUE,
       audience_matches = TRUE,
       state_matches = TRUE,
+      authorization_transport = "par",
+      native_par = TRUE,
+      frontchannel_state_hidden = TRUE,
+      returned_reference_key_matches = TRUE,
       pending_before = 1L,
       pending_after = 0L
     )
@@ -331,7 +335,10 @@ testthat::test_that("state consumption and both cryptographic rogue controls are
       "state_matches",
       "subject_matches",
       "issuer_matches",
-      "audience_matches"
+      "audience_matches",
+      "native_par",
+      "frontchannel_state_hidden",
+      "returned_reference_key_matches"
     )) {
       changed <- proof
       changed[["logins"]][[i]][[field]] <- FALSE
@@ -456,5 +463,58 @@ testthat::test_that("cache identity digests and all observation times have stric
         "proof failed"
       )
     }
+  }
+})
+
+testthat::test_that("native PAR callback state must identify the exact pending reference", {
+  reference <- "a-reference-value"
+  key <- shinyOAuth:::state_cache_key(reference)
+  callback <- list(state = reference)
+  par <- list(request_uri = "urn:ietf:params:oauth:request_uri:native")
+  testthat::expect_true(rotation_callback_state_matches(par, callback, key))
+  testthat::expect_true(rotation_callback_state_matches(
+    list(state = reference),
+    callback,
+    key
+  ))
+  testthat::expect_false(rotation_callback_state_matches(
+    par,
+    list(state = "wrong-reference"),
+    key
+  ))
+  testthat::expect_false(rotation_callback_state_matches(
+    list(state = "wrong-reference"),
+    callback,
+    key
+  ))
+  testthat::expect_false(rotation_callback_state_matches(
+    par,
+    callback,
+    shinyOAuth:::state_cache_key("another-pending-reference")
+  ))
+  testthat::expect_false(rotation_callback_state_matches(
+    par,
+    callback,
+    character()
+  ))
+  testthat::expect_false(rotation_callback_state_matches(
+    par,
+    callback,
+    c(key, key)
+  ))
+  testthat::expect_false(rotation_callback_state_matches(list(), callback, key))
+  for (invalid in list(NULL, "", NA_character_, c(reference, reference), 1L)) {
+    testthat::expect_false(rotation_callback_state_matches(
+      par,
+      list(state = invalid),
+      key
+    ))
+  }
+  for (invalid in list(NULL, "", NA_character_, c("one", "two"), 1L)) {
+    testthat::expect_false(rotation_callback_state_matches(
+      list(request_uri = invalid),
+      callback,
+      key
+    ))
   }
 })
