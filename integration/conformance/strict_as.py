@@ -16,6 +16,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlsplit, urlencode
 
 from cryptography import x509
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa, ec, padding, utils
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
@@ -105,11 +106,24 @@ issuer = None
 
 
 def verify_client_assertion(params, path, profile, authorization):
-    require(not authorization and 'client_secret' not in params, 'single_client_auth')
+    # RFC 7521 section 4.2.1 and RFC 7523 section 3.2 require invalid_client
+    # for invalid assertions or competing authentication in this JWT profile.
+    # Keep malformed grant/Request Object processing outside this boundary.
+    try:
+        require(not authorization and 'client_secret' not in params, 'single_client_auth')
+        validate_client_assertion(params, path, profile)
+    except InvalidSignature as error:
+        raise ClientDenied('assertion_signature') from error
+    except (ValueError, TypeError, KeyError) as error:
+        raise ClientDenied(str(error) or 'assertion_format') from error
+
+
+def validate_client_assertion(params, path, profile):
     require(params.get('client_assertion_type') ==
             'urn:ietf:params:oauth:client-assertion-type:jwt-bearer', 'assertion_type')
     h, p, s = params['client_assertion'].split('.')
     header, claims = json.loads(unb64(h)), json.loads(unb64(p))
+    require(isinstance(header, dict) and isinstance(claims, dict), 'assertion_format')
     require(header.get('alg') == jws_alg, 'assertion_algorithm')
     expected_type = 'client-authentication+jwt' if profile == 'oauth21' else 'JWT'
     require(header.get('typ') == expected_type, 'assertion_header_type')

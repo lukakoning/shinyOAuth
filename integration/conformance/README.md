@@ -113,6 +113,13 @@ DN normalization edge cases, certificate revocation, self-signed client
 authentication and mTLS-bound refresh remain outside it. The OIDF selection's
 coverage limits remain unchanged; this is a separate package-owned fixture.
 
+`test-client-assertion-expiry.R` checks correctly signed expired JWT client
+assertions at PAR and token endpoints for RS256/RS384, exact `invalid_client`
+denials, callback state cleanup/replay and fresh successful recovery. The
+independent server keeps client-assertion failures separate from Request Object
+and grant processing. Its unknown-code error taxonomy remains a separate
+fixture limitation; these cases do not establish complete AS conformance.
+
 `test-strict-as.R` runs its exchange matrix with a separately pinned server
 registration for each algorithm. JARM responses and the server's public JWKS use
 the selected algorithm too, exercising Python signing followed by shinyOAuth
