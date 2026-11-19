@@ -53,6 +53,42 @@ openid_install <- function(root, output, source = NULL) {
   normalizePath(library, winslash = "/")
 }
 
+openid_use_installation <- function(library, source, expected = NULL) {
+  record <- openid_installation(library, source)
+  if (!is.null(expected) && !identical(record, expected)) {
+    stop("Private checkout installation changed during regression checks")
+  }
+  library <- normalizePath(library, winslash = "/", mustWork = TRUE)
+  package <- normalizePath(
+    file.path(library, "shinyOAuth"),
+    winslash = "/",
+    mustWork = TRUE
+  )
+  assert_namespace <- function() {
+    actual <- normalizePath(
+      getNamespaceInfo("shinyOAuth", "path"),
+      winslash = "/",
+      mustWork = TRUE
+    )
+    if (!identical(actual, package)) {
+      stop(
+        "OpenID regression checks found a different shinyOAuth namespace already loaded; ",
+        "rerun in a fresh Rscript process using the private checkout installation",
+        call. = FALSE
+      )
+    }
+  }
+  # Library precedence cannot replace an existing namespace or its S7 classes.
+  # Fail before changing the search path instead of unloading caller state.
+  if (isNamespaceLoaded("shinyOAuth")) {
+    assert_namespace()
+  }
+  .libPaths(c(library, .libPaths()))
+  loadNamespace("shinyOAuth", lib.loc = library)
+  assert_namespace()
+  record
+}
+
 openid_app_transport <- function(
   root,
   stack,

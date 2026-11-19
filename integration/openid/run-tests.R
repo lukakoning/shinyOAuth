@@ -60,7 +60,8 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
     "httpuv",
     "testthat",
     "ps",
-    "jose"
+    "jose",
+    "callr"
   ))
   profile <- if (api_mode) "api" else options[["--profile"]]
   output <- openid_output(".", profile)
@@ -88,6 +89,11 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
     ),
     add = TRUE
   )
+  library <- openid_install(".", output, source)
+  installation <- report[["installation"]] <- openid_use_installation(
+    library,
+    source
+  )
   checks <- testthat::test_file(
     "integration/openid/test-evidence.R",
     env = environment(),
@@ -98,10 +104,13 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
   if (any(as.data.frame(checks)[["skipped"]])) {
     stop("OpenID evidence checks require zero skips")
   }
+  openid_assert_source(".", source)
+  regression_installation <- report[[
+    "regression_installation_after"
+  ]] <- openid_use_installation(library, source, installation)
   manifest <- openid_profiles()
   if (!api_mode) {
-    openid_assert_source(".", source)
-    openid_require(c("shiny", "callr", "chromote"))
+    openid_require(c("shiny", "chromote"))
     if (!identical(options[["--transport"]], "sync")) {
       openid_require(c(options[["--transport"]], "promises", "later"))
     }
@@ -114,11 +123,9 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
     if (!identical(report[["checkout_source"]], source)) {
       stop("Checkout source changed during regression checks")
     }
+    report[["installation"]] <- installation
+    report[["regression_installation_after"]] <- regression_installation
     context <- report
-    library <- openid_install(".", output, context[["checkout_source"]])
-    context[["installation"]] <- report[[
-      "installation"
-    ]] <- openid_installation(library, context[["checkout_source"]])
     stack <- openid_start(".", output)
     transport <- openid_app_transport(".", stack, httpuv::randomPort())
     context[["provider_origin"]] <- report[["provider_origin"]] <- stack[[
@@ -225,9 +232,10 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
       context[["checkout_source"]]
     )
     report[["source_verified"]] <- TRUE
-    report[["installation_after"]] <- openid_installation(
+    report[["installation_after"]] <- openid_use_installation(
       library,
-      context[["checkout_source"]]
+      context[["checkout_source"]],
+      installation
     )
     check <- openid_check_report(report, context, manifest)
     report[names(check)] <- check
@@ -272,6 +280,11 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
   ))
   openid_stop(stack)
   report[["checkout_source_after"]] <- openid_assert_source(".", source)
+  report[["installation_after"]] <- openid_use_installation(
+    library,
+    source,
+    installation
+  )
   report[["source_verified"]] <- TRUE
   report[["source_revision"]] <- manifest[["source_revision"]]
   report[["api_checks"]] <- list(

@@ -7,8 +7,9 @@ source files, excluding ignored files. A combined fingerprint binds that file
 inventory. Git `assume-unchanged` and `skip-worktree` flags classify a checkout
 as development source. The inventory requires regular files.
 
-The runners take a snapshot before regression checks and compare it again before
-installation and after execution. Persistent changes to source files, additions,
+The runners take a snapshot before private installation and regression checks,
+then compare it again after those checks and after execution. Persistent changes
+to source files, additions,
 deletions, revision changes or cleanliness changes fail the command. Reports keep
 the original and final source records and set `source_verified` only after the
 comparison succeeds. Preflight and API reports now include checkout identity
@@ -21,6 +22,14 @@ working tree with vignettes disabled. Both paths record the actual installation
 archive's SHA-256, package version and hashes of the installed package files.
 A private `Meta/openid-source.json` marker links the installation to the source
 snapshot. The marker itself is excluded from its file inventory.
+
+API, client and shared-pool regression checks load that private installation
+before exercising public package APIs. The runner verifies the namespace path
+and compares the installation inventory before and after the checks; client
+flows reuse the same installation. An unrelated namespace already loaded in
+the caller causes a failure with fresh-Rscript guidance. It is not unloaded or
+silently replaced. This prevents an older global installation from supplying
+the APIs under test. API checks still receive no client-flow or protocol credit.
 
 The runners verify the archive and installation before starting the suite and
 again after all client apps/workers stop. Existing app and worker probes require

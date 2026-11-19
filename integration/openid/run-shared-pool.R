@@ -33,17 +33,6 @@ run_openid_shared_pool <- function() {
     "later"
   ))
   checkout_source <- openid_source_identity(".")
-  checks <- testthat::test_file(
-    "integration/openid/test-evidence.R",
-    env = environment(),
-    reporter = "summary",
-    stop_on_failure = TRUE,
-    stop_on_warning = TRUE
-  )
-  if (any(as.data.frame(checks)[["skipped"]])) {
-    stop("Shared-pool evidence checks require zero skips")
-  }
-  openid_assert_source(".", checkout_source)
   output <- openid_output(".", "shared-pool")
   report <- openid_report_context(
     ".",
@@ -52,7 +41,7 @@ run_openid_shared_pool <- function() {
     read.dcf("DESCRIPTION")[[1L, "Version"]]
   )
   if (!identical(report[["checkout_source"]], checkout_source)) {
-    stop("Checkout source changed during regression checks")
+    stop("Checkout source changed before installation")
   }
   on.exit(
     jsonlite::write_json(
@@ -64,13 +53,29 @@ run_openid_shared_pool <- function() {
     ),
     add = TRUE
   )
+  library <- openid_install(".", output, checkout_source)
+  report[["installation"]] <- openid_use_installation(library, checkout_source)
+  checks <- testthat::test_file(
+    "integration/openid/test-evidence.R",
+    env = environment(),
+    reporter = "summary",
+    stop_on_failure = TRUE,
+    stop_on_warning = TRUE
+  )
+  if (any(as.data.frame(checks)[["skipped"]])) {
+    stop("Shared-pool evidence checks require zero skips")
+  }
+  openid_assert_source(".", checkout_source)
+  if (
+    !identical(
+      openid_use_installation(library, checkout_source),
+      report[["installation"]]
+    )
+  ) {
+    stop("Checkout installation changed during regression checks")
+  }
   context <- report
   manifest <- openid_profiles()
-  library <- openid_install(".", output, context[["checkout_source"]])
-  context[["installation"]] <- report[["installation"]] <- openid_installation(
-    library,
-    context[["checkout_source"]]
-  )
   stack <- openid_start(".", output)
   context[["images"]] <- report[["images"]] <- stack[["lock"]][["images"]]
   context[["image_sources"]] <- report[["image_sources"]] <- stack[[

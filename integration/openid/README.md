@@ -21,7 +21,7 @@ audiences and the separate JWT-purpose policies for its named selection.
 
 Run from the repository root with Docker Engine using Linux containers,
 Compose v2, Git, Chrome/Chromium, and R packages `httr2`, `jsonlite`, `processx`,
-`openssl`, `withr`, `chromote`, `httpuv` and `testthat` installed:
+`openssl`, `withr`, `chromote`, `httpuv`, `callr` and `testthat` installed:
 
 ```sh
 Rscript integration/openid/run-preflight.R
@@ -672,7 +672,8 @@ Preflight, API checks and smoke also pass as a non-root Linux user with R 4.5.0
 and Chromium 156. Complete Basic runs pass on both platforms, with thirteen
 `PASSED` verdicts and the documented unsigned-token `SKIPPED` verdict. The module
 loops took about 90 seconds on Windows and 78 seconds on Linux, excluding suite
-and package setup. The Ubuntu GitHub workflow has not run yet.
+and package setup. Hosted results are recorded in the
+[release review](release-review.md) and [source validation](source-identity.md).
 Configuration selections also pass on both platforms: five `PASSED` verdicts
 and the documented unsigned-token `SKIPPED`. Their module loops took about
 38 seconds on Windows and 30 seconds on Linux, with the cache limitation above.

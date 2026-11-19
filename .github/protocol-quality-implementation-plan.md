@@ -2302,6 +2302,37 @@ local links and 30 distinct official RFC links/anchors passed author and
 independent checks. This is a source/test audit at `f9056d9b`, with no runtime
 change or new execution credit. SA04 and SA08 remain incomplete.
 
+Regression installation boundary correction (2026-11-19): the first clean
+local Message Signing attempt at `f9056d9b` stopped before browser setup.
+G3's public-API checks ran before the runner installed its checkout copy and
+therefore found the machine's unrelated `0.6.1.9000` package, which lacks
+`state_transport`. That failed `application_flow = "not_attempted"` report is
+retained and receives no conformance credit. Earlier pkgload-based development
+checks and CI's explicit `local::.` dependency installation did not expose this
+local namespace boundary.
+
+`run-tests.R` now installs the source archive before regression checks in both
+API and client modes. `openid_use_installation()` validates the installed
+inventory, explicitly loads its namespace and checks its normalized path. It
+rejects an unrelated already-loaded namespace with fresh-Rscript guidance
+before changing library precedence; it never unloads caller state. The checks
+compare source and installation inventories afterward, and client execution
+reuses that same installation. `run-shared-pool.R` applies equivalent ordering
+and guards. API reports retain no client-flow/conformance credit.
+
+Twelve new assertions use real minimal package archives and fresh R processes
+to test stale search precedence, repeated private selection, preloaded-stale
+rejection without unloading/library changes and an altered installation record.
+Windows and Linux each passed all 7,320 evidence assertions with zero failures,
+errors, test warnings or skips from actual private checkout installations,
+without pkgload. Per-platform source and installation records matched exactly
+before/after; both platforms recorded the same dirty-source fingerprint.
+Formatting, jarl, whitespace and independent review passed. The accepted
+development evidence is under ignored `codex/openid-installation/*-full-final/`.
+Preliminary runs rejected by the source guard after concurrent documentation
+edits remain preserved and are excluded from acceptance. Clean client/API and
+shared-pool entrypoint validation follows at the committed correction.
+
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second
