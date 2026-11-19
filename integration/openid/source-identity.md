@@ -69,9 +69,12 @@ canonical LF archive; do not require identical raw working-tree fingerprints
 across operating systems.
 
 This command checks source policy. It does not check matrix completeness or
-authenticate supplied JSON artifacts. Artifact provenance and profile-specific
-revalidation still matter; SA08 retains complete release aggregation and durable
-retention. The release checker accepts only schema-4 client reports. Schema-3
+authenticate supplied JSON artifacts. The separate
+[declared OIDF release matrix gate](release-matrix.md) revalidates every required
+profile/transport pair against committed policy and one selected source. Actual
+matrix execution, broader release evidence and durable retention remain SA08
+work. Artifact provenance still needs independent checks. The source-only
+checker accepts only schema-4 client reports. Schema-3
 reports retain their historical scenario validation when their existing metadata
 is valid; they are not upgraded or qualified by adding retrospective fields.
 

@@ -66,9 +66,13 @@ run_openid_shared_pool <- function() {
     stop("Shared-pool evidence checks require zero skips")
   }
   openid_assert_source(".", checkout_source)
+  report[["regression_installation_after"]] <- openid_use_installation(
+    library,
+    checkout_source
+  )
   if (
     !identical(
-      openid_use_installation(library, checkout_source),
+      report[["regression_installation_after"]],
       report[["installation"]]
     )
   ) {

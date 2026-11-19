@@ -50,7 +50,9 @@ limits, with regression and retained-report validation. SA06's milestone status
 now distinguishes completed public/S256 interoperability from the OIDF public
 variant limit; C06 warm-cache acceptance remains open. SA07 now implements
 rejected-callback URL cleanup with versioned browser evidence; cross-site HTTPS
-acceptance remains open. SA03 and SA08 remain pending. See the
+acceptance remains open. SA08 now implements a declared OIDF selection gate;
+full matrix execution and durable retention remain open. SA03 remains
+conditional. See the
 [release review](../integration/openid/release-review.md).
 
 | Milestone | Current implemented scope | Remaining boundary |
@@ -62,7 +64,7 @@ acceptance remains open. SA03 and SA08 remain pending. See the
 | C11-C12 | Four full mTLS selections and the 29-module Message Signing selection | mTLS simulated-server enforcement/registration limits and exact signing/callback configurations remain explicit. |
 | C13-C14 | Pinned second-provider public/confidential code/refresh/browser flows and the declared advanced-flow/lifecycle selections | These are interoperability evidence, not additional OIDF certification profiles. |
 | C15 | Rejected-callback URL cleanup, versioned browser proof and requirement-selected regressions | HTTPS cross-site acceptance and the remaining named browser/cryptography gaps stay open. |
-| C16 / SA08 | CI smoke, manual larger selections, acquisition/source checks | One final revision's declared aggregate matrix and durable release evidence remain. |
+| C16 / SA08 | CI smoke, manual larger selections, acquisition/source checks and a declared OIDF aggregate gate | Execution of every declared selection at one revision, other provider/platform evidence and durable release retention remain. |
 
 Use the implemented commands in the [environment README](../integration/openid/README.md).
 `core`, `extended` and `fapi-signing` below are historical planning aliases,
@@ -2590,6 +2592,48 @@ are under `codex/form-post-cross-site/`; canonical acceptance follows separately
 No package runtime changed. The manual workflow now exposes the selection and
 its sanitized report path. Production TLS, other browsers/proxies and other
 cross-site deployments retain their own limits.
+
+SA08 declared OIDF aggregation implementation (2026-11-20):
+[`release-matrix.json`](../integration/openid/release-matrix.json) declares 39
+profile/transport pairs: all eighteen profiles in sync/mirai, smoke/refresh in
+future and shared-pool in mirai. The
+[new CLI](../integration/openid/release-matrix.md) requires exactly one original
+top-level report per pair and revalidates protocol outcomes, scoped assessments
+and source/installation proof. Shared children cannot replace standalone rows;
+smoke cannot replace a full selection. Every report must bind the selected
+clean revision/tree, common package version and canonical LF archive. Stored
+pass/coverage/assessment fields cannot override recomputed evidence.
+
+The command obtains its matrix, profiles, suite lock and package version from
+the independently selected commit's Git blobs, so later working-tree edits
+cannot reduce that revision's requirements. The shared runner now retains its
+already verified post-regression installation record in the parent and all
+children. Aggregate qualification requires initial/regression/final equality
+within each report; separate coherent checkout/installed fingerprints can
+differ across platforms. JSON object order is immaterial; array order remains
+meaningful. Existing source-only/historical validation is unchanged.
+
+Passing and failed summaries retain requested source and original input hashes,
+committed policy hashes and recomputed scoped assessments without input paths
+or private data. They assess declared OIDF selections only: preflight/API
+provenance authentication, OS coverage, second-provider execution, durable
+publication and certification remain separate. No complete release claim is
+derived from these tests.
+
+Independent sealed synthetic validation passed 274 assertions (246 matrix and
+28 actual CLI subprocess assertions), with zero failures, errors, test warnings
+or skips. All 42 copied harness files/runner and the reused private 8cd
+installation stayed unchanged. The CLI tests change working-copy policy,
+reject a revision without committed policy, prevent overwriting input, require
+the selected DESCRIPTION version and bind both pass/fail receipts to exact
+input bytes. An earlier fixture expected the working-copy matrix hash rather
+than its committed LF blob; the preserved failure diagnosed only CRLF byte
+normalization. The fixture now hashes the actual selected Git blob without
+changing Git configuration. Accepted evidence remains ignored under
+`codex/release-matrix-cli-focused-sealed-accepted-20261120/`; earlier attempts
+remain preserved. This is synthetic/development evidence, not execution of
+the 39-row matrix. SA08 remains partial until that execution and durable
+retention are demonstrated.
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second

@@ -611,7 +611,11 @@ run context when rechecking evidence; a report cannot establish its own origin.
 The [source identity checks](source-identity.md) record the checkout and actual
 installation input, verify both remain unchanged during execution, and require
 clean committed input for release evidence. Dirty development runs remain
-allowed for scenario checks. Complete release aggregation remains SA08 work.
+allowed for scenario checks. The
+[declared release matrix gate](release-matrix.md) checks all required OIDF
+profile/transport pairs against one selected commit's policy and revalidates
+their protocol evidence. Actual full-matrix execution, other provider/platform
+evidence and durable retention remain SA08 work.
 Older shared-pool reports without per-selection provenance remain historical
 records and require a new run to pass the current validator.
 Missing results, app failures, unrecognized suite warnings, unexpected skips and timeouts fail.

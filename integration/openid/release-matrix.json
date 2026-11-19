@@ -1,0 +1,163 @@
+{
+  "schema_version": 1,
+  "id": "oidf-client-selections-v1",
+  "callback_rejection_policy": "opaque_error_v1",
+  "selections": [
+    {
+      "profile": "auth-post",
+      "transport": "sync"
+    },
+    {
+      "profile": "auth-post",
+      "transport": "mirai"
+    },
+    {
+      "profile": "auth-private-jwt",
+      "transport": "sync"
+    },
+    {
+      "profile": "auth-private-jwt",
+      "transport": "mirai"
+    },
+    {
+      "profile": "auth-secret-jwt",
+      "transport": "sync"
+    },
+    {
+      "profile": "auth-secret-jwt",
+      "transport": "mirai"
+    },
+    {
+      "profile": "basic",
+      "transport": "sync"
+    },
+    {
+      "profile": "basic",
+      "transport": "mirai"
+    },
+    {
+      "profile": "config",
+      "transport": "sync"
+    },
+    {
+      "profile": "config",
+      "transport": "mirai"
+    },
+    {
+      "profile": "fapi-dpop",
+      "transport": "sync"
+    },
+    {
+      "profile": "fapi-dpop",
+      "transport": "mirai"
+    },
+    {
+      "profile": "fapi-dpop-full",
+      "transport": "sync"
+    },
+    {
+      "profile": "fapi-dpop-full",
+      "transport": "mirai"
+    },
+    {
+      "profile": "fapi-message-signing",
+      "transport": "sync"
+    },
+    {
+      "profile": "fapi-message-signing",
+      "transport": "mirai"
+    },
+    {
+      "profile": "fapi-mtls",
+      "transport": "sync"
+    },
+    {
+      "profile": "fapi-mtls",
+      "transport": "mirai"
+    },
+    {
+      "profile": "fapi-mtls-auth",
+      "transport": "sync"
+    },
+    {
+      "profile": "fapi-mtls-auth",
+      "transport": "mirai"
+    },
+    {
+      "profile": "fapi-oauth-dpop",
+      "transport": "sync"
+    },
+    {
+      "profile": "fapi-oauth-dpop",
+      "transport": "mirai"
+    },
+    {
+      "profile": "fapi-oauth-dpop-reference",
+      "transport": "sync"
+    },
+    {
+      "profile": "fapi-oauth-dpop-reference",
+      "transport": "mirai"
+    },
+    {
+      "profile": "fapi-oauth-mtls",
+      "transport": "sync"
+    },
+    {
+      "profile": "fapi-oauth-mtls",
+      "transport": "mirai"
+    },
+    {
+      "profile": "fapi-oauth-mtls-auth",
+      "transport": "sync"
+    },
+    {
+      "profile": "fapi-oauth-mtls-auth",
+      "transport": "mirai"
+    },
+    {
+      "profile": "form-post",
+      "transport": "sync"
+    },
+    {
+      "profile": "form-post",
+      "transport": "mirai"
+    },
+    {
+      "profile": "form-post-cross-site",
+      "transport": "sync"
+    },
+    {
+      "profile": "form-post-cross-site",
+      "transport": "mirai"
+    },
+    {
+      "profile": "refresh",
+      "transport": "sync"
+    },
+    {
+      "profile": "refresh",
+      "transport": "mirai"
+    },
+    {
+      "profile": "smoke",
+      "transport": "sync"
+    },
+    {
+      "profile": "smoke",
+      "transport": "mirai"
+    },
+    {
+      "profile": "shared-pool",
+      "transport": "mirai"
+    },
+    {
+      "profile": "smoke",
+      "transport": "future"
+    },
+    {
+      "profile": "refresh",
+      "transport": "future"
+    }
+  ]
+}
