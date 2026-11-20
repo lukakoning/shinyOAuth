@@ -73,6 +73,7 @@ cran_tests <- c(
   # Retained credentials, SMART permissions and Shiny module wiring.
   "connection-credentials",
   "connection-store",
+  "connection-strict-entry",
   "connection-strict-callbacks",
   "smart-client",
   "smart-scopes",

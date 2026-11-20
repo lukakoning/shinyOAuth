@@ -37,6 +37,30 @@ expect_example_callback_bridge <- function(app, client, req) {
   expect_match(page[["content"]], "shinyOAuth.js", fixed = TRUE)
 }
 
+expect_example_callback_rejection <- function(app, req, client = NULL) {
+  pending <- if (!is.null(client)) client@state_store[["keys"]]() else NULL
+  response <- app[["httpHandler"]](req)
+  expect_identical(response[["status"]], 303L)
+  expect_match(
+    response[["headers"]][["Location"]],
+    "^\\?shinyOAuth_callback_error=ce1_[A-Za-z0-9_-]{43}#$"
+  )
+  terminal <- callback_rejection_terminal(app[["httpHandler"]], req, response)
+  expect_identical(terminal[["status"]], 400L)
+  for (hop in list(response, terminal)) {
+    expect_identical(hop[["headers"]][["Cache-Control"]], "no-store")
+    expect_identical(hop[["headers"]][["Referrer-Policy"]], "no-referrer")
+    expect_null(hop[["headers"]][["Set-Cookie"]])
+    expect_false(grepl(
+      "shinyOAuth.js|example-code|code=|state=|<script",
+      hop[["content"]]
+    ))
+  }
+  if (!is.null(client)) {
+    expect_identical(client@state_store[["keys"]](), pending)
+  }
+}
+
 test_that("the external integrations vignette serves its registered callback", {
   file <- test_path("../../vignettes/external-integrations.Rmd")
   skip_if_not(file.exists(file))
@@ -71,6 +95,14 @@ test_that("deployment apps bridge callbacks behind their configured public origi
     GITHUB_OAUTH_CLIENT_SECRET = "example-secret",
     OAUTH_REDIRECT_URI = "https://example.test/"
   ))
+  exchanges <- 0L
+  testthat::local_mocked_bindings(
+    swap_code_for_token_set = function(...) {
+      exchanges <<- exchanges + 1L
+      stop("Unexpected example callback token exchange")
+    },
+    .package = "shinyOAuth"
+  )
   for (file in c("gcp/app.R", "posit/app.R", "posit/app-auto-redirect.R")) {
     env <- new.env(parent = globalenv())
     app <- source(file.path(root, "integration", file), local = env)[["value"]]
@@ -80,7 +112,7 @@ test_that("deployment apps bridge callbacks behind their configured public origi
     req[["HTTP_HOST"]] <- "internal-service:8080"
     expect_example_callback_bridge(app, env[["client"]], req)
     req[["PATH_INFO"]] <- "/other-route"
-    expect_gte(app[["httpHandler"]](req)[["status"]], 400L)
+    expect_example_callback_rejection(app, req, env[["client"]])
 
     for (invalid in c("", "not-a-uri")) {
       withr::with_envvar(c(OAUTH_REDIRECT_URI = invalid), {
@@ -95,10 +127,11 @@ test_that("deployment apps bridge callbacks behind their configured public origi
         expect_identical(page[["headers"]][["Cache-Control"]], "no-store")
         expect_identical(page[["headers"]][["Referrer-Policy"]], "no-referrer")
         req[["QUERY_STRING"]] <- "code=sample&state=sample"
-        expect_gte(app[["httpHandler"]](req)[["status"]], 400L)
+        expect_example_callback_rejection(app, req)
       })
     }
   }
+  expect_identical(exchanges, 0L)
 })
 
 test_that("playground query apps execute the callback bridge before rendering", {

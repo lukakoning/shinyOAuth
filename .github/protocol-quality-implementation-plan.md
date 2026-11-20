@@ -2784,6 +2784,36 @@ those cancellations establish no pass. The
 and scoped maps retain the remaining deployment/browser, SA04 requirement,
 SA08 full execution/durable retention and conditional certification boundaries.
 
+CI failure investigation and first correction (2026-11-20): the full package
+checks first turned red at the 9288 callback-cleanup change; the preceding
+b8f6d623 matrix was green. Inspection of all seven failed full-test jobs in
+[run 44592790962](https://github.com/lukakoning/shinyOAuth/actions/runs/44592790962)
+found the same ten assertions in `test-connection-strict-entry.R`: they
+expected immediate 400 instead of the intended opaque 303 followed by 400.
+There were no test warnings or dependency-version failures. The CRAN-only
+selection passed because it did not include that file. This was a missed
+regression-test update, not evidence that cancelled intermediate runs passed.
+
+The correction checks both response hops, exact opaque Location, no owner
+cookie and no HTML refresh, while preserving legitimate bounded Strict-cookie
+recovery. Windows and Linux each reproduced ten failures in the original
+41-assertion test and passed the corrected 86 assertions with zero failures,
+errors, test warnings or skips. The short security test is now also in the
+CRAN selection. A separately confirmed source-checkout example test had nine
+equivalent stale assertions that built-package checks skip because integration
+examples are excluded. It now checks actual app cleanup/rejection, privacy,
+no credential reflection, pending-state preservation and zero token exchange;
+all 334 focused assertions passed on Windows and Linux. Accepted bridges retain their own
+303 behavior. Actual private namespaces, helpers and inventories remained
+unchanged in the targeted runs; private receipts are in
+`codex/ci-failures-44592790962/`.
+
+The R-check and general integration workflows now supersede older runs of the
+same workflow/ref automatically, while retaining all matrix jobs, assertions
+and failure behavior. Both YAML files pass actionlint. Keycloak's separate
+eight failures and one warning are being corrected with their own actual
+protocol validation; that work is not credited by the focused package tests.
+
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second
 full provider. Add another mock server only when a remaining test case justifies
