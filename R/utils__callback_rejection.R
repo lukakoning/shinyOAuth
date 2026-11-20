@@ -95,18 +95,28 @@ oauth_callback_rejection_message <- function(e, status) {
     } else {
       1L
     }
-    primary <- lines[[index]]
-    # CLI can wrap a primary bullet. Its indented continuation ends before
-    # the next diagnostic bullet, so received values still cannot select it.
-    while (index < length(lines) && startsWith(lines[[index + 1L]], "  ")) {
-      index <- index + 1L
-      primary <- paste(primary, trimws(lines[[index]]))
-    }
     primary <- trimws(sub(
       "^[[:space:]]*[!x\u2716\u00d7][[:space:]]*",
       "",
-      primary
+      lines[[index]]
     ))
+    # Plain errors and bullets can both wrap. Continue only along an exact
+    # approved literal, stopping before diagnostic, received or blank lines.
+    # The reconstructed text only selects an existing literal; it is not output.
+    approved <- c(messages, headers)
+    while (index < length(lines) && !any(startsWith(primary, approved))) {
+      candidates <- approved[startsWith(approved, primary)]
+      continuation <- trimws(lines[[index + 1L]])
+      if (!nzchar(primary) || !length(candidates) || !nzchar(continuation)) {
+        break
+      }
+      joined <- paste(primary, continuation)
+      if (!any(startsWith(candidates, joined))) {
+        break
+      }
+      primary <- joined
+      index <- index + 1L
+    }
     # State-store errors can retain that namespace header as the primary
     # bullet of a typed wrapper. Inspect only that selected primary, never an
     # informational or received-value bullet elsewhere in the condition.

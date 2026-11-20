@@ -6,6 +6,12 @@ if (!exists("make_provider", mode = "function")) {
     "helper-keycloak.R"
   ))
 }
+if (!exists("keycloak_expect_callback_rejection_page", mode = "function")) {
+  source(file.path(
+    dirname(sys.frame(1)[["ofile"]] %||% "."),
+    "helper-callback-rejection.R"
+  ))
+}
 
 .request_uri_public_base_url <- function(app_port) {
   override <- Sys.getenv("SHINYOAUTH_E2E_REQUEST_URI_BASE_URL", "")
@@ -1546,13 +1552,21 @@ testthat::test_that("Shiny module E2E request_uri swapped callbacks are rejected
   .navigate_browser_to_url(drv_a, swapped_for_a)
   # The GET bridge rejects foreign state before rendering the Shiny app.
   drv_a[["wait_for_js"]](
-    "document.body && document.body.innerText.includes('Invalid OAuth state')",
+    "document.body && document.body.innerText.includes('State payload decryption or validation failed')",
     timeout = 10000
   )
   testthat::expect_match(
     .read_request_uri_page_text(drv_a),
-    "Invalid OAuth state",
+    "State payload decryption or validation failed",
     fixed = TRUE
+  )
+  keycloak_expect_callback_rejection_page(
+    drv_a,
+    app_url_a,
+    sensitive = c(
+      parse_query_param(login_b[["callback_url"]], "state", decode = TRUE),
+      parse_query_param(login_b[["callback_url"]], "code", decode = TRUE)
+    )
   )
   testthat::expect_true(drv_a[["get_js"]](
     "document.querySelector('#auth_state') === null"

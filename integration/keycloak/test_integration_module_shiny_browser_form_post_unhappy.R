@@ -6,6 +6,12 @@ if (!exists("make_provider", mode = "function")) {
     "helper-keycloak.R"
   ))
 }
+if (!exists("keycloak_follow_callback_rejection", mode = "function")) {
+  source(file.path(
+    dirname(sys.frame(1)[["ofile"]] %||% "."),
+    "helper-callback-rejection.R"
+  ))
+}
 
 .make_form_post_browser_client <- function(app_port) {
   shinyOAuth::oauth_client(
@@ -699,6 +705,12 @@ testthat::test_that("direct form_post HTTP envelope attacks do not consume login
     body = paste0("code=ok&state=", enc_state),
     content_type = "application/json"
   )
+  bad_type <- keycloak_follow_callback_rejection(
+    bad_type,
+    client@redirect_uri,
+    415L,
+    sensitive = enc_state
+  )
   testthat::expect_identical(httr2::resp_status(bad_type), 415L)
   testthat::expect_match(
     httr2::resp_body_string(bad_type),
@@ -711,12 +723,24 @@ testthat::test_that("direct form_post HTTP envelope attacks do not consume login
     client@redirect_uri,
     body = paste0("code=ok&code=again&state=", enc_state)
   )
+  duplicate <- keycloak_follow_callback_rejection(
+    duplicate,
+    client@redirect_uri,
+    400L,
+    sensitive = enc_state
+  )
   testthat::expect_identical(httr2::resp_status(duplicate), 400L)
   .wait_for_form_post_state_store_count(drv, 1L)
 
   oversized_body <- .post_form_post_http_callback(
     client@redirect_uri,
     body = paste0("code=ok&state=", enc_state, "&pad=", strrep("x", 30000))
+  )
+  oversized_body <- keycloak_follow_callback_rejection(
+    oversized_body,
+    client@redirect_uri,
+    413L,
+    sensitive = enc_state
   )
   testthat::expect_identical(httr2::resp_status(oversized_body), 413L)
   .wait_for_form_post_state_store_count(drv, 1L)
@@ -725,6 +749,12 @@ testthat::test_that("direct form_post HTTP envelope attacks do not consume login
     client@redirect_uri,
     body = paste0("code=ok&state=", enc_state),
     query = paste0("pad=", strrep("x", 30000))
+  )
+  oversized_query <- keycloak_follow_callback_rejection(
+    oversized_query,
+    client@redirect_uri,
+    400L,
+    sensitive = enc_state
   )
   testthat::expect_identical(httr2::resp_status(oversized_query), 400L)
   .wait_for_form_post_state_store_count(drv, 1L)
@@ -901,10 +931,10 @@ testthat::test_that("browser form_post issuer mismatches are rejected without co
     pattern = "Callback iss parameter does not match expected issuer",
     ignore_case = FALSE
   )
-  testthat::expect_match(
-    attacked_page,
-    "Invalid OAuth state",
-    fixed = TRUE
+  keycloak_expect_callback_rejection_page(
+    drv,
+    client@redirect_uri,
+    sensitive = c(enc_state, "Denied by Keycloak")
   )
   testthat::expect_match(
     attacked_page,
@@ -1253,17 +1283,16 @@ testthat::test_that("swapped form_post code callbacks against the wrong app are 
 
   attacked_page <- .wait_for_form_post_page_text(
     drv_a,
-    pattern = "State authentication failed"
+    pattern = "State payload decryption or validation failed"
   )
-  testthat::expect_match(
-    attacked_page,
-    "Invalid OAuth state",
-    fixed = TRUE
+  testthat::expect_identical(
+    trimws(attacked_page),
+    "State payload decryption or validation failed"
   )
-  testthat::expect_match(
-    attacked_page,
-    "State authentication failed",
-    fixed = TRUE
+  keycloak_expect_callback_rejection_page(
+    drv_a,
+    client_a@redirect_uri,
+    sensitive = c(fields_b[["state"]], fields_b[["code"]])
   )
 
   .navigate_form_post_browser_to_url(drv_a, client_a@redirect_uri)
@@ -1396,17 +1425,16 @@ testthat::test_that("swapped form_post callbacks against the wrong app are rejec
 
   attacked_page <- .wait_for_form_post_page_text(
     drv_a,
-    pattern = "State authentication failed"
+    pattern = "State payload decryption or validation failed"
   )
-  testthat::expect_match(
-    attacked_page,
-    "Invalid OAuth state",
-    fixed = TRUE
+  testthat::expect_identical(
+    trimws(attacked_page),
+    "State payload decryption or validation failed"
   )
-  testthat::expect_match(
-    attacked_page,
-    "State authentication failed",
-    fixed = TRUE
+  keycloak_expect_callback_rejection_page(
+    drv_a,
+    client_a@redirect_uri,
+    sensitive = c(enc_state_b, "Denied by Keycloak")
   )
 
   .navigate_form_post_browser_to_url(drv_a, client_a@redirect_uri)
@@ -1638,6 +1666,11 @@ testthat::test_that("browser form_post.jwt direct callbacks are rejected before 
     "direct OAuth callback parameters are not accepted",
     fixed = TRUE
   )
+  keycloak_expect_callback_rejection_page(
+    drv,
+    app_url,
+    sensitive = fields[["response"]]
+  )
 
   .navigate_form_post_browser_to_url(drv, app_url)
   .wait_for_form_post_ready(drv)
@@ -1787,7 +1820,11 @@ testthat::test_that("swapped form_post.jwt callbacks are rejected without consum
     drv_a,
     pattern = "JARM aud claim does not include client_id"
   )
-  testthat::expect_match(attacked_page, "Invalid OAuth state", fixed = TRUE)
+  keycloak_expect_callback_rejection_page(
+    drv_a,
+    app_url_a,
+    sensitive = fields_b[["response"]]
+  )
   testthat::expect_match(
     attacked_page,
     "JARM aud claim does not include client_id",

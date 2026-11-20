@@ -106,7 +106,7 @@ cases <- list(
         client_id = "shiny-confidential",
         client_secret = "secret",
         redirect_uri = "http://localhost:3000/callback",
-        scopes = character()
+        scopes = "openid"
       )
     }
   ),
@@ -120,7 +120,7 @@ cases <- list(
         client_id = "shiny-confidential",
         client_secret = "secret",
         redirect_uri = "http://localhost:3000/callback",
-        scopes = character()
+        scopes = "openid"
       )
     }
   ),
@@ -134,7 +134,7 @@ cases <- list(
         client_id = "shiny-csjwt",
         client_secret = client_secret_jwt_secret,
         redirect_uri = "http://localhost:3000/callback",
-        scopes = character(),
+        scopes = "openid",
         client_assertion_alg = "HS256"
       )
     }
@@ -149,7 +149,7 @@ cases <- list(
         client_id = "shiny-pjwt",
         client_secret = "", # not used
         redirect_uri = "http://localhost:3000/callback",
-        scopes = character(),
+        scopes = "openid",
         client_assertion_private_key = get_pjwt_key(),
         client_assertion_private_key_kid = NA_character_,
         client_assertion_alg = NA_character_

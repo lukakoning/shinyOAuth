@@ -53,7 +53,7 @@ testthat::test_that("Keycloak discovery and introspection (integration)", {
     client_id = "shiny-confidential",
     client_secret = "secret",
     redirect_uri = "http://localhost:3000/callback",
-    scopes = character()
+    scopes = "openid"
   )
   tok <- shinyOAuth::OAuthToken(access_token = at)
   intros <- shinyOAuth::introspect_token(

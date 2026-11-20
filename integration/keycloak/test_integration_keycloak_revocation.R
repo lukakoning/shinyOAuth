@@ -66,7 +66,7 @@ testthat::test_that("revoke_token invalidates access token (integration)", {
     client_id = "shiny-confidential",
     client_secret = "secret",
     redirect_uri = "http://localhost:3000/callback",
-    scopes = character()
+    scopes = "openid"
   )
   tok <- shinyOAuth::OAuthToken(access_token = at)
 
@@ -138,7 +138,7 @@ testthat::test_that("revoke_token works with different auth styles (integration)
     client_id = "shiny-confidential",
     client_secret = "secret",
     redirect_uri = "http://localhost:3000/callback",
-    scopes = character()
+    scopes = "openid"
   )
   tok <- shinyOAuth::OAuthToken(access_token = at)
 

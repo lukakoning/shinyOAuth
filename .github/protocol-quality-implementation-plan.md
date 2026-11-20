@@ -2814,6 +2814,54 @@ and failure behavior. Both YAML files pass actionlint. Keycloak's separate
 eight failures and one warning are being corrected with their own actual
 protocol validation; that work is not credited by the focused package tests.
 
+CI callback diagnosis and Keycloak correction (2026-11-20): the first correction
+landed as `6d87b800`. Its fresh CRAN-mode check passed, including the newly
+selected Strict-entry test. The remaining full-check jobs were still running
+when this follow-up was prepared; superseded or cancelled jobs receive no
+passing credit.
+
+The separate Keycloak failure had stale immediate-status and old HTML-heading
+expectations, plus one product defect: a long approved direct-JARM diagnosis
+wrapped onto unindented lines and became generic. The formatter now joins a
+continuation only while it exactly follows an existing approved literal. It
+still emits only canonical allowlisted text, stops at blank/diagnostic/received
+lines, and preserves selected-primary, namespace and parent-condition rules.
+No raw condition text becomes public output. Eighty-five added assertions cover
+real error wrapping at widths 40/80/120, color modes, wrapper classification,
+spoofed continuations, and actual public Form Post rejection with unchanged
+pending records and zero token exchange.
+
+Windows accepted per-file runs cover 1,817 assertions: final callback cleanup
+440 plus 1,377 across four unchanged Form Post/JARM neighbors. Linux passed all
+five frozen files together, also 1,817 assertions, including Ed25519. Both have
+zero failures, errors, test warnings or skips. Two earlier Windows test-fixture
+construction attempts failed because issuer/secret configuration came too late;
+those attempts remain recorded and are not passing combined-run evidence.
+Actual private installations used canonical `6d87b800` plus only the formatter
+override; source/helper/test and all 39 installed-file guards remained stable.
+These are development-overlay checks, not clean-source release acceptance.
+Private receipts remain under `codex/callback-wrap-quality/`.
+
+The Keycloak adapter follows only the exact opaque same-route cleanup marker,
+then requires the original 400/413/415 status, empty redirect body, both-hop
+privacy headers and credential nonreflection. Browser checks require clean
+marker-only URLs and no authenticated application render. Specific state/JARM
+diagnoses and rightful state recovery remain strict. Its 71 helper assertions
+passed on each platform. A native Keycloak 26.6.1 development selection passed
+347 assertions with zero failures, errors, warnings or skips, including the
+previously failing browser paths. Separate fresh positive introspection and
+revocation runs passed 9 and 15 assertions with the same zero totals. These
+selections do not constitute one full integration run.
+
+Seven positive clients backed by OIDC metadata now request explicit `openid`
+scope, removing the once-per-session warning at its source. Negative client
+authentication fixtures and the pure-OAuth fixture retain their existing scope
+settings. The full Keycloak runner now fails on test warnings as well as test
+failures and retains the zero-skip budget. Independent review, air, jarl and
+patch whitespace checks passed. A clean-checkout full Keycloak run and fresh
+hosted checks follow this commit; no full-suite or final 39-selection release
+claim is made here. User edits to DESCRIPTION and NEWS remain excluded.
+
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second
 full provider. Add another mock server only when a remaining test case justifies

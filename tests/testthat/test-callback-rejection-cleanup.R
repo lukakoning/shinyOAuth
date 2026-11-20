@@ -469,6 +469,162 @@ test_that("rejection classification trusts only exact approved namespace headers
   )
 })
 
+test_that("plain wrapped Form Post diagnoses retain their approved literal", {
+  reason <- paste(
+    "OAuth form_post JARM callback must include the response",
+    "parameter; direct OAuth callback parameters are not accepted."
+  )
+  for (width in c(40L, 80L, 120L)) {
+    for (colors in c(0L, 256L)) {
+      withr::with_options(
+        list(width = width, cli.width = width, cli.num_colors = colors),
+        {
+          error <- tryCatch(err_form_post_http(reason), error = identity)
+          expect_s3_class(error, "shinyOAuth_form_post_http_error")
+          expect_identical(
+            gsub("[[:space:]]+", " ", cli::ansi_strip(conditionMessage(error))),
+            reason
+          )
+          expect_identical(
+            oauth_callback_rejection_message(error, 400L),
+            reason
+          )
+          wrapped <- tryCatch(
+            rlang::abort("SECRET outer diagnostic", parent = error),
+            error = identity
+          )
+          expect_identical(
+            oauth_callback_rejection_message(wrapped, 400L),
+            reason
+          )
+          typed <- tryCatch(err_invalid_state(reason), error = identity)
+          expect_identical(
+            oauth_callback_rejection_message(typed, 400L),
+            reason
+          )
+        }
+      )
+    }
+  }
+})
+
+test_that("wrapped diagnoses do not cross received, diagnostic or blank lines", {
+  prefix <- "OAuth form_post JARM callback"
+  continuation <- "must include the response parameter;"
+  last <- "direct OAuth callback parameters are not accepted."
+  reason <- paste(prefix, continuation, last)
+  plain <- function(lines) simpleError(paste(lines, collapse = "\n"))
+  expect_identical(
+    oauth_callback_rejection_message(
+      plain(c(prefix, continuation, last)),
+      400L
+    ),
+    reason
+  )
+  for (lines in list(
+    c(prefix, "", continuation, last),
+    c(prefix, "i Received: SECRET", continuation, last),
+    c(prefix, paste0("! ", continuation), last),
+    c(prefix, paste0("Received: ", continuation), last),
+    c(prefix, paste0(continuation, " SECRET"), last),
+    c(prefix, continuation, paste0(last, " SECRET")),
+    c("Unapproved SECRET primary", prefix, continuation, last),
+    c(prefix, "[shinyOAuth] - Unapproved SECRET header", continuation, last)
+  )) {
+    expect_identical(
+      oauth_callback_rejection_message(plain(lines), 400L),
+      "OAuth callback could not be processed."
+    )
+  }
+  expect_identical(
+    oauth_callback_rejection_message(
+      plain(c(reason, "Received: SECRET")),
+      400L
+    ),
+    reason
+  )
+})
+
+test_that("real wrapped JARM transport rejections preserve state and avoid token use", {
+  reason <- paste(
+    "OAuth form_post JARM callback must include the response",
+    "parameter; direct OAuth callback parameters are not accepted."
+  )
+  client <- make_test_client(scopes = "openid")
+  client@redirect_uri <- "http://localhost:8100/callback"
+  client@provider@issuer <- "https://issuer.example"
+  client@client_secret <- strrep("s", 64L)
+  client@response_mode <- "form_post.jwt"
+  client@jarm_signed_response_alg <- "HS256"
+  state <- parse_query_param(
+    prepare_call(client, valid_browser_token()),
+    "state",
+    decode = TRUE
+  )
+  keys <- client@state_store[["keys"]]()
+  records <- lapply(keys, function(key) client@state_store[["get"]](key))
+  expect_length(keys, 1L)
+  rendered <- requests <- 0L
+  ui <- oauth_form_post_ui(
+    function(...) {
+      rendered <<- rendered + 1L
+      shiny::fluidPage("Application must not render")
+    },
+    "auth",
+    client
+  )
+  local_mocked_bindings(
+    req_perform = function(...) {
+      requests <<- requests + 1L
+      stop("Unexpected token, UserInfo or resource request")
+    },
+    .package = "httr2"
+  )
+  for (width in c(40L, 80L, 120L)) {
+    for (expose in c(FALSE, TRUE)) {
+      withr::with_options(
+        list(
+          width = width,
+          cli.width = width,
+          shinyOAuth.expose_error_body = expose
+        ),
+        {
+          req <- callback_rejection_request(
+            body = httr2::url_query_build(list(
+              code = "SECRET-DIRECT-CODE",
+              state = state
+            ))
+          )
+          response <- ui(req)
+          expect_identical(response[["status"]], 303L)
+          expect_match(
+            response[["headers"]][["Location"]],
+            "^\\?shinyOAuth_callback_error=ce1_[A-Za-z0-9_-]{43}#$"
+          )
+          terminal <- callback_rejection_terminal(ui, req, response)
+          expect_identical(terminal[["status"]], 400L)
+          expect_identical(terminal[["content"]], reason)
+          expect_false(grepl(
+            "SECRET|Expected:|Received:|Got:",
+            paste(
+              response[["headers"]][["Location"]],
+              response[["content"]],
+              terminal[["content"]]
+            )
+          ))
+          expect_identical(client@state_store[["keys"]](), keys)
+          expect_identical(
+            lapply(keys, function(key) client@state_store[["get"]](key)),
+            records
+          )
+        }
+      )
+    }
+  }
+  expect_identical(requests, 0L)
+  expect_identical(rendered, 0L)
+})
+
 test_that("query budget, cache expiry, cache failure and pressure remain fail closed", {
   cache <- oauth_callback_rejection_cache()
   client <- make_test_client()

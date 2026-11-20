@@ -64,7 +64,8 @@ local({
 
   results <- testthat::test_dir(
     "integration/keycloak",
-    stop_on_failure = TRUE
+    stop_on_failure = TRUE,
+    stop_on_warning = TRUE
   )
 
   skip_budget_text <- Sys.getenv("SHINYOAUTH_INT_MAX_SKIPS", unset = "0")
