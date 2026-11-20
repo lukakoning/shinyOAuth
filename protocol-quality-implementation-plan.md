@@ -3020,6 +3020,29 @@ gates are unchanged. Failed reports and private receipts remain
 preserved; clean native replay follows at the correction’s own revision,
 separately from the already running OIDF selections at d532cba3.
 
+SA06 native PAR driver correction (2026-11-20): the clean 54e43938
+replay passed all 219 regressions and source/private-install checks,
+then stopped at the first authorization callback before rotation. Native
+discovery enables PAR, so state is carried inside the pushed request;
+the driver had wrongly expected it on the outer authorization URL. A
+private diagnostic recorded only callback field names, comparisons and
+sanitized native events. The provider returned a valid code/state/issuer
+callback, not a protocol error. That failed attempt remains preserved
+without protocol/rotation credit. Its queued hosted replay 44641191494
+was cancelled after this finding.
+
+The corrected driver binds the returned reference’s package cache key to
+the one existing pending record, compares outer state when present and
+permits hidden outer state only with a scalar native PAR request URI. It
+preserves real module state/nonce validation and exact consumption.
+Proof now records PAR, hidden front-channel state and returned-reference
+key match. No native PAR/discovery, library validation or cache behavior
+is disabled. All 246 focused assertions pass, including
+missing/wrong/duplicate reference controls. A short explicitly
+mixed-source diagnostic reached a validated real first login and
+consumed that record; it earns only development confirmation. Canonical
+complete warm-cache/rotation acceptance follows at the next revision.
+
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
 interoperability with a second full provider. Add another mock server
