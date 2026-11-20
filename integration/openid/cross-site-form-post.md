@@ -16,7 +16,7 @@ not complete the Comprehensive plan or establish certification.
 The provider uses HTTPS `localhost`; the app uses HTTPS `127.0.0.1` on a
 separate loopback port. The certificate covers both names. Each case checks
 the app's CA-verified readiness and rejects a wrong Chrome SPKI pin. The
-fixture requires an existing Secure, HttpOnly, SameSite=Strict browser binding
+fixture requires an existing Secure, SameSite=Strict browser binding
 cookie, an actual cross-site POST with the provider Origin and
 `Sec-Fetch-Site: cross-site`, and absence of that Strict cookie on the POST.
 The returned continuation restores the same browser binding before callback

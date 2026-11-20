@@ -147,8 +147,12 @@ failure. Existing validation/header regressions cover this guard. Its explicit
 unblock switch is a configuration limit, not an uncovered default regression.
 
 Keep source-qualified lifecycle and browser results separate from collector
-fixtures. C06 warm-cache rotation remains open: the OIDF source forbids JWKS
-storage, and the strengthened [Keycloak rotation test](../keycloak/test_integration_keycloak_jwks_rotation.R)
-observes `no-cache` and repeated downloads. Finish the remaining OAuth
+fixtures. The OIDF source forbids JWKS storage, and the strengthened
+[Keycloak rotation test](../keycloak/test_integration_keycloak_jwks_rotation.R)
+observes `no-cache` and repeated downloads. The separate source-qualified
+[native-provider selection](../oidc-provider/jwks-rotation.md) at `4f0708fb`
+now proves warm reuse and unknown-key refresh with the unchanged sync/default
+backend and absent origin freshness headers; it does not change either earlier
+provider's policy or establish worker sharing. Finish the remaining OAuth
 grant/authentication, extension and security-clause accounting before closing
 SA04.

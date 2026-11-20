@@ -121,6 +121,14 @@ within one site. Reports retain the actual origins and observed site category;
 different ports never earn a cross-site coverage label. Cross-site attack
 fixtures remain a separate test layer.
 
+The [HTTPS cross-site Form Post selection](cross-site-form-post.md) instead
+uses a localhost provider and 127.0.0.1 app. Its two selected Comprehensive
+modules require an observed cross-site POST and cover both successful identity
+and valid `login_required` denial with a restored Strict browser binding.
+Run `--profile form-post-cross-site --transport sync` or `--transport mirai`.
+It retains its two-of-thirty and loopback/Chrome limits; it does not replace
+the fourteen-module Basic selection or claim general deployment coverage.
+
 Run the Configuration module selection:
 
 ```sh
@@ -230,6 +238,10 @@ Async Configuration runs preserve the main
 app's cache template; workers receive serialized copies per dispatch. Reports
 record that scope. The suite's no-store policy still prevents a warm-cache
 claim, and Configuration coverage remains incomplete in both transports.
+The separate [native-provider warm-cache selection](../oidc-provider/jwks-rotation.md)
+now supplies an observed hit and unknown-key refresh under the unchanged sync
+default-backend policy. It does not change the suite's no-store response or
+establish shared-worker caching.
 
 Client-authentication selections use the pinned Comprehensive plan:
 
@@ -582,7 +594,7 @@ cleanup and deployment boundaries described above.
 
 The [workflow](../../.github/workflows/openid-conformance.yml) runs preflight,
 API checks and smoke on pull requests affecting the package or this harness.
-Manual dispatch offers `smoke`, `basic`, `config`, `form-post`, `refresh`,
+Manual dispatch offers `smoke`, `basic`, `config`, `form-post`, `form-post-cross-site`, `refresh`,
 `auth-post`, `auth-secret-jwt`, `auth-private-jwt`, `shared-pool`, `fapi-dpop`,
 `fapi-dpop-full`, `fapi-oauth-dpop`, `fapi-oauth-dpop-reference`,
 `fapi-oauth-mtls`, `fapi-oauth-mtls-auth`, `fapi-mtls`, `fapi-mtls-auth` and

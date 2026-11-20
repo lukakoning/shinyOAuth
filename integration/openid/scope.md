@@ -31,6 +31,12 @@ bridge, binding and URL-cleanup evidence. The deployment uses two HTTPS
 `localhost` ports; Chrome records it as cross-origin and same-site. This does
 not establish cross-site deployment coverage.
 
+The separate [HTTPS cross-site Form Post selection](cross-site-form-post.md)
+now passes success and valid `login_required` denial using provider
+`localhost` and app `127.0.0.1`. It selects two modules from a 30-module
+Comprehensive variant; other browser, cookie-policy and production deployments
+remain outside that result.
+
 All three modules in the pinned client refresh plan pass on Windows and Linux
 with the original login retained through refresh. Positive refresh preserves
 identity; changed issuer and subject responses clear the session and leave
@@ -49,8 +55,8 @@ neither interruption counts as a client test pass.
 | Target | Existing local evidence | Independent gate and remaining scope |
 | --- | --- | --- |
 | OIDC Core code flow, ID token and UserInfo validation | Unit tests, Keycloak browser/code flows, complete pinned Basic RP module selection (C05) | Basic implemented for the variant above; further profiles below |
-| Discovery, exact issuer and signing-key changes | Discovery/JWKS tests, Keycloak no-cache revalidation/rotation, and six Configuration module outcomes (C06) | Warm-cache refresh remains a C06 follow-up; pinned suite JWKS is `no-store` and the Keycloak fixture returns `no-cache` |
-| Form POST callback and browser binding | Real browser and retained-connection tests; complete pinned Form Post Basic plan on the same-site local rig (C07) | Form Post Basic implemented; cross-site attack cases stay in their separate layer |
+| Discovery, exact issuer and signing-key changes | Discovery/JWKS tests, Keycloak no-cache revalidation/rotation, six Configuration outcomes and native-provider warm-cache rotation (C06) | Native warm-cache proof is sync/default-backend with absent origin freshness; the original suite `no-store`, Keycloak `no-cache` and worker-sharing limits remain |
+| Form POST callback and browser binding | Real browser and retained-connection tests; complete pinned Form Post Basic plan on the same-site local rig (C07); selected HTTPS cross-site success/valid-denial cases (SA07) | The cross-site selection covers two Comprehensive modules with code/Basic/Strict cookies; broader browser/deployment variants and cross-site attack cases retain separate scopes |
 | Refresh identity continuity | Refresh validation, retained-connection tests and all three pinned client refresh modules (C08, extended in C09) | Code flow with HTTP Basic authentication in sync/mirai, plus future parity |
 | Worker transport | Package worker tests; verified mirai transport for the core selections, future smoke/refresh parity, and an alternating shared-pool selection (C09) | Shared-pool scope is sequential reuse across distinct suite issuers, with fresh per-case app/cache objects |
 | Additional client authentication | Keycloak/worker tests and paired positive/issuer-rejection selections for POST, HS256 secret JWT and RS256 private-key JWT (C09); [second-provider](../oidc-provider/README.md) public/S256 discovery, browser login, UserInfo, refresh and missing-PKCE rejection (C13) | Public interoperability baseline is implemented; the pinned OIDF public variant remains blocked by its metadata. Shared-pool scope remains its declared four selections. |
@@ -110,9 +116,47 @@ same-site` for every callback. Different HTTPS ports establish different
 origins, while these `localhost` origins share a site. Cookies, request bodies,
 callback query values and full CDP events are excluded from the report.
 The separate `oidcc-client-test-form-post-error` module is not part of this
-upstream plan; it earns no verdict in this selection. General error-bridge and
-transport rejection tests remain in the package's existing tests, with broader
-comprehensive-plan selections deferred to C09.
+Basic plan; it earns no verdict in that fourteen-module selection. It now runs
+in the distinct `form-post-cross-site` Comprehensive variant below. General
+error-bridge and transport rejection tests retain their package-test scope;
+the broader Comprehensive plan remains incomplete.
+
+The [form-post-cross-site selection](cross-site-form-post.md) uses static
+registration, `client_secret_basic`, code flow and `response_mode = form_post`
+with the pinned `oidcc-client-test-plan`. Its actual plan inventory contains
+30 modules with no forced per-module variants; the selection executes only
+`oidcc-client-test` and `oidcc-client-test-form-post-error`, requiring both to
+finish `PASSED`. The error module requires `prompt = none` and `max_age = 0`.
+Both `coverage_complete` and `upstream_plan_complete` remain false.
+
+The provider is HTTPS `localhost` and the app HTTPS `127.0.0.1`. Acceptance
+requires CA-verified app readiness, rejection of a wrong Chrome SPKI pin,
+Secure SameSite=Strict binding-cookie metadata and actual form-encoded POST
+observations: the expected provider Origin, `Sec-Fetch-Site: cross-site` and
+absence of that Strict cookie. Normal browser-bound continuation processing
+must finish with a clean callback query. Success establishes validated identity
+with exactly one token and UserInfo request; mirai performs those exchanges in
+a verified worker.
+
+The valid `login_required` denial consumes its own state exactly once, records
+one main-process `audit_error_state_consumed`, shows a safe error and makes no
+token/UserInfo request or protocol-worker dispatch. Its
+`audit_callback_validation_success` count is zero. This differs from malformed HTTP 400 callbacks, whose
+[opaque rejection cleanup](assessment.md#rejected-callback-cleanup) preserves
+rightful pending state before a callback session starts.
+
+At `d532cba3f4df7ce8c4cf9fa85211bf894899060f`, each actual Windows sync/mirai
+entrypoint passed 8,274 evidence assertions with zero failures, errors, test
+warnings or skips, followed by both client modules and their app, transport,
+source and private-installation gates. Hosted Linux/mirai
+[run 44640739188](https://github.com/lukakoning/shinyOAuth/actions/runs/44640739188)
+also passed both modules in a 9.92-second module loop. Its fresh preflight/API
+checks separately record 16 plan/variant inventories, which earn no client-flow
+credit. The [release review](release-review.md) retains the acceptance and source
+records. This selected Chrome/SPKI loopback result does not establish public
+certificate chains, production proxies/internal hops, every browser or cookie
+policy, FAPI authorization-initiation consent, certification or the final release
+matrix. Same-site Basic and cross-site attack fixtures keep their own evidence.
 
 The `config` selection uses the pinned
 [Configuration plan](https://gitlab.com/openid/conformance-suite/-/blob/23353b36957d6466010de767c812d2c91ed37638/src/main/java/net/openid/conformance/openid/client/OIDCCClientConfigTestPlan.java).
@@ -143,16 +187,20 @@ The fixture's prefetch uses the installed library's internal JWKS helper under
 its normal policies. Token validation still runs through public login APIs.
 Opaque app/cache IDs, callback session numbers, per-login outcomes and key-ID
 digests establish continuity without exposing keys, tokens or identity values.
-The remaining C06 acceptance case needs cacheable independent-provider evidence;
-the local HTTP-cache, invalidation, signature and refresh-throttle tests supply
-separate package-owned coverage meanwhile.
+The separate [native-provider warm-cache selection](../oidc-provider/jwks-rotation.md)
+now supplies an observed hit followed by unknown-key refresh from a retained
+usable entry under the unchanged sync/default backend. Its native freshness
+headers are absent; it does not establish positive origin max-age or worker
+cache sharing. Local HTTP-cache, invalidation, signature and refresh-throttle
+tests retain their separate package-owned scope.
 
 The [Keycloak rotation test](../keycloak/test_integration_keycloak_jwks_rotation.R)
 now observes the original fixture's `no-cache` response and stale cache entries.
 Three successful module logins require three real JWKS downloads across signing
 key rotation, retain the same cache identity and reject rogue old/new-key-ID
 signatures. Setup failures cannot skip this test. These checks establish
-revalidation and rotation, while C06's warm-cache acceptance remains open.
+revalidation and rotation under the actual no-cache policy. The native-provider
+warm-cache evidence above is separate and does not change Keycloak's headers.
 
 Core selections also support actual mirai transport, while future multisession
 is limited to smoke and refresh parity selections. Each module case owns a

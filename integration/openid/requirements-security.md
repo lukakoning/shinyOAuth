@@ -71,14 +71,14 @@ index; the linked RFC supplies the normative conditions and requirement levels.
 | ID / exact clause | Topic | Configured behavior and concrete evidence | Role or remaining limit |
 | --- | --- | --- | --- |
 | SC06 / [4.2.1](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.2.1), [4.2.2](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.2.2), [4.2.3](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.2.3), [4.2.4](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.2.4) | Referrer leakage | S5 applies no-referrer and moves accepted callbacks and marked package-owned GET/POST validation failures to separate opaque continuations before application rendering. Current [helper-fapi.R](helper-fapi.R), `openid_http_callback_matches()`, requires schema-2 `opaque_error_v1` proof: browser-observed 303-to-400 cleanup, both-hop privacy, a marker-only final URL, final-request Referer absence, no reflected long credentials, matching audit, preserved pending state and no callback module. S2 and S1/S8 separately cover local state and code/PKCE. | The [historical query-retention finding and current selected evidence](#selected-rejected-callback-cleanup) have different source/policy boundaries. Cleanup does not erase the original request from history or operator/proxy logs. Custom HTTP handlers, external resources/links and AS pages still require review; client code cannot establish AS code invalidation. |
-| SC07 / [4.3.1](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.3.1), [4.3.2](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.3.2) | Browser history | S5 checks clean continuation/final URLs, POST response handling and removal of an inherited callback fragment. The current selected malformed-callback cases require `callback_cleaned = true` with the schema-2 proof described below. S6 rejects resource-token query transport; S2 prevents reuse of locally consumed state, and S8 separately tests AS code/verifier behavior. | A clean terminal address bar does not prove the initial callback never entered browser history, logs or synchronized history. The historical `5f218e22` query-retention result remains unchanged. HTTPS/cross-site POST and cookie behavior need deployment-specific browser evidence; exported tokens and application-created navigation remain outside resource-builder checks. |
+| SC07 / [4.3.1](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.3.1), [4.3.2](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.3.2) | Browser history | S5 checks clean continuation/final URLs, POST response handling and removal of an inherited callback fragment. The selected malformed-callback cases require `callback_cleaned = true` with schema-2 proof. The separate [HTTPS cross-site Form Post selection](cross-site-form-post.md) verifies final query cleanup after success and a valid provider denial. S6 rejects resource-token query transport; S2 prevents reuse of locally consumed state, and S8 separately tests AS code/verifier behavior. | A clean terminal address bar does not prove the initial callback never entered browser history, logs or synchronized history. The historical `5f218e22` query-retention result remains unchanged. Other browser, proxy and cookie-policy deployments need their own evidence; exported tokens and application-created navigation remain outside resource-builder checks. |
 | SC08 / [4.4.2](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.4.2), [4.4.2.1](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.4.2.1) | Multi-AS response binding | S2 binds the selected client/provider context; S3 checks direct `iss` or signed JARM before sending a code to the token endpoint. Exact issuer and missing-issuer rejection are configuration-tested, including success/error branches. The second-realm scenario verifies rejection and legitimate-state recovery. | A later token-endpoint ID-token issuer check alone is not the credited mix-up defense. Direct multi-issuer mode requires advertised RFC 9207 support; JARM is a separate route. Trusted issuer-to-endpoint configuration and browser binding remain necessary. Relaxed single-AS/issuer opt-out settings earn no general multi-AS claim. |
 | SC09 / [4.4.2.2](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.4.2.2) | Distinct redirect routes | S3's `multi_redirect_uri` configuration requires a complete distinct callback set; route tests keep a code on its own route before dispatch. The low-level callback API rejects this mode because it lacks the receiving browser route. | Registration and deployment must preserve the per-issuer assignment. Query-only distinctions are rejected by constructor tests. Module route/exchange-sentinel evidence is not a production registration audit or browser proof; prefer the issuer-based configuration where available. |
 | SC10 / [4.5](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.5), [4.5.3.1](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.5.3.1) | Code injection / PKCE | S1–S2 retain the original verifier for exchange; S8 separates local missing-verifier failure from AS wrong-verifier denial. The PAR freshness regression independently recomputes each challenge and keeps both transactions intact. | A state check or confidential-client authentication alone does not prove that a substituted code matches this transaction. The AS owns code/challenge enforcement; a complete same-client two-session browser code-injection result is not inferred from the separate pair and wrong-verifier tests. |
 | SC11 / [4.5.3.2](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.5.3.2) | Nonce before token use | With `use_nonce = TRUE`, S4 verifies the actual token-endpoint ID token against the pending nonce before UserInfo or accepted token construction. Its signed positive and missing/wrong-nonce controls assert the relevant downstream side effects. | These HTTP-stub/module cases bypass the real browser-marker boundary, which S2 covers separately. They do not introduce hybrid support or prove every possible token consumer. Public-client PKCE remains required for the reviewed public configuration. |
 | SC12 / [4.5.3.3](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.5.3.3), [4.5.4](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.5.4) | Alternatives and limits | The implemented transaction checks are S1–S4. Optional PAR/JAR request construction and signed-response validation have separate extension maps and configured evidence. | No additional cryptographic code-binding alternative is claimed here. Request integrity, response confidentiality and deployment custody remain separate: passing a verifier/nonce assertion does not close disclosure or altered-authorization-request threats. |
 | SC13 / [4.6](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.6), [4.6.1](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.6.1) | Access-token injection | S1's code flow obtains access tokens from the configured backend endpoint. S4 verifies the ID token before token use; S6 supplies `at_hash` checks when present or explicitly required. S7 separately covers sender-constrained resource use. | No pure-OAuth implicit response is accepted as a supported flow. Optional `at_hash` checks in a code-flow client do not prove an implicit-flow defense. The package does not generally authenticate arbitrary exported access tokens; trusted endpoint/TLS and AS/RS behavior remain essential. |
-| SC14 / [4.7](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.7), [4.7.1](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.7.1) | Redirection-endpoint CSRF | S2 protects pending state against tampering/swapping and binds it to the browser; wrong-browser/replay cases assert rejection, with separate real wrapper/browser definitions. S1/S4 add enabled PKCE/nonce context. The client retains state rather than relying solely on presumed AS PKCE support. | PKCE capability metadata is checked as indexed in OAuth MD04/PK03, but metadata is not AS enforcement proof. Authorization-initiation consent is separate application/FAPI work; callback rejection does not close it. HTTP loopback browser attack fixtures do not establish successful/error cross-site HTTPS cookie behavior. |
+| SC14 / [4.7](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.7), [4.7.1](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.7.1) | Redirection-endpoint CSRF | S2 protects pending state against tampering/swapping and binds it to the browser; wrong-browser/replay cases assert rejection, with separate real wrapper/browser definitions. S1/S4 add enabled PKCE/nonce context. The client retains state rather than relying solely on presumed AS PKCE support. The [selected HTTPS cross-site cases](cross-site-form-post.md) additionally observe Strict-cookie absence on the POST and successful browser-bound state consumption for login and valid denial. | PKCE capability metadata is checked as indexed in OAuth MD04/PK03, but metadata is not AS enforcement proof. Authorization-initiation consent remains separate application/FAPI work. The selected HTTPS loopback cases do not establish every browser, cookie policy, public-domain deployment or proxy configuration; HTTP loopback attack fixtures retain their own scope. |
 | SC15 / [4.8](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.8), [4.8.2](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.8.2) | PKCE downgrade | S1 never retries S256 as plain; discovery rejects a plain-only capability unless explicitly selected. S2 keeps state/browser correlation. S8's configured enforcing AS rejects removed or downgraded challenges at authorization. | Rejecting a verifier when the issued code had no challenge is an AS rule. Authorization-stage rejection under a mandatory-PKCE fixture does not independently exercise that token-endpoint branch. Preserve this distinction when collecting release evidence; explicit plain/disabled client modes earn no S256 credit. |
 
 ## Additional protocol and deployment accounting
@@ -186,7 +186,7 @@ It grants no token-exchange or resource-use credit to a rejection. The same
 revision also passed all 29 Message Signing/mirai modules locally and in
 [hosted run 44590006270](https://github.com/lukakoning/shinyOAuth/actions/runs/44590006270),
 including ten schema-2 HTTP cleanup outcomes in each run. The
-[release review](release-review.md#rejected-callback-cleanup-acceptance-2026-11-19)
+[release review](release-review.md)
 records independently checked report/source identities, artifact digest and
 timings. These selected clean-source results do not substitute for the final
 aggregate release matrix.
@@ -194,16 +194,49 @@ aggregate release matrix.
 This is selected final-URL cleanup, not global cleanup, certification or a
 completed release matrix. Initial browser history, synchronized history,
 server/proxy logs and unrelated application routes remain outside this evidence.
-Production HTTPS, proxy headers, internal hops and cross-site cookie/form-POST
-behavior still need their own deployment/browser checks. Worker-local diagnostic
-fallback does not establish a shared rejection cache or universal routing policy.
+Production HTTPS, proxy headers and internal hops still need deployment checks.
+The separate selected cross-site acceptance below does not establish every
+browser or cookie/form-POST configuration. Worker-local diagnostic fallback does
+not establish a shared rejection cache or universal routing policy.
+
+## Selected HTTPS cross-site Form Post acceptance
+
+At `d532cba3f4df7ce8c4cf9fa85211bf894899060f`,
+[form-post-cross-site](cross-site-form-post.md) runs two modules from the pinned
+30-module Comprehensive variant with static registration, code flow,
+`client_secret_basic` and `response_mode = form_post`. The provider uses HTTPS
+`localhost` and the app HTTPS `127.0.0.1`. Both cases require CA-verified app
+readiness, wrong-SPKI rejection, Secure SameSite=Strict binding-cookie metadata,
+the actual provider Origin and `Sec-Fetch-Site: cross-site`, and absence of that
+Strict cookie on the POST. Browser-bound callback processing must finish with a
+clean query URL; different port numbers alone earn no cross-site credit.
+
+Success requires validated identity and exactly one token and UserInfo request;
+mirai must perform that protocol work in a verified worker. A valid
+`login_required` denial instead consumes its own state once, emits the existing
+main-process `audit_error_state_consumed` event, shows a safe error and makes no
+token/UserInfo request or protocol-worker dispatch. This denial does not use the
+malformed HTTP 400 rejection path above, which preserves rightful pending state.
+
+Each actual Windows sync/mirai entrypoint passed 8,274 evidence assertions with
+zero failures, errors, test warnings or skips, then both client modules with
+matching app/source/installation gates. The hosted Linux/mirai
+[run 44640739188](https://github.com/lukakoning/shinyOAuth/actions/runs/44640739188)
+also passed both modules, with a 9.92-second module loop and fresh preflight/API
+metadata for 16 plan/variant inventories. API inventories earn no client-flow
+credit. The [release review](release-review.md) records the separate acceptance
+and source evidence. This selected HTTPS loopback deployment leaves production
+certificate chains, other browsers, proxy/internal hops and other cookie policies
+open. FAPI authorization-initiation consent, the complete release matrix and
+certification remain separate work.
 
 ## Open work after clause accounting
 
 The remaining decisions/checks are concrete: inventory deployed redirect routes
 and custom HTTP/message handling (SC20/SC23/SC29); establish trusted resource
 targets and actual AS/RS enforcement (SC16/SC21/SC22/SC26); review HTTPS/proxy
-headers, internal hops and cross-site cookie/POST behavior (SC19/SC25); review
+headers, internal hops and cookie/POST deployments beyond the selected cases
+(SC19/SC25); review
 credential/key storage, exports and cross-process refresh lifecycle (SC18/SC26);
 and obtain the AS/application framing policy (SC28). The FAPI map retains its
 separate authorization-initiation consent gap. Reuse existing source-qualified

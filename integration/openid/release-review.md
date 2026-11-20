@@ -264,3 +264,102 @@ This acceptance covers the exact selected variants above. Initial callback
 history, operator/proxy logs, cross-site HTTPS browser acceptance, the final
 aggregate release matrix and durable release retention remain separate work.
 No certification claim follows.
+
+## Cross-site Form Post and warm-cache acceptance: 2026-11-20
+
+The new cross-site selection passed clean Windows sync and mirai entrypoints
+at `d532cba3f4df7ce8c4cf9fa85211bf894899060f`. Each ran all 8,274 evidence
+assertions across 107 tests, with zero failures, errors, test warnings or skips,
+then passed both selected browser modules. Their two-of-thirty Comprehensive
+scope, app checks and loopback/Chrome limits remain in the
+[selection guide](cross-site-form-post.md).
+
+The actual HTTPS POSTs crossed from the localhost provider to the 127.0.0.1
+app with the expected Origin, observed cross-site category and no Strict
+binding cookie on the POST. The browser marker is Secure/Strict and deliberately
+JavaScript-readable; this is not an HttpOnly-cookie claim. Normal login
+validated identity and made one token and one UserInfo request. Valid
+`login_required` denial consumed its own state exactly once, left no pending
+record or identity, made no token/UserInfo request and dispatched no protocol
+worker. Mirai's successful exchange used the verified worker. Both cases
+passed CA readiness, wrong-SPKI and cleanup controls.
+
+| Clean Windows selection at d532cba3 | Modules | Module-loop seconds | Complete command seconds |
+| --- | ---: | ---: | ---: |
+| Cross-site Form Post / sync | 2 passed | 20.07 | 242.79 |
+| Cross-site Form Post / mirai | 2 passed | 19.22 | 198.42 |
+| Shared pool / mirai | 8 passed | 50.50 | Not recorded here |
+
+Shared-pool execution at the same revision passed all 8,274 regressions and
+eight alternating modules. Its parent and four child reports now retain the
+verified post-regression installation record. Independent checks compared
+each actual 39-file package and private receipt with initial/regression/final
+records, checked unchanged source inventories and regenerated the selected
+commit's canonical archive:
+`6255f8b2e419ca33988d3a4758b35eaae230c524319e026ce9c18609fd622ab4`.
+The existing source CLI passed for the client reports; their scoped coverage
+and upstream-plan flags remain false where required.
+
+Fresh hosted Linux [cross-site/mirai run 44640739188](https://github.com/lukakoning/shinyOAuth/actions/runs/44640739188)
+passed preflight, all sixteen declared API plan inventories/variants, both
+browser modules and the source gate at d532cba3. Preflight pulled all three
+locked images and verified TLS/wrong-pin rejection. Independent revalidation
+required exactly one preflight, API and client report, checked all 1,000 LF
+source-file hashes per role against the selected archive, and matched each
+extracted JSON with its ZIP bytes. The artifact matched GitHub digest
+`sha256:138d75fa91698cb5de72cfff059fc08c13cccd6b8d402b2b3a6bf5a7111a80ec`.
+Hosted JSON records agree before/after; no physical hosted-library claim is
+inferred from the download.
+
+The hosted job took 348 seconds after a three-second queue: R setup 27,
+dependencies 37, preflight 41, API/evidence 105 and browser command 118 seconds.
+The two-module browser loop took 9.92 seconds. Its original ZIP, JSON and
+independent receipts remain under ignored `.artifacts/hosted-44640739188/`.
+The numeric 8,274 assertion count above comes from the captured Windows
+entrypoints; the hosted job passed its required regression checks without
+publishing a separate count CSV.
+
+The separate native-provider cache selection passed a clean local entrypoint
+at `4f0708fb1d85f23ce0d55ff6fa634e2609d58364`, after two preserved driver/export
+failures documented in the implementation plan. Its 246 regressions passed
+with zero failures, errors, test warnings or skips. Three real native
+PAR/code/S256 logins established population, reuse of the same usable entry
+without another JWKS request, then one forced unknown-key refresh after an
+owned provider restart at the same issuer. Both rogue signatures failed
+without another endpoint fetch. Native endpoint/process/key events corroborate
+the client-side pass-through trace and actual pending-reference consumption.
+
+Independent review checked the native schema-1 report, all 1,000 source-file
+hashes, actual 39-file private installation, initial/regression/final records,
+cleanup and selected canonical archive:
+`5f290fa6ac64322436d6f9798b6980c4a42f31b3a551195d7c9f7d6c0da6666f`.
+The native response's freshness headers are absent; the test uses the
+unchanged default one-hour backend, without a header or cache override. It
+establishes the selected sync warm-cache property, not positive origin
+max-age, browser-cookie or shared-worker behavior. See the
+[native selection guide](../oidc-provider/jwks-rotation.md).
+
+Fresh hosted Linux [native rotation run 44642151147](https://github.com/lukakoning/shinyOAuth/actions/runs/44642151147)
+also passed at 4f0708fb. Its one sanitized schema-1 report revalidated with all
+246 regressions recorded, the full rotation proof, matching source and
+installation records, pinned provider 9.14.0/Node v24.22.3 and cleanup.
+Independent review matched all 1,000 LF source hashes and nine provider-source
+hashes with the selected archive. The downloaded ZIP matched GitHub digest
+`sha256:e4130dd40041d90a9b002fe7624d3a59c534550ade00abfc8051a6a4089ce272`;
+its extracted JSON byte-matched the ZIP member. Physical libraries and a
+regression CSV are not in that hosted download, so those checks remain local.
+The job took 115 seconds after a 250-second queue: R setup 27, dependencies 38
+and the selected native command 32 seconds. Original sanitized evidence and
+independent receipts remain in ignored `.artifacts/hosted-44642151147/`.
+
+The declared 39-row OIDF matrix remains incomplete. Its CLI rejects the actual
+shared-only report set for 38 missing rows and records the requested source
+and exact input hash in a failed summary. A separately named diagnostic
+subset revalidated the three actual Windows reports and rejected a mutated
+denial witness; it earns no 39-row completion credit. Native schema-1 reports
+cannot fill OIDF matrix entries. These source-qualified results belong to
+their respective revisions and are not combined into a complete release.
+Private receipts remain ignored under `codex/cross-site-acceptance/`,
+`codex/shared-quality-acceptance/` and `codex/warm-jwks-par/`.
+Durable retention, other release/provider/platform selections and certification
+remain separate work; workflow artifact retention is still seven days.

@@ -54,3 +54,12 @@ client report and cannot fill a row in the
 keys and diagnostics stay private. The provider workflow retains sanitized
 evidence for seven days, without establishing durable release retention or
 certification.
+
+Clean local acceptance and fresh hosted Linux
+[run 44642151147](https://github.com/lukakoning/shinyOAuth/actions/runs/44642151147)
+passed at `4f0708fb1d85f23ce0d55ff6fa634e2609d58364`, including 246
+regressions, the complete three-login proof and cleanup. Independent review
+checked local physical source/installation files and the hosted artifact's
+bytes and recorded identities separately. The
+[release review](../openid/release-review.md#cross-site-form-post-and-warm-cache-acceptance-2026-11-20)
+records hashes, timings and the earlier failed attempts without passing credit.
