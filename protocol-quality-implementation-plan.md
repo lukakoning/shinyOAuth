@@ -33,7 +33,7 @@ submission. Record the disposition of each note with implementation
 commits and evidence, or a concrete reason for deferral. All eight notes
 start pending.
 
-**Implementation status (2026-11-19).** SA02’s image, acquisition and
+**Implementation status (2026-11-20).** SA02’s image, acquisition and
 dirty-flag revalidation checks are implemented in the follow-up
 execution record below. SA02 now implements source snapshots, archived
 installation input and a clean release-source check; local and hosted
@@ -52,27 +52,31 @@ Signing configuration assessment, while G2 retains its observed
 purpose-policy limits. The RFC 9700 map now accounts for sections 2–4,
 including attacker assumptions and explicit implementation, evidence and
 deployment gaps; remaining inherited-security and aggregate coverage
-work stays open. SA06’s Keycloak follow-up now proves no-cache
-revalidation and rotation; C06 warm-cache acceptance remains open. SA05
-now separates upstream execution from local coverage and categorized
-limits, with regression and retained-report validation. SA06’s milestone
-status now distinguishes completed public/S256 interoperability from the
-OIDF public variant limit; C06 warm-cache acceptance remains open. SA07
-now implements rejected-callback URL cleanup with versioned browser
-evidence; cross-site HTTPS acceptance remains open. SA08 now implements
-a declared OIDF selection gate; full matrix execution and durable
-retention remain open. SA03 remains conditional. See the [release
+work stays open. SA06’s Keycloak follow-up proves no-cache revalidation
+and rotation; the native oidc-provider selection now proves an observed
+warm hit and unknown-key refresh under the unchanged
+sync/default-backend policy. SA05 separates upstream execution from
+local coverage and categorized limits, with regression and
+retained-report validation. SA06’s milestone status now distinguishes
+completed public/S256 interoperability from the OIDF public variant
+limit. C06 retains the original OIDF/Keycloak header limits and no
+shared-worker-cache claim. SA07 implements rejected-callback URL cleanup
+and selected HTTPS cross-site Form Post success/denial with versioned
+browser evidence; broader deployment/browser policies remain open. SA08
+implements a declared OIDF selection gate; full matrix execution and
+durable retention remain open. SA03 remains conditional. See the
+[release
 review](https://lukakoning.github.io/integration/openid/release-review.md).
 
 | Milestone | Current implemented scope | Remaining boundary |
 |----|----|----|
-| C01-C05, C07-C08 | Environment/API/browser rig, all Basic/Form Post modules and refresh identity continuity | Exact variants and same-site Form Post deployment limits remain recorded. |
-| C06 | All six Configuration modules and separate Keycloak revalidation/rotation | Neither provider fixture proves rotation from a warm key cache. |
+| C01-C05, C07-C08 | Environment/API/browser rig, all Basic/Form Post modules, selected HTTPS cross-site success/denial and refresh identity continuity | Exact variants, loopback TLS/browser scope and other deployment limits remain recorded. |
+| C06 | All six Configuration modules, Keycloak no-cache revalidation and native-provider warm-cache rotation | Native warm-cache proof is sync/default-backend with absent origin freshness; original OIDF/Keycloak header limits and worker-sharing limits remain. |
 | C09 | Sync/mirai core profiles, future smoke/refresh parity, confidential authentication pairs and shared-pool isolation; C13 supplies public/S256 interoperability | The pinned OIDF public variant cannot complete because its metadata omits `none`; no public-client OIDF verdict is claimed. |
 | C10 | All 23 OIDC DPoP modules and all 11 OAuth DPoP modules with encrypted/reference state | The encrypted-state advisory and FAPI configuration/requirement limits remain distinct from module execution. |
 | C11-C12 | Four full mTLS selections and the 29-module Message Signing selection | mTLS simulated-server enforcement/registration limits and exact signing/callback configurations remain explicit. |
 | C13-C14 | Pinned second-provider public/confidential code/refresh/browser flows and the declared advanced-flow/lifecycle selections | These are interoperability evidence, not additional OIDF certification profiles. |
-| C15 | Rejected-callback URL cleanup, versioned browser proof and requirement-selected regressions | HTTPS cross-site acceptance and the remaining named browser/cryptography gaps stay open. |
+| C15 | Rejected-callback URL cleanup, versioned browser proof, selected HTTPS cross-site success/denial and requirement-selected regressions | Other production/proxy/browser/cookie-policy cases and named cryptography gaps stay open. |
 | C16 / SA08 | CI smoke, manual larger selections, acquisition/source checks and a declared OIDF aggregate gate | Execution of every declared selection at one revision, other provider/platform evidence and durable release retention remain. |
 
 Use the implemented commands in the [environment
@@ -3042,6 +3046,130 @@ missing/wrong/duplicate reference controls. A short explicitly
 mixed-source diagnostic reached a validated real first login and
 consumed that record; it earns only development confirmation. Canonical
 complete warm-cache/rotation acceptance follows at the next revision.
+
+SA06-SA08 clean acceptance (2026-11-20): both actual Windows cross-site
+entrypoints at `d532cba3f4df7ce8c4cf9fa85211bf894899060f` passed all
+8,274 regression assertions across 107 tests with zero failures, errors,
+test warnings or skips, then both selected modules and their complete
+application gates. Sync/mirai module loops took 20.07/19.22 seconds;
+commands took 242.79/198.42 seconds. Actual cross-site POST
+Origin/site/cookie witnesses, verified successful worker dispatch,
+valid-denial main-process consumption, zero denial token/UserInfo/worker
+dispatch, TLS negatives and cleanup passed. Initial/regression/final
+actual 39-file installation and source records match. The independent
+source CLI accepted both reports.
+
+The actual shared-pool/mirai entrypoint at the same d532 revision passed
+all 8,274 assertions and eight distinct modules in a 50.50-second loop.
+Parent and all four children retain matching
+initial/post-regression/final installation and source identities.
+Independent review checked actual files and Meta receipt, all 1,000
+clean-worktree source hashes, scoped assessments and selected archive
+`6255f8b2e419ca33988d3a4758b35eaae230c524319e026ce9c18609fd622ab4`. The
+source CLI passed. Results remain in ignored `codex/cross-site-clean/`
+and `codex/matrix-clean/`, with independent receipts in their acceptance
+folders.
+
+Fresh hosted Linux [cross-site/mirai run
+44640739188](https://github.com/lukakoning/shinyOAuth/actions/runs/44640739188)
+passed fresh three-image acquisition/TLS preflight, all sixteen API
+inventories and variants, both browser modules and the release-source
+gate at d532cba3. The independent checker required one report per role,
+revalidated the two-of- thirty selection, verified all 1,000 LF source
+hashes against the selected archive, and matched the ZIP/extracted JSON
+with GitHub digest
+`138d75fa91698cb5de72cfff059fc08c13cccd6b8d402b2b3a6bf5a7111a80ec`.
+Hosted installation records agree; physical package files were verified
+locally rather than inferred from the hosted artifact. Job/loop times
+were 348/9.92 seconds after a three-second queue. Original reports and
+independent receipts remain under ignored
+`.artifacts/hosted-44640739188/`.
+
+The corrected native-provider entrypoint separately passed at
+`4f0708fb1d85f23ce0d55ff6fa634e2609d58364`: all 246 regressions, three
+real PAR/code/S256 logins, observed warm hit, retained usable cache
+through a real provider restart, exactly one forced unknown-key refresh
+and both rogue controls. Before restart the native OP recorded two
+authorizations/grants and one JWKS request; after restart its empty
+event log became one authorization, grant and JWKS request. Fetch flags
+were false/false/false/true, both native responses lacked freshness
+headers, and rogues caused no extra JWKS request. Each returned
+reference matched its one pending record and was consumed by real module
+validation. The unknown-key throttle time lies within the refresh.
+
+Independent fresh-process review checked the native schema-1 proof, all
+1,000 physical source hashes, actual 39-file namespace/Meta receipt,
+unchanged initial/regression/final records and canonical archive
+`5f290fa6ac64322436d6f9798b6980c4a42f31b3a551195d7c9f7d6c0da6666f`. Only
+the owned provider was removed; the global installed package stayed
+unchanged. Evidence is under ignored
+`codex/warm-jwks-par/integration/oidc-provider/.artifacts/jwks-rotation-20261119-235916-fa912d8d92fc/`.
+This closes the named observed warm-cache gap for this
+sync/default-backend configuration; it does not establish positive
+origin freshness, browser-cookie, worker-sharing or altered
+OIDF/Keycloak header behavior. Earlier failures keep their original
+source and receive no passing-run credit.
+
+Fresh hosted Linux [native rotation run
+44642151147](https://github.com/lukakoning/shinyOAuth/actions/runs/44642151147)
+also passed at 4f0708fb. Its schema-1 report records all 246 regressions
+and complete causal rotation/source/install/cleanup proof. Independent
+review matched its ZIP/extracted JSON, all 1,000 LF source hashes, nine
+provider source hashes and the same selected archive. GitHub ZIP digest
+was `e4130dd40041d90a9b002fe7624d3a59c534550ade00abfc8051a6a4089ce272`.
+Hosted installation records agree, with physical/CSV verification
+supplied locally rather than inferred from the download.
+Job/selected-command timings were 115/32 seconds after a 250-second
+queue. Original evidence and receipts remain ignored under
+`.artifacts/hosted-44642151147/`.
+
+The shipped 39-row matrix CLI correctly rejects the actual shared-only
+input for 38 missing rows and binds that failed receipt to its requested
+source and exact input hash. A separately named three-row diagnostic
+revalidated the actual cross-site sync/mirai and shared reports and
+rejected a mutated denial witness; it cannot supply 39-row completion.
+Native reports remain outside that OIDF matrix. Superseded
+R-check/integration jobs from intermediate d532 and 54e commits were
+cancelled while current-revision checks were retained; those
+cancellations establish no pass. The [release
+review](https://lukakoning.github.io/integration/openid/release-review.html#cross-site-form-post-and-warm-cache-acceptance-2026-11-20)
+and scoped maps retain the remaining deployment/browser, SA04
+requirement, SA08 full execution/durable retention and conditional
+certification boundaries.
+
+CI failure investigation and first correction (2026-11-20): the full
+package checks first turned red at the 9288 callback-cleanup change; the
+preceding b8f6d623 matrix was green. Inspection of all seven failed
+full-test jobs in [run
+44592790962](https://github.com/lukakoning/shinyOAuth/actions/runs/44592790962)
+found the same ten assertions in `test-connection-strict-entry.R`: they
+expected immediate 400 instead of the intended opaque 303 followed by
+400. There were no test warnings or dependency-version failures. The
+CRAN-only selection passed because it did not include that file. This
+was a missed regression-test update, not evidence that cancelled
+intermediate runs passed.
+
+The correction checks both response hops, exact opaque Location, no
+owner cookie and no HTML refresh, while preserving legitimate bounded
+Strict-cookie recovery. Windows and Linux each reproduced ten failures
+in the original 41-assertion test and passed the corrected 86 assertions
+with zero failures, errors, test warnings or skips. The short security
+test is now also in the CRAN selection. A separately confirmed
+source-checkout example test had nine equivalent stale assertions that
+built-package checks skip because integration examples are excluded. It
+now checks actual app cleanup/rejection, privacy, no credential
+reflection, pending-state preservation and zero token exchange; all 334
+focused assertions passed on Windows and Linux. Accepted bridges retain
+their own 303 behavior. Actual private namespaces, helpers and
+inventories remained unchanged in the targeted runs; private receipts
+are in `codex/ci-failures-44592790962/`.
+
+The R-check and general integration workflows now supersede older runs
+of the same workflow/ref automatically, while retaining all matrix jobs,
+assertions and failure behavior. Both YAML files pass actionlint.
+Keycloak’s separate eight failures and one warning are being corrected
+with their own actual protocol validation; that work is not credited by
+the focused package tests.
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
