@@ -338,6 +338,12 @@ initiation path under [FAPI §5.3.3.1(12)](https://openid.net/specs/fapi-securit
 Production consent and cross-site initiation controls remain application and
 deployment responsibilities.
 
+The nonce case also assesses its effective direct callback configuration
+before launching the app. The browser report must include the checks for
+advertised and enforced RFC 9207 issuer identification, S256, HTTPS, PAR,
+client assertions and DPoP. See the
+[direct configuration assessment](configuration.md#direct-fapi-query-callback).
+
 The fixture selects `id_token_profile = "fapi2"`, DPoP token types and the
 existing `minimal` front-channel mode. Browser authorization requests contain
 only `client_id` and `request_uri`; state, nonce, scope and S256 go through PAR.

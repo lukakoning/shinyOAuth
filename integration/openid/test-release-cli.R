@@ -8,6 +8,7 @@ release_cli_test_fixture <- function(root, evidence_root) {
     "source",
     "suite",
     "evidence",
+    "configuration",
     "auth",
     "shared-pool",
     "fapi",

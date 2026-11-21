@@ -305,6 +305,10 @@ fapi_evidence_fixture <- function(backend = "sync") {
         token_request_count = 0L
       )
     }
+    if (isTRUE(expectation[["direct_configuration"]])) {
+      row[["app"]][["direct_fapi_configuration"]] <-
+        openid_fapi_query_configuration(openid_fapi_query_configuration_client())
+    }
     if (identical(logs[["expectation"]][["outcome"]], "authenticated")) {
       row[["app"]][["resource"]] <- list(
         done = TRUE,
@@ -318,6 +322,45 @@ fapi_evidence_fixture <- function(backend = "sync") {
   }
   f
 }
+
+testthat::test_that("direct FAPI configuration is required by the selected manifest", {
+  f <- fapi_evidence_fixture()
+  report <- f[["report"]]
+  testthat::expect_true(openid_check_report(
+    report,
+    f[["context"]],
+    f[["manifest"]]
+  )[["gate_passed"]])
+
+  changed <- report
+  changed[["results"]][[1L]][["app"]][["direct_fapi_configuration"]][[
+    "checks"
+  ]][[
+    "callback_issuer_required"
+  ]] <- FALSE
+  testthat::expect_false(openid_check_report(
+    changed,
+    f[["context"]],
+    f[["manifest"]]
+  )[["gate_passed"]])
+
+  report[["results"]][[1L]][["app"]][["direct_fapi_configuration"]] <- NULL
+  testthat::expect_false(openid_check_report(
+    report,
+    f[["context"]],
+    f[["manifest"]]
+  )[["gate_passed"]])
+
+  historical <- f[["manifest"]]
+  historical[["profiles"]][["fapi-dpop"]][["modules"]][[1L]][[
+    "direct_configuration"
+  ]] <- NULL
+  testthat::expect_true(openid_check_report(
+    report,
+    f[["context"]],
+    historical
+  )[["gate_passed"]])
+})
 
 testthat::test_that("the selected FAPI login waits for explicit initiation", {
   f <- fapi_evidence_fixture()

@@ -78,6 +78,29 @@ UserInfo is not required, the empty list rejects signed JWTs rather than
 reintroducing a broader allowlist. Selecting `id_token_profile = "fapi2"` alone
 does not configure these independent JWT purposes.
 
+## Direct FAPI query callback
+
+The `fapi-dpop` nonce case assesses its discovered OIDC client before it
+starts the Shiny app. This selection uses `request_object_mode = "parameters"`
+and `response_mode = "query"`. Discovery must advertise
+`authorization_response_iss_parameter_supported = TRUE`. The assessment
+checks the client's effective issuer-presence and exact-comparison policies.
+[RFC 9207 §2.4](https://www.rfc-editor.org/rfc/rfc9207.html#section-2.4)
+
+```r
+source("integration/openid/helper-configuration.R")
+assessment <- openid_fapi_query_configuration(client)
+assessment[c("profile", "local_configuration_passed", "issues", "unassessed")]
+```
+
+The query selection also checks HTTPS endpoints, S256, PAR, effective ES256
+assertions with the issuer audience, configured ID-token and UserInfo
+algorithms, and DPoP. Its browser report records only the assessment fields
+and requires them alongside the existing observed protocol evidence.
+The Message Signing selection continues to check the issuer inside its signed
+JARM response. Application issuer trust and deployment controls require their
+own evidence.
+
 ## Request Object timing
 
 The builder emits `iat = floor(now)`, `nbf = iat - skew` and `exp = iat + TTL`.

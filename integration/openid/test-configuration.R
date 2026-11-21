@@ -62,6 +62,85 @@ openid_configuration_client <- function(
   )
 }
 
+openid_fapi_query_configuration_client <- function(
+  provider_args = list(),
+  client_args = list()
+) {
+  openid_configuration_client(
+    utils::modifyList(
+      list(authorization_response_iss_parameter_supported = TRUE),
+      provider_args
+    ),
+    utils::modifyList(
+      list(
+        response_mode = "query",
+        request_object_mode = "parameters",
+        request_object_signing_alg = NULL,
+        request_object_nbf_skew = NULL,
+        jarm_signed_response_alg = NULL,
+        state_transport = "encrypted"
+      ),
+      client_args,
+      keep.null = TRUE
+    )
+  )
+}
+
+testthat::test_that("direct FAPI configuration enforces advertised callback issuer comparison", {
+  client <- openid_fapi_query_configuration_client()
+  assessment <- openid_fapi_query_configuration(client)
+  testthat::expect_true(openid_fapi_query_configuration_matches(assessment))
+  testthat::expect_identical(
+    assessment,
+    openid_assert_fapi_configuration(client, message_signing = FALSE)
+  )
+  serialized <- jsonlite::toJSON(assessment, auto_unbox = TRUE)
+  testthat::expect_true(openid_fapi_query_configuration_matches(
+    jsonlite::fromJSON(serialized, simplifyVector = FALSE)
+  ))
+  testthat::expect_false(grepl(
+    "issuer.example|app.example|configuration-private-client|PRIVATE KEY|configuration-key",
+    serialized
+  ))
+
+  cases <- list(
+    callback_issuer_advertised = openid_fapi_query_configuration_client(
+      provider_args = list(
+        authorization_response_iss_parameter_supported = FALSE
+      ),
+      client_args = list(enforce_callback_issuer = TRUE)
+    ),
+    callback_issuer_required = openid_fapi_query_configuration_client(
+      client_args = list(enforce_callback_issuer = FALSE)
+    ),
+    callback_issuer_compared = openid_fapi_query_configuration_client(
+      client_args = list(compare_callback_issuer = FALSE)
+    ),
+    par_parameters = openid_fapi_query_configuration_client(
+      client_args = list(
+        request_object_mode = "request",
+        request_object_signing_alg = "ES256"
+      )
+    ),
+    query_response_mode = openid_fapi_query_configuration_client(
+      client_args = list(
+        response_mode = "jwt",
+        jarm_signed_response_alg = "ES256"
+      )
+    )
+  )
+  for (issue in names(cases)) {
+    changed <- openid_fapi_query_configuration(cases[[issue]])
+    testthat::expect_false(changed[["local_configuration_passed"]])
+    testthat::expect_true(issue %in% unlist(changed[["issues"]]))
+    testthat::expect_error(
+      openid_assert_fapi_configuration(cases[[issue]], message_signing = FALSE),
+      paste0("Direct FAPI configuration failed: .*", issue)
+    )
+  }
+  testthat::expect_length(client@state_store[["keys"]](), 0L)
+})
+
 testthat::test_that("Message Signing assessment reports only bounded configuration evidence", {
   client <- openid_configuration_client()
   before <- client@state_store[["keys"]]()

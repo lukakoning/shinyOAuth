@@ -190,6 +190,7 @@ openid_run_case <- function(
     client_assertion_private_key_kid = plan[["credentials"]][["key_id"]],
     client_assertion_alg = plan[["spec"]][["client_assertion_alg"]],
     fapi = openid_fapi_plan(plan[["spec"]][["plan"]]),
+    direct_configuration = isTRUE(expectation[["direct_configuration"]]),
     message_signing = identical(
       plan[["spec"]][["plan"]],
       "fapi2-message-signing-final-client-test-plan"

@@ -15,6 +15,7 @@ run_openid_release_check <- function(args = commandArgs(TRUE)) {
     "source",
     "suite",
     "evidence",
+    "configuration",
     "auth",
     "shared-pool",
     "fapi",

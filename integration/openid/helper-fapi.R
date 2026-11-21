@@ -389,6 +389,14 @@ openid_fapi_evidence <- function(logs, module, plan, expectation) {
 
 openid_fapi_matches <- function(result, expectation) {
   if (
+    isTRUE(expectation[["direct_configuration"]]) &&
+      !openid_fapi_query_configuration_matches(
+        result[["app"]][["direct_fapi_configuration"]]
+      )
+  ) {
+    return(FALSE)
+  }
+  if (
     identical(result[["variant"]][["fapi_response_mode"]], "jarm") &&
       !openid_signing_matches(result, expectation)
   ) {

@@ -46,6 +46,7 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
   source("integration/openid/helper-source.R", local = TRUE)
   source("integration/openid/helper-suite.R", local = TRUE)
   source("integration/openid/helper-evidence.R", local = TRUE)
+  source("integration/openid/helper-configuration.R", local = TRUE)
   source("integration/openid/helper-auth.R", local = TRUE)
   source("integration/openid/helper-fapi.R", local = TRUE)
   source("integration/openid/helper-signing.R", local = TRUE)

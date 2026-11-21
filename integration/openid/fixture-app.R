@@ -146,7 +146,10 @@ openid_fixture_app <- function(config) {
   if (!is.null(config[["extra_auth_params"]])) {
     discovery_args[["extra_auth_params"]] <- config[["extra_auth_params"]]
   }
-  if (isTRUE(config[["message_signing"]])) {
+  if (
+    isTRUE(config[["message_signing"]]) ||
+      isTRUE(config[["direct_configuration"]])
+  ) {
     discovery_args[["userinfo_allowed_algs"]] <- c("ES256", "EdDSA", "Ed25519")
   }
   if (!is.null(advanced)) {
@@ -166,6 +169,7 @@ openid_fixture_app <- function(config) {
       NULL
     }
   )
+  direct_fapi_configuration <- NULL
   snapshot <- function(
     token = NULL,
     authenticated = FALSE,
@@ -216,6 +220,7 @@ openid_fixture_app <- function(config) {
         run_id = config[["run_id"]],
         transport = observed[["transport"]],
         ready = !is.null(provider),
+        direct_fapi_configuration = direct_fapi_configuration,
         mtls_configured = !is.null(provider) &&
           identical(config[["sender_constraint"]], "mtls") &&
           identical(provider@token_auth_style, style) &&
@@ -449,6 +454,12 @@ openid_fixture_app <- function(config) {
   )
   if (isTRUE(config[["message_signing"]])) {
     openid_assert_message_signing_configuration(client)
+  }
+  if (isTRUE(config[["direct_configuration"]])) {
+    direct_fapi_configuration <- openid_assert_fapi_configuration(
+      client,
+      message_signing = FALSE
+    )
   }
   if (isTRUE(config[["preload_jwks"]])) {
     # No public prefetch API exists. This calls the installed package's normal
