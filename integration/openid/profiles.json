@@ -1218,6 +1218,7 @@
           "module": "fapi2-security-profile-final-client-test-happy-path",
           "outcome": "authenticated",
           "manual_initiation": true,
+          "trusted_initiation": true,
           "direct_configuration": true
         },
         {"module": "fapi2-security-profile-final-client-test-happy-path-no-dpop-nonce", "outcome": "authenticated"},

@@ -952,6 +952,16 @@ openid_check_report <- function(report, context, manifest) {
           }
         }
         if (
+          isTRUE(expectation[["trusted_initiation"]]) &&
+            !isTRUE(result[["authorization_initiation"]][[
+              "trusted_user_activation"
+            ]])
+        ) {
+          stop(
+            "Missing FAPI evidence of a trusted login click with user activation"
+          )
+        }
+        if (
           auth_profile &&
             (!openid_auth_matches(result, spec) ||
               identical(

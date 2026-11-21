@@ -68,6 +68,67 @@ openid_wait_app <- function(
   )
 }
 
+openid_trusted_login_click <- function(tab, origin) {
+  if (!identical(openid_browser_value(tab, "location.origin"), origin)) {
+    stop("Login button is outside the fixture origin")
+  }
+  binding <- paste0(
+    "openidLoginActivation",
+    paste(format(openssl::rand_bytes(8)), collapse = "")
+  )
+  observed <- NULL
+  tab[["Runtime"]][["addBinding"]](name = binding)
+  tab[["Runtime"]][["bindingCalled"]](function(event) {
+    if (is.null(observed) && identical(event[["name"]], binding)) {
+      observed <<- event[["payload"]]
+    }
+  })
+  point <- openid_browser_value(
+    tab,
+    paste0(
+      "(() => {",
+      " const button = document.querySelector('#login');",
+      " if (!button || button.disabled) return null;",
+      " button.scrollIntoView({block: 'center'});",
+      " const {left, top, width, height} = button.getBoundingClientRect();",
+      " const x = left + width / 2, y = top + height / 2;",
+      " if (!button.contains(document.elementFromPoint(x, y))) return null;",
+      " const report = window.",
+      binding,
+      ";",
+      " button.addEventListener('click', event => {",
+      "   report(event.isTrusted && navigator.userActivation.isActive ? 'active' : 'inactive');",
+      " }, {once: true, capture: true});",
+      " return {x, y};",
+      "})()"
+    )
+  )
+  if (is.null(point)) {
+    stop("Chrome could not locate the visible fixture login button")
+  }
+  for (type in c("mousePressed", "mouseReleased")) {
+    tab[["Input"]][["dispatchMouseEvent"]](
+      type = type,
+      x = point[["x"]],
+      y = point[["y"]],
+      button = "left",
+      clickCount = 1L
+    )
+  }
+  activated <- openid_wait(
+    function() {
+      later::run_now(0)
+      observed
+    },
+    "Chrome login click activation",
+    timeout = 5
+  )
+  if (!identical(activated, "active")) {
+    stop("Chrome did not report a trusted login click with user activation")
+  }
+  TRUE
+}
+
 openid_form_post_navigation <- function(
   tab,
   issuer,
@@ -337,7 +398,14 @@ openid_run_case <- function(
         )
         before_login <- between[[length(between)]]
       }
-      openid_browser_value(tab, "document.querySelector('#login').click()")
+      if (i == 1L && isTRUE(expectation[["trusted_initiation"]])) {
+        initiation[["trusted_user_activation"]] <- openid_trusted_login_click(
+          tab,
+          app[["origin"]]
+        )
+      } else {
+        openid_browser_value(tab, "document.querySelector('#login').click()")
+      }
       if (!is.null(.after_login)) {
         .after_login(app)
       }

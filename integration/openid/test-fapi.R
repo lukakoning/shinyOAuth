@@ -305,6 +305,9 @@ fapi_evidence_fixture <- function(backend = "sync") {
         token_request_count = 0L
       )
     }
+    if (isTRUE(expectation[["trusted_initiation"]])) {
+      row[["authorization_initiation"]][["trusted_user_activation"]] <- TRUE
+    }
     if (isTRUE(expectation[["direct_configuration"]])) {
       row[["app"]][["direct_fapi_configuration"]] <-
         openid_fapi_query_configuration(openid_fapi_query_configuration_client())
@@ -366,6 +369,7 @@ testthat::test_that("the selected FAPI login waits for explicit initiation", {
   f <- fapi_evidence_fixture()
   report <- f[["report"]]
   proof <- report[["results"]][[1L]][["authorization_initiation"]]
+  proof[["trusted_user_activation"]] <- NULL
   testthat::expect_true(openid_check_report(
     report,
     f[["context"]],
@@ -395,6 +399,38 @@ testthat::test_that("the selected FAPI login waits for explicit initiation", {
   historical <- f[["manifest"]]
   historical[["profiles"]][["fapi-dpop"]][["modules"]][[1L]][[
     "manual_initiation"
+  ]] <- NULL
+  historical[["profiles"]][["fapi-dpop"]][["modules"]][[1L]][[
+    "trusted_initiation"
+  ]] <- NULL
+  testthat::expect_true(openid_check_report(
+    report,
+    f[["context"]],
+    historical
+  )[["gate_passed"]])
+})
+
+testthat::test_that("the trusted FAPI initiation witness is required only by its declared policy", {
+  f <- fapi_evidence_fixture()
+  report <- f[["report"]]
+  for (observed in list(NULL, FALSE, "true")) {
+    report[["results"]][[1L]][["authorization_initiation"]][[
+      "trusted_user_activation"
+    ]] <- observed
+    check <- openid_check_report(report, f[["context"]], f[["manifest"]])
+    testthat::expect_false(check[["gate_passed"]])
+    testthat::expect_match(
+      check[["reason"]],
+      "trusted login click",
+      fixed = TRUE
+    )
+  }
+  report[["results"]][[1L]][["authorization_initiation"]][[
+    "trusted_user_activation"
+  ]] <- NULL
+  historical <- f[["manifest"]]
+  historical[["profiles"]][["fapi-dpop"]][["modules"]][[1L]][[
+    "trusted_initiation"
   ]] <- NULL
   testthat::expect_true(openid_check_report(
     report,
