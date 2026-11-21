@@ -70,25 +70,26 @@ account for FAPI’s 20 client clauses, relevant network/cryptography
 duties, OIDC code/discovery, OAuth code/refresh/metadata, PAR/JWT client
 authentication and JWT/Message Signing. Direct
 mTLS/DPoP/resource-indicator client clauses now have a companion map.
-G1-G4 now have their recorded regressions; G3 adds a named Message
-Signing configuration assessment, while G2 retains its observed
-purpose-policy limits. The RFC 9700 map now accounts for sections 2–4,
-including attacker assumptions and explicit implementation, evidence and
-deployment gaps; remaining inherited-security and aggregate coverage
-work stays open. SA06’s Keycloak follow-up proves no-cache revalidation
-and rotation; the native oidc-provider selection now proves an observed
-warm hit and unknown-key refresh under the unchanged
-sync/default-backend policy. SA05 separates upstream execution from
-local coverage and categorized limits, with regression and
-retained-report validation. SA06’s milestone status now distinguishes
-completed public/S256 interoperability from the OIDF public variant
-limit. C06 retains the original OIDF/Keycloak header limits and no
-shared-worker-cache claim. SA07 implements rejected-callback URL cleanup
-and selected HTTPS cross-site Form Post success/denial with versioned
-browser evidence; broader deployment/browser policies remain open. SA08
-implements a declared OIDF selection gate and a manual workflow for all
-declared pairs. Full matrix execution and durable retention remain open.
-SA03 remains conditional. See the [release
+G1-G4 now have their recorded regressions. Configuration assessments
+cover the named Message Signing and direct FAPI query selections, while
+G2 retains its observed purpose-policy limits. The RFC 9700 map now
+accounts for sections 2–4, including attacker assumptions and explicit
+implementation, evidence and deployment gaps; remaining
+inherited-security and aggregate coverage work stays open. SA06’s
+Keycloak follow-up proves no-cache revalidation and rotation; the native
+oidc-provider selection now proves an observed warm hit and unknown-key
+refresh under the unchanged sync/default-backend policy. SA05 separates
+upstream execution from local coverage and categorized limits, with
+regression and retained-report validation. SA06’s milestone status now
+distinguishes completed public/S256 interoperability from the OIDF
+public variant limit. C06 retains the original OIDF/Keycloak header
+limits and no shared-worker-cache claim. SA07 implements
+rejected-callback URL cleanup and selected HTTPS cross-site Form Post
+success/denial with versioned browser evidence; broader
+deployment/browser policies remain open. SA08 implements a declared OIDF
+selection gate and a manual workflow for all declared pairs. Full matrix
+execution and durable retention remain open. SA03 remains conditional.
+See the [release
 review](https://lukakoning.github.io/integration/openid/release-review.md).
 
 | Milestone | Current implemented scope | Remaining boundary |
@@ -3351,6 +3352,16 @@ both reports. The selected nonce case observes provider request counts
 before the driver invokes the login control. The check covers this
 fixture and the manifest-marked module. See the [release
 review](https://lukakoning.github.io/integration/openid/release-review.html#matrix-artifact-verification-and-fapi-initiation-2026-11-21).
+
+SA04 direct FAPI configuration (2026-11-21): `25bc1c7` adds a named
+assessment to the normal nonce case of `fapi-dpop`. The fixture requires
+advertised RFC 9207 support, effective issuer presence/comparison,
+HTTPS, S256, parameter-based PAR, issuer-audience ES256 client
+assertions, configured JWT algorithms and DPoP. The committed manifest
+makes the assessment required evidence for that case. Prior reports
+retain their committed policy. The [acceptance
+record](https://lukakoning.github.io/integration/openid/release-review.html#direct-fapi-query-configuration-2026-11-21)
+records the passing browser runs and the assessed scope.
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
