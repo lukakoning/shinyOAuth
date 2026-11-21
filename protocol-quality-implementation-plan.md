@@ -15,7 +15,9 @@ and the aggregate before assigning any release-matrix completion credit.
     debugging-port timeout. The fixture now allows one fresh browser
     launch for that startup condition. The targeted selection passed on
     Windows and GitHub. The complete matrix still needs a fresh attempt
-    for the selected release revision.
+    for the selected release revision. Failed aggregates now retain a
+    diagnostic row and the available input hashes for each declared
+    selection (`6a893c0`).
 2.  Verify the completed passing attempt with the offline artifact
     checker. CI and offline replay both check preflight and API
     inventories for each client selection (`3e4a793`). Future matrix
@@ -3383,6 +3385,14 @@ companion evidence. `cda9f80` requires trusted Chrome pointer input and
 transient activation in the selected manual FAPI case. See the
 [acceptance
 record](https://lukakoning.github.io/integration/openid/release-review.html#matrix-ci-and-trusted-fapi-login-2026-11-21).
+
+SA08 failed aggregate diagnostics (2026-11-21): `6a893c0` adds an
+ordered diagnostic row per declared selection when the client aggregate
+fails. Each single submitted report is checked against the same revision
+and plan policy. A partial replay of 27 digest-verified artifacts from
+the active hosted matrix identified 26 passing rows, one reported
+failure and 12 missing rows. The overall gate failed. See the [release
+review](https://lukakoning.github.io/integration/openid/release-review.html#failed-matrix-selection-diagnostics-2026-11-21).
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
