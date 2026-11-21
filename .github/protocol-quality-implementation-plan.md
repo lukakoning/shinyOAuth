@@ -2,7 +2,7 @@
 
 **Execution priorities (2026-11-21).** The matrix at `681992ad` exposed a
 Chrome debugging-port timeout in `fapi-dpop-full/sync` and a runner validation
-error in `refresh/sync` and `refresh/mirai`. The Chrome retry passed a targeted
+error in all three `refresh` transports. The Chrome retry passed a targeted
 GitHub run. The refresh correction at `98362fc` passed all three refresh
 transports on Windows and `refresh/sync` on GitHub. The matrix at `4447159`
 predates the refresh correction. [Earlier matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/44907547397),
@@ -13,11 +13,12 @@ predates the refresh correction. [Earlier matrix](https://github.com/lukakoning/
    Record each failed job's stage and source revision. Failed aggregates retain
    a diagnostic row and available input hashes per declared selection
    (`6a893c0`). [Matrix with refresh correction](https://github.com/lukakoning/shinyOAuth/actions/runs/44916619030).
-2. Verify the completed passing attempt with the offline artifact checker.
-   CI and offline replay both check preflight and API inventories for each
-   client selection (`3e4a793`). Future matrix dispatches also enforce source
-   artifact digests (`0768f2f1`). Individual job artifacts request seven days
-   and the aggregate requests 90. Permanent release storage remains open.
+2. Use the [retention command](../integration/openid/release-matrix.md#verify-and-retain-a-completed-attempt)
+   to collect the first successful matrix. It checks the ZIP digest, replays
+   the aggregate and verifies all preflight and API inventories before saving
+   the bundle. Individual job artifacts request seven days and the aggregate
+   requests 90. A permanent storage location and a verified hosted bundle
+   remain open.
 3. The selected FAPI manual-initiation case samples the app queue and state
    store before a trusted Chrome click with transient activation. The
    [FAPI requirement map](../integration/openid/requirements.md) tracks the
@@ -93,7 +94,7 @@ conditional. See the
 | C11-C12 | Four full mTLS selections and the 29-module Message Signing selection | mTLS simulated-server enforcement/registration limits and exact signing/callback configurations remain explicit. |
 | C13-C14 | Pinned second-provider public/confidential code/refresh/browser flows and the declared advanced-flow/lifecycle selections | These are interoperability evidence, not additional OIDF certification profiles. |
 | C15 | Rejected-callback URL cleanup, selected HTTPS cross-site success/denial, provider request counts before the FAPI login click and requirement-selected regressions | Production consent and initiation controls, other proxy/browser/cookie-policy cases and named cryptography gaps stay open. |
-| C16 / SA08 | CI smoke, manual larger selections, acquisition/source checks, a declared OIDF aggregate gate, manual matrix orchestration and offline artifact verification | A fresh hosted matrix has started at `4447159`. Its aggregate receipt, other provider/platform evidence and durable release retention remain open. |
+| C16 / SA08 | CI smoke, manual larger selections, acquisition/source checks, a declared OIDF aggregate gate, manual matrix orchestration and verified artifact retention command | The corrected hosted matrix is running at `98362fc`. Its aggregate receipt, other provider/platform evidence and permanent release storage remain open. |
 
 Use the implemented commands in the [environment README](../integration/openid/README.md).
 `core`, `extended` and `fapi-signing` below are historical planning aliases,
@@ -3025,6 +3026,13 @@ whole report. All three pinned modules passed with `sync`, `mirai` and
 revalidation. The targeted GitHub `sync` run passed with a verified artifact.
 The new 39-selection attempt uses the same source revision.
 [Release review](../integration/openid/release-review.md#refresh-module-validation-2026-11-21).
+
+SA08 retention follow-up (2026-11-21). `5b50f5f6` adds verified bundle
+collection for a successful GitHub workflow attempt. The complete synthetic
+matrix produced an identical receipt through collection and offline replay.
+The completed attempt at `681992ad` was retained for diagnosis. Independent
+replay confirmed 35 passing and four reported-failure rows.
+[Release review](../integration/openid/release-review.md#matrix-retention-and-failed-aggregate-2026-11-21).
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second

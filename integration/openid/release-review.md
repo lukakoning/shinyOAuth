@@ -567,3 +567,27 @@ reports identify that revision. A new 39-selection attempt is running at
 `98362fcd703ecdfc98ea38d16eee5301612d01a2`. Release qualification requires its
 selection verdicts, companion checks and aggregate receipt.
 [Corrected matrix attempt](https://github.com/lukakoning/shinyOAuth/actions/runs/44916619030).
+
+## Matrix retention and failed aggregate, 2026-11-21
+
+The matrix at `681992adec92693adeaf320b2e9717279eeeb5c4` completed with a
+failed aggregate. The `refresh/future` job recorded the same early validation
+error as the other refresh transports after the suite returned
+`FINISHED/PASSED` for its first module. [Future job](https://github.com/lukakoning/shinyOAuth/actions/runs/44907547397/job/136882135471).
+
+Aggregate ZIP `14711338830` matched the SHA-256 from GitHub. Its 39 original
+client reports had the same digests as the stored summary. Independent replay
+against `681992ad` recorded 35 passing selections and four reported failures.
+The four were `fapi-dpop-full/sync` and all three `refresh` transports. The
+original ZIP, API metadata and replay diagnostics stay under
+`.artifacts/hosted-44907547397-aggregate/`.
+[Failed aggregate](https://github.com/lukakoning/shinyOAuth/actions/runs/44907547397/job/136884166588).
+
+`5b50f5f6` adds `--retain` to the archive verifier. It accepts a repository,
+revision, run and attempt and saves the originals with the independently
+computed receipt in a new directory. The Windows synthetic test produced
+identical receipts from offline replay and retention of all 39 client and 78
+companion reports. Live probes against a running GitHub attempt and the
+completed failed attempt both exited unsuccessfully and left no bundle. A
+verified successful hosted bundle and permanent storage remain open.
+[Retention instructions](release-matrix.md#verify-and-retain-a-completed-attempt).

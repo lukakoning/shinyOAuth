@@ -100,29 +100,27 @@ python3 integration/openid/verify-release-artifact.py \
 
 ## Verify and retain a completed attempt
 
-Run the verifier from the repository root with Python 3.11 or later, R and
-the same report checker dependencies. The selected Git commit must be
-available locally. Save the GitHub API responses and download the original
-aggregate ZIP before it expires. Set `artifact` to the ID of
-`openid-declared-matrix-evidence-attempt-N` from the selected run's artifact
-list. The commands below use a POSIX shell or Git Bash to preserve the ZIP
-bytes during redirection.
+Run from the repository root with Python 3.11 or later, R, the report checker
+dependencies and GitHub CLI access to the repository's Actions artifacts. The
+selected Git commit must be available locally. Download the bundle before the
+aggregate expires. Supply a new output directory on the storage you want to
+use for retention.
 
 ```sh
-repo=OWNER/REPO
-revision=FULL_COMMIT_SHA
-run=RUN_ID
-attempt=ATTEMPT_NUMBER
-artifact=AGGREGATE_ARTIFACT_ID
-bundle=integration/openid/.artifacts/verified-matrix-$run-$attempt
-mkdir -p integration/openid/.artifacts
-mkdir "$bundle"
-gh api "repos/$repo/actions/runs/$run/attempts/$attempt" > "$bundle/run.json"
-gh api "repos/$repo/actions/artifacts/$artifact" > "$bundle/artifact.json"
-gh api "repos/$repo/actions/artifacts/$artifact/zip" > "$bundle/artifact.zip"
-python integration/openid/verify-release-artifact.py \
-  --repository "$repo" --revision "$revision" --run-id "$run" --attempt "$attempt" \
-  "$bundle/run.json" "$bundle/artifact.json" "$bundle/artifact.zip" > "$bundle/receipt.json"
+python integration/openid/verify-release-artifact.py --repository OWNER/REPO --revision FULL_COMMIT_SHA --run-id RUN_ID --attempt ATTEMPT_NUMBER --retain "PATH_TO_NEW_BUNDLE"
+```
+
+The command selects the aggregate artifact by workflow run and attempt, then
+verifies and saves the original `run.json`, `artifact.json` and `artifact.zip`
+with `receipt.json`. It makes the directory available once verification passes
+and refuses an existing destination. The download preserves the original ZIP
+bytes on PowerShell and POSIX shells.
+
+The three original input files can also be collected manually. To replay a
+saved bundle offline, supply those files and the same run identifiers.
+
+```sh
+python integration/openid/verify-release-artifact.py --repository OWNER/REPO --revision FULL_COMMIT_SHA --run-id RUN_ID --attempt ATTEMPT_NUMBER "PATH_TO_BUNDLE/run.json" "PATH_TO_BUNDLE/artifact.json" "PATH_TO_BUNDLE/artifact.zip"
 ```
 
 The verifier checks the repository, successful workflow attempt, revision and
