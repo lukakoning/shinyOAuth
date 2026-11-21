@@ -529,3 +529,41 @@ was dispatched at that exact revision. Preparation passed and the first three
 selection jobs started. The earlier matrix retains its original results.
 Release qualification awaits the fresh run's selection verdicts, companion
 checks and aggregate receipt.
+
+## Refresh module validation, 2026-11-21
+
+The matrix at `681992adec92693adeaf320b2e9717279eeeb5c4` stopped both
+`refresh/sync` and `refresh/mirai` in **Run real browser client selection**.
+The suite had returned `FINISHED/PASSED` for `oidcc-client-test-refresh-token`.
+The runner applied the login evidence check to the terminal refresh state.
+The saved `sync` ZIP matches the GitHub artifact digest. Its module result
+passes the refresh evidence check. The ZIP and artifact metadata stay under
+`.artifacts/hosted-44907547397-refresh-sync/`. [Sync job](https://github.com/lukakoning/shinyOAuth/actions/runs/44907547397/job/136878190964),
+[mirai job](https://github.com/lukakoning/shinyOAuth/actions/runs/44907547397/job/136879294272).
+
+At `98362fcd703ecdfc98ea38d16eee5301612d01a2`, the runner and release checker
+share the application evidence check. The refresh check requires the initial
+login and the state before and after the refresh. Its regression covers all
+three expected outcomes and rejects each one with missing pre-refresh state.
+
+Clean Windows runs passed `oidcc-client-test-refresh-token`,
+`oidcc-client-test-refresh-token-invalid-issuer` and
+`oidcc-client-test-refresh-token-invalid-sub` on each declared transport.
+All three original reports passed the release-source check and independent
+release protocol validation. They stay under
+`.artifacts/refresh-20261121-155028-bd793cae0e54/` (`sync`),
+`.artifacts/refresh-20261121-155028-f5ed8ca926db/` (`mirai`) and
+`.artifacts/refresh-20261121-155028-454cb55f0126/` (`future`).
+
+The targeted GitHub `refresh/sync` run completed successfully at the same
+revision. ZIP `14712351325` matched the GitHub SHA-256 digest. The retained
+preflight report and all 16 API plan inventories passed verification. The
+three-module client report passed independent protocol and release-source
+checks. The original ZIP and artifact metadata stay under
+`.artifacts/hosted-44916080514/`. [Targeted GitHub run](https://github.com/lukakoning/shinyOAuth/actions/runs/44916080514).
+
+The matrix at `4447159` was dispatched before the refresh correction. Its
+reports identify that revision. A new 39-selection attempt is running at
+`98362fcd703ecdfc98ea38d16eee5301612d01a2`. Release qualification requires its
+selection verdicts, companion checks and aggregate receipt.
+[Corrected matrix attempt](https://github.com/lukakoning/shinyOAuth/actions/runs/44916619030).
