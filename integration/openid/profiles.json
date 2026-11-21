@@ -1214,7 +1214,7 @@
       "complete_profile": false,
       "coverage_limitations": ["fapi_security_profile_selection_only", "fapi_oidc_private_key_jwt_dpop_only", "resource_request_in_main_process"],
       "modules": [
-        {"module": "fapi2-security-profile-final-client-test-happy-path", "outcome": "authenticated"},
+        {"module": "fapi2-security-profile-final-client-test-happy-path", "outcome": "authenticated", "manual_initiation": true},
         {"module": "fapi2-security-profile-final-client-test-happy-path-no-dpop-nonce", "outcome": "authenticated"},
         {"module": "fapi2-security-profile-final-client-test-invalid-iss", "outcome": "rejected", "claim": "iss"}
       ]

@@ -286,6 +286,30 @@ openid_run_case <- function(
   steps <- list()
   between <- list()
   snapshot <- initial
+  initiation <- NULL
+  if (isTRUE(expectation[["manual_initiation"]])) {
+    observed <- openid_fapi_pre_token_evidence(
+      openid_api(stack, paste0("/api/log/", module[["id"]])),
+      module,
+      plan,
+      expectation
+    )
+    initiation <- observed[c(
+      "discovery_request_count",
+      "par_request_count",
+      "authorization_request_count",
+      "token_request_count"
+    )]
+    initiation[["login_control_ready"]] <-
+      identical(
+        openid_browser_value(tab, "location.origin"),
+        app[["origin"]]
+      ) &&
+      isTRUE(openid_browser_value(
+        tab,
+        "(() => { const button = document.querySelector('#login'); return !!button && !button.disabled && button.getClientRects().length > 0; })()"
+      ))
+  }
   if (!discovery) {
     logins <- expectation[["logins"]]
     if (is.null(logins)) {
@@ -423,6 +447,9 @@ openid_run_case <- function(
     "suite_exception"
   }
   row[["app"]] <- snapshot
+  if (!is.null(initiation)) {
+    row[["authorization_initiation"]] <- initiation
+  }
   row[["callback_http"]] <- callback_http
   if (openid_auth_profile(context[["profile"]])) {
     row[["client_auth"]] <- openid_auth_evidence(

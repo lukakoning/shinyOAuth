@@ -329,6 +329,15 @@ and an invalid ID-token issuer. It uses authenticated PAR, private-key JWT,
 S256 and DPoP, with ES256 keys and query callbacks. Each suite instance must
 finish `PASSED` with matching app and request evidence. Coverage stays partial.
 
+For the normal DPoP nonce flow, the driver first waits for the Shiny login
+screen. Before it clicks **Log in**, it requires a visible, enabled control
+at the app origin, a discovery request in the suite log, and zero PAR,
+authorization or token requests. The same session then completes the usual
+browser and resource checks. The evidence covers this fixture's manual
+initiation path under [FAPI §5.3.3.1(12)](https://openid.net/specs/fapi-security-profile-2_0-final.html#section-5.3.3.1-2.12).
+Production consent and cross-site initiation controls remain application and
+deployment responsibilities.
+
 The fixture selects `id_token_profile = "fapi2"`, DPoP token types and the
 existing `minimal` front-channel mode. Browser authorization requests contain
 only `client_id` and `request_uri`; state, nonce, scope and S256 go through PAR.

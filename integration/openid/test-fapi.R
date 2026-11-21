@@ -293,6 +293,18 @@ fapi_evidence_fixture <- function(backend = "sync") {
       logs[["plan"]],
       logs[["expectation"]]
     )
+    expectation <- f[["manifest"]][["profiles"]][["fapi-dpop"]][["modules"]][[
+      i
+    ]]
+    if (isTRUE(expectation[["manual_initiation"]])) {
+      row[["authorization_initiation"]] <- list(
+        login_control_ready = TRUE,
+        discovery_request_count = 1L,
+        par_request_count = 0L,
+        authorization_request_count = 0L,
+        token_request_count = 0L
+      )
+    }
     if (identical(logs[["expectation"]][["outcome"]], "authenticated")) {
       row[["app"]][["resource"]] <- list(
         done = TRUE,
@@ -306,6 +318,47 @@ fapi_evidence_fixture <- function(backend = "sync") {
   }
   f
 }
+
+testthat::test_that("the selected FAPI login waits for explicit initiation", {
+  f <- fapi_evidence_fixture()
+  report <- f[["report"]]
+  proof <- report[["results"]][[1L]][["authorization_initiation"]]
+  testthat::expect_true(openid_check_report(
+    report,
+    f[["context"]],
+    f[["manifest"]]
+  )[["gate_passed"]])
+
+  for (name in names(proof)) {
+    changed <- report
+    value <- proof[[name]]
+    changed[["results"]][[1L]][["authorization_initiation"]][[name]] <- if (
+      is.logical(value)
+    ) {
+      FALSE
+    } else {
+      1L - value
+    }
+    check <- openid_check_report(changed, f[["context"]], f[["manifest"]])
+    testthat::expect_false(check[["gate_passed"]])
+    testthat::expect_match(check[["reason"]], "ready login", fixed = TRUE)
+  }
+
+  report[["results"]][[1L]][["authorization_initiation"]] <- NULL
+  check <- openid_check_report(report, f[["context"]], f[["manifest"]])
+  testthat::expect_false(check[["gate_passed"]])
+  testthat::expect_match(check[["reason"]], "ready login", fixed = TRUE)
+
+  historical <- f[["manifest"]]
+  historical[["profiles"]][["fapi-dpop"]][["modules"]][[1L]][[
+    "manual_initiation"
+  ]] <- NULL
+  testthat::expect_true(openid_check_report(
+    report,
+    f[["context"]],
+    historical
+  )[["gate_passed"]])
+})
 
 testthat::test_that("FAPI selection needs nonce and no-nonce resource flows and issuer rejection", {
   for (backend in c("sync", "mirai")) {

@@ -927,16 +927,29 @@ openid_check_report <- function(report, context, manifest) {
         as.list(spec[["module_variant"]])
       )
       for (result in results) {
+        expectation <- expected[[match(result[["module"]], names_expected)]]
         if (
           openid_fapi_plan(spec[["plan"]]) &&
-            !openid_fapi_matches(
-              result,
-              expected[[match(result[["module"]], names_expected)]]
-            )
+            !openid_fapi_matches(result, expectation)
         ) {
           stop(
             "Missing FAPI PAR, client authentication, sender constraint or resource evidence"
           )
+        }
+        if (isTRUE(expectation[["manual_initiation"]])) {
+          initiation <- result[["authorization_initiation"]]
+          if (
+            !is.list(initiation) ||
+              !isTRUE(initiation[["login_control_ready"]]) ||
+              !openid_count(initiation[["discovery_request_count"]], 1L) ||
+              !identical(initiation[["par_request_count"]], 0L) ||
+              !identical(initiation[["authorization_request_count"]], 0L) ||
+              !identical(initiation[["token_request_count"]], 0L)
+          ) {
+            stop(
+              "Missing FAPI evidence of a ready login before authorization begins"
+            )
+          }
         }
         if (
           auth_profile &&
@@ -948,7 +961,6 @@ openid_check_report <- function(report, context, manifest) {
         ) {
           stop("Missing actual client-authentication or S256 request evidence")
         }
-        expectation <- expected[[match(result[["module"]], names_expected)]]
         if (
           identical(spec[["plan_variant"]][["sender_constrain"]], "mtls") &&
             !identical(expectation[["action"]], "discovery") &&
