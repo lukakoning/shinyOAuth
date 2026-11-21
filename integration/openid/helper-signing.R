@@ -330,10 +330,15 @@ openid_signing_matches <- function(result, expectation) {
     return(FALSE)
   }
   if (identical(expectation[["outcome"]], "discovery_rejected")) {
-    return(identical(
-      proof,
-      list(suite_id = result[["suite_id"]], stage = "discovery")
-    ))
+    return(
+      is.list(proof) &&
+        !anyDuplicated(names(proof)) &&
+        setequal(names(proof), c("suite_id", "stage")) &&
+        identical(
+          proof[c("suite_id", "stage")],
+          list(suite_id = result[["suite_id"]], stage = "discovery")
+        )
+    )
   }
   identical(proof[["stage"]], "signed_exchange") &&
     openid_count(proof[["jar_count"]], 1L) &&
