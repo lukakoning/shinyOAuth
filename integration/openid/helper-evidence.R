@@ -6,6 +6,13 @@ openid_count <- function(value, minimum = 0L) {
     value >= minimum
 }
 
+openid_pre_login_state_clear <- function(state) {
+  is.list(state) &&
+    identical(state[["login_pending"]], FALSE) &&
+    identical(state[["callback_pending"]], FALSE) &&
+    identical(state[["state_records"]], 0L)
+}
+
 openid_app_matches <- function(app, expectation, case_id, package_version) {
   if (
     !is.list(app) ||
@@ -959,6 +966,16 @@ openid_check_report <- function(report, context, manifest) {
         ) {
           stop(
             "Missing FAPI evidence of a trusted login click with user activation"
+          )
+        }
+        if (
+          isTRUE(expectation[["pre_login_state"]]) &&
+            !openid_pre_login_state_clear(
+              result[["authorization_initiation"]][["pre_login_state"]]
+            )
+        ) {
+          stop(
+            "Missing FAPI evidence of a clear login session before the click"
           )
         }
         if (

@@ -252,6 +252,7 @@ openid_run_case <- function(
     client_assertion_alg = plan[["spec"]][["client_assertion_alg"]],
     fapi = openid_fapi_plan(plan[["spec"]][["plan"]]),
     direct_configuration = isTRUE(expectation[["direct_configuration"]]),
+    pre_login_state = isTRUE(expectation[["pre_login_state"]]),
     message_signing = identical(
       plan[["spec"]][["plan"]],
       "fapi2-message-signing-final-client-test-plan"
@@ -398,6 +399,19 @@ openid_run_case <- function(
         )
         before_login <- between[[length(between)]]
       }
+      if (i == 1L && isTRUE(expectation[["pre_login_state"]])) {
+        pre_click <- openid_wait_app(app, browser, tab)
+        initiation[["pre_login_state"]] <- pre_click[["pre_login_state"]]
+        if (
+          !identical(
+            pre_click[["session_number"]],
+            initial[["session_number"]]
+          ) ||
+            !openid_pre_login_state_clear(initiation[["pre_login_state"]])
+        ) {
+          stop("Fixture login session had unexpected state before the click")
+        }
+      }
       if (i == 1L && isTRUE(expectation[["trusted_initiation"]])) {
         initiation[["trusted_user_activation"]] <- openid_trusted_login_click(
           tab,
@@ -515,6 +529,7 @@ openid_run_case <- function(
   } else {
     "suite_exception"
   }
+  snapshot[["pre_login_state"]] <- NULL
   row[["app"]] <- snapshot
   if (!is.null(initiation)) {
     row[["authorization_initiation"]] <- initiation

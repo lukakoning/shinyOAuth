@@ -308,6 +308,13 @@ fapi_evidence_fixture <- function(backend = "sync") {
     if (isTRUE(expectation[["trusted_initiation"]])) {
       row[["authorization_initiation"]][["trusted_user_activation"]] <- TRUE
     }
+    if (isTRUE(expectation[["pre_login_state"]])) {
+      row[["authorization_initiation"]][["pre_login_state"]] <- list(
+        login_pending = FALSE,
+        callback_pending = FALSE,
+        state_records = 0L
+      )
+    }
     if (isTRUE(expectation[["direct_configuration"]])) {
       row[["app"]][["direct_fapi_configuration"]] <-
         openid_fapi_query_configuration(openid_fapi_query_configuration_client())
@@ -370,6 +377,7 @@ testthat::test_that("the selected FAPI login waits for explicit initiation", {
   report <- f[["report"]]
   proof <- report[["results"]][[1L]][["authorization_initiation"]]
   proof[["trusted_user_activation"]] <- NULL
+  proof[["pre_login_state"]] <- NULL
   testthat::expect_true(openid_check_report(
     report,
     f[["context"]],
@@ -403,6 +411,9 @@ testthat::test_that("the selected FAPI login waits for explicit initiation", {
   historical[["profiles"]][["fapi-dpop"]][["modules"]][[1L]][[
     "trusted_initiation"
   ]] <- NULL
+  historical[["profiles"]][["fapi-dpop"]][["modules"]][[1L]][[
+    "pre_login_state"
+  ]] <- NULL
   testthat::expect_true(openid_check_report(
     report,
     f[["context"]],
@@ -431,6 +442,47 @@ testthat::test_that("the trusted FAPI initiation witness is required only by its
   historical <- f[["manifest"]]
   historical[["profiles"]][["fapi-dpop"]][["modules"]][[1L]][[
     "trusted_initiation"
+  ]] <- NULL
+  testthat::expect_true(openid_check_report(
+    report,
+    f[["context"]],
+    historical
+  )[["gate_passed"]])
+})
+
+testthat::test_that("the manual FAPI case requires a clear session before clicking", {
+  f <- fapi_evidence_fixture()
+  report <- f[["report"]]
+  pending <- list(
+    login_pending = TRUE,
+    callback_pending = TRUE,
+    state_records = 1L
+  )
+  for (name in names(pending)) {
+    changed <- report
+    changed[["results"]][[1L]][["authorization_initiation"]][[
+      "pre_login_state"
+    ]][[
+      name
+    ]] <- pending[[name]]
+    check <- openid_check_report(changed, f[["context"]], f[["manifest"]])
+    testthat::expect_false(check[["gate_passed"]])
+    testthat::expect_match(
+      check[["reason"]],
+      "clear login session",
+      fixed = TRUE
+    )
+  }
+  report[["results"]][[1L]][["authorization_initiation"]][[
+    "pre_login_state"
+  ]] <- NULL
+  check <- openid_check_report(report, f[["context"]], f[["manifest"]])
+  testthat::expect_false(check[["gate_passed"]])
+  testthat::expect_match(check[["reason"]], "clear login session", fixed = TRUE)
+
+  historical <- f[["manifest"]]
+  historical[["profiles"]][["fapi-dpop"]][["modules"]][[1L]][[
+    "pre_login_state"
   ]] <- NULL
   testthat::expect_true(openid_check_report(
     report,

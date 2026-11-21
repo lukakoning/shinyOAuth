@@ -177,7 +177,8 @@ openid_fixture_app <- function(config) {
     session_number = 0L,
     refresh = NULL,
     error_description = NULL,
-    error_uri = NULL
+    error_uri = NULL,
+    pre_login_state = NULL
   ) {
     observed <- openid_fixture_audit(
       config[["audit_directory"]],
@@ -249,6 +250,7 @@ openid_fixture_app <- function(config) {
         } else {
           NULL
         },
+        pre_login_state = pre_login_state,
         authorization_error_sanitized = if (
           isTRUE(config[["cross_site_form_post"]])
         ) {
@@ -908,7 +910,14 @@ openid_fixture_app <- function(config) {
         session_number,
         refresh,
         auth[["error_description"]],
-        auth[["error_uri"]]
+        auth[["error_uri"]],
+        pre_login_state = if (isTRUE(config[["pre_login_state"]])) {
+          list(
+            login_pending = auth[["pending_login"]],
+            callback_pending = !is.null(auth[["pending_callback"]]),
+            state_records = length(client@state_store[["keys"]]())
+          )
+        }
       )
     })
   }
