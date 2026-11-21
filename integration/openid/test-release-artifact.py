@@ -53,20 +53,87 @@ class ReleaseArtifactTest(unittest.TestCase):
             "input_sha256": ["b" * 64, "a" * 64], "matrix_complete": True,
             "entries": [{"profile": "smoke"}, {"profile": "basic"}],
         }
-        self.report = {"profile": "smoke", "transport": "sync"}
+        self.lock = {
+            "source_revision": "b" * 40,
+            "source_description": "release-v5.3.4",
+            "provenance": {"release_tag": "release-v5.3.4"},
+            "images": {"server": "pinned-server"},
+        }
+        spec = {
+            "plan": "basic", "plan_variant": {"client": "oidc"},
+            "module_variant": {"response_mode": "query"},
+            "available_modules": ["oidcc-client-test", "oidcc-client-test-second"],
+        }
+        self.plans = {"basic": spec}
+        self.enterContext(patch.object(
+            verifier, "read_policy", side_effect=lambda revision, name: {
+                "suite-lock.json": self.lock,
+                "profiles.json": {
+                    "plans": self.plans,
+                    "source_revision": self.lock["source_revision"],
+                },
+            }[name],
+        ))
+        source = {"revision": self.args.revision, "tree": "f" * 40}
+        installation = {
+            "revision": self.args.revision, "tree": source["tree"],
+            "method": "git_archive", "source_fingerprint": "a" * 64,
+            "archive_sha256": "e" * 64, "package_version": "1.2.3",
+        }
+        self.report = {
+            "profile": "smoke", "transport": "sync", "checkout_revision": self.args.revision,
+            "checkout_source": source, "installation": installation,
+        }
+        common = {
+            "status": "passed", "application_flow": "not_attempted",
+            "coverage_complete": False, "source_verified": True, "cleanup_verified": True,
+            "checkout_dirty": False, "checkout_revision": self.args.revision,
+            "checkout_source": source, "checkout_source_after": source,
+            "source_revision": self.lock["source_revision"], "images": self.lock["images"],
+            "image_sources": {"server": "cached"},
+        }
+        self.preflight = {
+            **common, "schema_version": 2, "environment_checks": "passed",
+            "required_plans_present": True,
+            "r_tls": "certificate chain and hostname verified against temporary trust anchor",
+            "browser_tls": {"secure_context": True, "wrong_pin_rejected": True},
+            "server_info": {
+                "revision": self.lock["source_revision"][:7],
+                "tag": self.lock["provenance"]["release_tag"],
+            },
+            "image_provenance": {
+                "revision": self.lock["source_revision"],
+                "description": self.lock["source_description"], "dirty": False,
+            },
+        }
+        self.api = {
+            **common, "schema_version": 4, "gate_passed": False, "upstream_plan_complete": False,
+            "api_checks": {name: True for name in verifier.API_CHECKS},
+            "installation": installation, "installation_after": installation,
+            "regression_installation_after": installation,
+            "plan_inventory": {"basic": {
+                "plan": spec["plan"], "plan_variant": spec["plan_variant"],
+                "module_variant": spec["module_variant"],
+                "modules": list(reversed(spec["available_modules"])),
+                "probe_module": spec["available_modules"][0], "probe_cancelled": True,
+                "probe_variant": spec["plan_variant"] | spec["module_variant"],
+            }},
+        }
         self.member = (
             "release-inputs/openid-client-smoke-sync-evidence-attempt-2/"
             "smoke-20261121-130000-123456abcdef/evidence.json"
         )
 
-    def write_fixture(self, extra=None):
+    def write_fixture(self, extra=None, omit=None):
         with ZipFile(self.args.archive, "w") as archive:
             archive.writestr(verifier.SUMMARY, json.dumps(self.summary))
             archive.writestr(self.member, json.dumps(self.report))
-            for kind in ("api", "preflight"):
+            for kind, report in (("api", self.api), ("preflight", self.preflight)):
+                if kind == omit:
+                    continue
                 archive.writestr(
                     self.member.replace("/smoke-20261121", f"/{kind}-20261121"),
-                    "{}",
+                    json.dumps(report),
                 )
             if extra:
                 archive.writestr(extra, "{}")
@@ -96,6 +163,10 @@ class ReleaseArtifactTest(unittest.TestCase):
             receipt = verifier.verify(self.args)
         self.assertEqual(receipt["artifact_sha256"], self.artifact["digest"][7:])
         self.assertEqual(receipt["client_report_count"], 1)
+        self.assertEqual(receipt["companion_reports"]["smoke/sync"], {
+            f"{kind}_sha256": hashlib.sha256(json.dumps(report).encode()).hexdigest()
+            for kind, report in (("api", self.api), ("preflight", self.preflight))
+        })
 
     def test_rejects_changed_summary(self):
         self.write_fixture()
@@ -129,6 +200,40 @@ class ReleaseArtifactTest(unittest.TestCase):
         self.write_fixture()
         with self.assertRaisesRegex(ValueError, "report identity differs"):
             verifier.verify(self.args)
+
+    def test_requires_exactly_one_of_each_companion_for_the_selection(self):
+        self.write_fixture(omit="preflight")
+        with self.assertRaisesRegex(ValueError, "Expected client, preflight and API reports"):
+            verifier.verify(self.args)
+
+        duplicate = self.member.replace("/smoke-20261121-130000", "/api-20261121-140000")
+        self.write_fixture(extra=duplicate)
+        with self.assertRaisesRegex(ValueError, "Duplicate api report"):
+            verifier.verify(self.args)
+
+    def test_rejects_changed_source_tls_and_api_inventory(self):
+        for report, key, value, explanation in (
+            (self.preflight, "checkout_revision", "e" * 40, "checkout or suite"),
+            (self.preflight["server_info"], "tag", "release-v0.0.0", "pinned suite"),
+            (self.preflight["browser_tls"], "wrong_pin_rejected", False, "TLS evidence"),
+            (self.api, "installation_after", {}, "installed package evidence"),
+            (self.api, "plan_inventory", {}, "inventory differs"),
+            (self.api["plan_inventory"]["basic"], "probe_cancelled", False, "plan inventory"),
+            (self.api["plan_inventory"]["basic"], "probe_variant", {}, "plan inventory"),
+            (
+                self.api["plan_inventory"]["basic"], "modules",
+                ["oidcc-client-test", "oidcc-client-test"], "plan inventory",
+            ),
+        ):
+            with self.subTest(key=key):
+                previous = report[key]
+                report[key] = value
+                try:
+                    self.write_fixture()
+                    with self.assertRaisesRegex(ValueError, explanation):
+                        verifier.verify(self.args)
+                finally:
+                    report[key] = previous
 
 
 if __name__ == "__main__":

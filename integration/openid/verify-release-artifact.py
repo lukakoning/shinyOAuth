@@ -1,4 +1,4 @@
-"""Verify a retained GitHub OpenID matrix artifact and replay its client gate."""
+"""Verify a retained GitHub OpenID matrix artifact and replay its release evidence."""
 
 import argparse
 import hashlib
@@ -19,6 +19,10 @@ REPORT_PATH = re.compile(
     r"-(?P<transport>sync|mirai|future)-evidence-attempt-(?P<attempt>[1-9][0-9]*)/"
     r"(?P<kind>[a-z0-9-]+)-[0-9]{8}-[0-9]{6}-[a-f0-9]{12}/evidence\.json"
 )
+API_CHECKS = {
+    "plan_created", "module_waiting", "exported_issuer_checked",
+    "unknown_instance_rejected", "cancellation_verified",
+}
 
 
 def unique_object(pairs):
@@ -80,34 +84,160 @@ def check_metadata(args, run, artifact):
     return digest[7:]
 
 
-def read_archive(archive, attempt, directory):
+def read_policy(revision, name):
+    result = subprocess.run(
+        ["git", "show", f"{revision}:integration/openid/{name}"],
+        capture_output=True,
+    )
+    if result.returncode:
+        raise ValueError(f"Cannot read committed OpenID release policy: {name}")
+    return read_object(result.stdout)
+
+
+def check_companion(report, client, lock, schema):
+    sources = report.get("image_sources")
+    if (
+        report.get("schema_version") != schema
+        or report.get("status") != "passed"
+        or report.get("application_flow") != "not_attempted"
+        or report.get("coverage_complete") is not False
+        or report.get("source_verified") is not True
+        or report.get("cleanup_verified") is not True
+        or report.get("checkout_dirty") is not False
+        or report.get("checkout_revision") != client["checkout_revision"]
+        or report.get("checkout_source") != client["checkout_source"]
+        or report.get("checkout_source_after") != client["checkout_source"]
+        or report.get("source_revision") != lock["source_revision"]
+        or report.get("images") != lock["images"]
+        or not isinstance(sources, dict)
+        or sources.keys() != lock["images"].keys()
+        or any(source not in ("pulled", "cached") for source in sources.values())
+    ):
+        raise ValueError("Companion status, checkout or suite identity differs")
+
+
+def check_preflight(report, client, lock):
+    check_companion(report, client, lock, schema=2)
+    tls = report.get("browser_tls")
+    info = report.get("server_info")
+    provenance = report.get("image_provenance")
+    tag = lock.get("provenance", {}).get("release_tag")
+    if (
+        report.get("environment_checks") != "passed"
+        or report.get("required_plans_present") is not True
+        or report.get("r_tls") != "certificate chain and hostname verified against temporary trust anchor"
+        or not isinstance(tls, dict)
+        or tls.get("secure_context") is not True
+        or tls.get("wrong_pin_rejected") is not True
+        or not isinstance(info, dict)
+        or info.get("revision") != lock["source_revision"][:7]
+        or (tag is not None and info.get("tag") != tag)
+        or not isinstance(provenance, dict)
+        or provenance.get("revision") != lock["source_revision"]
+        or provenance.get("description") != lock["source_description"]
+        or provenance.get("dirty") is not False
+    ):
+        raise ValueError("Preflight is missing pinned suite, plan or TLS evidence")
+
+
+def check_plan_inventory(inventory, plans):
+    if not isinstance(inventory, dict) or inventory.keys() != plans.keys():
+        raise ValueError("API inventory differs from the committed plans")
+    for name, spec in plans.items():
+        observed = inventory[name]
+        available = spec["available_modules"]
+        combined = spec["plan_variant"] | (spec.get("module_variant") or {})
+        if not isinstance(observed, dict):
+            raise ValueError(f"Invalid API plan inventory for {name}")
+        modules = observed.get("modules")
+        if (
+            observed.get("plan") != spec["plan"]
+            or observed.get("plan_variant") != spec["plan_variant"]
+            or "module_variant" not in observed
+            or observed["module_variant"] != spec.get("module_variant")
+            or not isinstance(modules, list)
+            or not all(isinstance(module, str) for module in modules)
+            or sorted(modules) != sorted(available)
+            or observed.get("probe_module") not in available
+            or observed.get("probe_variant") != combined
+            or observed.get("probe_cancelled") is not True
+        ):
+            raise ValueError(f"Invalid API plan inventory for {name}")
+
+
+def check_api(report, client, lock, plans):
+    check_companion(report, client, lock, schema=4)
+    checks = report.get("api_checks")
+    installation = report.get("installation")
+    identity = (
+        "method", "revision", "tree", "source_fingerprint",
+        "archive_sha256", "package_version",
+    )
+    if (
+        report.get("gate_passed") is not False
+        or report.get("upstream_plan_complete") is not False
+        or not isinstance(checks, dict)
+        or checks.keys() != API_CHECKS
+        or any(value is not True for value in checks.values())
+        or not isinstance(installation, dict)
+        or any(installation.get(name) != client["installation"][name] for name in identity)
+        or report.get("regression_installation_after") != installation
+        or report.get("installation_after") != installation
+    ):
+        raise ValueError("API readiness or installed package evidence differs")
+    check_plan_inventory(report.get("plan_inventory"), plans)
+
+
+def read_archive(archive, attempt, directory, lock, plans):
     files = archive.infolist()
     names = [member.filename for member in files]
     if SUMMARY not in names or len(names) != len(set(names)):
         raise ValueError("Expected one release summary and unique archive paths")
 
-    clients = []
+    selections = {}
     for member in files:
         if member.filename == SUMMARY:
             continue
         match = REPORT_PATH.fullmatch(member.filename)
         if not match or int(match["attempt"]) != attempt:
             raise ValueError("Unexpected path in the release artifact")
-        if match["kind"] in {"preflight", "api"}:
-            continue
-        if match["kind"] != match["profile"]:
+        kind = match["kind"]
+        if kind == match["profile"]:
+            kind = "client"
+        elif kind not in {"api", "preflight"}:
             raise ValueError("Release report path differs from its selection")
-        data = read_member(archive, member)
-        report = read_object(data)
-        if report.get("profile") != match["profile"] or report.get("transport") != match["transport"]:
-            raise ValueError("Release report identity differs from its selection")
-        target = directory / f"client-{len(clients)}.json"
-        target.write_bytes(data)
-        clients.append(str(target))
+        key = (match["profile"], match["transport"])
+        members = selections.setdefault(key, {})
+        if kind in members:
+            raise ValueError(f"Duplicate {kind} report for {'/'.join(key)}")
+        members[kind] = member
 
-    if not clients:
+    if not selections:
         raise ValueError("No client reports in the release artifact")
-    return read_member(archive, archive.getinfo(SUMMARY)), clients
+
+    clients = []
+    companions = {}
+    for (profile, transport), members in sorted(selections.items()):
+        label = f"{profile}/{transport}"
+        if members.keys() != {"api", "client", "preflight"}:
+            raise ValueError(f"Expected client, preflight and API reports for {label}")
+        data = {name: read_member(archive, member) for name, member in members.items()}
+        client = read_object(data["client"])
+        if client.get("profile") != profile or client.get("transport") != transport:
+            raise ValueError("Release report identity differs from its selection")
+        try:
+            check_preflight(read_object(data["preflight"]), client, lock)
+            check_api(read_object(data["api"]), client, lock, plans)
+        except (KeyError, TypeError, ValueError) as error:
+            raise ValueError(f"{label}: {error}") from error
+        target = directory / f"client-{len(clients)}.json"
+        target.write_bytes(data["client"])
+        clients.append(str(target))
+        companions[label] = {
+            f"{kind}_sha256": hashlib.sha256(data[kind]).hexdigest()
+            for kind in ("preflight", "api")
+        }
+    return read_member(archive, archive.getinfo(SUMMARY)), clients, companions
 
 
 def read_member(archive, member):
@@ -136,8 +266,19 @@ def verify(args):
         if hashlib.file_digest(file, "sha256").hexdigest() != digest:
             raise ValueError("Release artifact ZIP differs from the GitHub SHA-256 digest")
         directory = Path(tmp)
+        lock = read_policy(args.revision, "suite-lock.json")
+        profiles = read_policy(args.revision, "profiles.json")
+        plans = profiles.get("plans")
+        if (
+            not isinstance(plans, dict)
+            or not plans
+            or profiles.get("source_revision") != lock.get("source_revision")
+        ):
+            raise ValueError("Committed OpenID profile manifest does not match the suite lock")
         with ZipFile(file) as archive:
-            summary, clients = read_archive(archive, args.attempt, directory)
+            summary, clients, companions = read_archive(
+                archive, args.attempt, directory, lock, plans
+            )
         replay_path = directory / "replay.json"
         result = subprocess.run(
             [
@@ -162,6 +303,7 @@ def verify(args):
         "artifact_sha256": digest,
         "summary_sha256": hashlib.sha256(summary).hexdigest(),
         "client_report_count": len(clients),
+        "companion_reports": companions,
     }
 
 

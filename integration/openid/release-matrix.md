@@ -117,11 +117,18 @@ python integration/openid/verify-release-artifact.py \
 The verifier checks the repository, successful workflow attempt, revision and
 artifact identity against the saved API responses. It compares the ZIP's
 SHA-256 with the artifact digest, replays the release checker on the original
-client reports, and compares its result with the summary in the ZIP.
-Preflight and API JSON may accompany the client reports. This check covers
-their archive bytes, while protocol revalidation covers the client reports.
-Keep the ZIP, API responses and receipt together. The GitHub responses captured
-at download time are the offline receipt's trust source.
+client reports, and compares its result with the summary in the ZIP. Each
+selection must contain one client, one preflight and one API report. The
+verifier checks that all three identify the source checked out by that job.
+It also verifies preflight TLS and cleanup, the API installation identity,
+and each API plan's module list, variants and cancelled probe against the
+suite lock and profile manifest at the selected commit.
+
+The offline receipt includes the original SHA-256 digests of the preflight
+and API reports for each selection. The standalone R checker continues to
+evaluate client protocol evidence. Keep the ZIP, API responses and receipt
+together. The GitHub responses captured at download time are the offline
+receipt's trust source.
 See the [run-attempt API](https://docs.github.com/en/rest/actions/workflow-runs#get-a-workflow-run-attempt)
 and [artifact API](https://docs.github.com/en/rest/actions/artifacts#get-an-artifact).
 
