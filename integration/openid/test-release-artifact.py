@@ -65,6 +65,7 @@ class ReleaseArtifactTest(unittest.TestCase):
             "available_modules": ["oidcc-client-test", "oidcc-client-test-second"],
         }
         self.plans = {"basic": spec}
+        self.matrix = {"selections": [{"profile": "smoke", "transport": "sync"}]}
         self.enterContext(patch.object(
             verifier, "read_policy", side_effect=lambda revision, name: {
                 "suite-lock.json": self.lock,
@@ -72,6 +73,7 @@ class ReleaseArtifactTest(unittest.TestCase):
                     "plans": self.plans,
                     "source_revision": self.lock["source_revision"],
                 },
+                "release-matrix.json": self.matrix,
             }[name],
         ))
         source = {"revision": self.args.revision, "tree": "f" * 40}
@@ -83,6 +85,7 @@ class ReleaseArtifactTest(unittest.TestCase):
         self.report = {
             "profile": "smoke", "transport": "sync", "checkout_revision": self.args.revision,
             "checkout_source": source, "installation": installation,
+            "checkout_dirty": False, "status": "passed", "gate_passed": True,
         }
         common = {
             "status": "passed", "application_flow": "not_attempted",
@@ -155,6 +158,18 @@ class ReleaseArtifactTest(unittest.TestCase):
             return SimpleNamespace(returncode=0)
 
         return patch.object(verifier.subprocess, "run", side_effect=run)
+
+    def downloaded_fixture(self, omit=None):
+        self.write_fixture(omit=omit)
+        root = self.args.archive.parent / "release-inputs"
+        with ZipFile(self.args.archive) as archive:
+            for name in archive.namelist():
+                if name == verifier.SUMMARY:
+                    continue
+                target = root / name.removeprefix("release-inputs/")
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(archive.read(name))
+        return root
 
     def test_receipt_replays_original_bytes_and_accepts_reordered_input_hashes(self):
         self.write_fixture()
@@ -234,6 +249,29 @@ class ReleaseArtifactTest(unittest.TestCase):
                         verifier.verify(self.args)
                 finally:
                     report[key] = previous
+
+    def test_downloaded_reports_cover_every_declared_selection_and_attempt(self):
+        directory = self.downloaded_fixture()
+        self.assertEqual(verifier.check_downloaded_reports(
+            directory, self.args.revision, self.args.attempt
+        ), 1)
+        self.matrix["selections"] = [{"profile": "basic", "transport": "mirai"}]
+        with self.assertRaisesRegex(ValueError, "missing basic/mirai, unexpected smoke/sync"):
+            verifier.check_downloaded_reports(directory, self.args.revision, self.args.attempt)
+        with self.assertRaisesRegex(ValueError, "Unexpected path"):
+            verifier.check_downloaded_reports(
+                directory, self.args.revision, self.args.attempt + 1
+            )
+
+    def test_downloaded_reports_require_both_companions_and_a_passing_client(self):
+        directory = self.downloaded_fixture(omit="preflight")
+        with self.assertRaisesRegex(ValueError, "Expected client, preflight and API reports"):
+            verifier.check_downloaded_reports(directory, self.args.revision, self.args.attempt)
+
+        self.report["gate_passed"] = False
+        directory = self.downloaded_fixture()
+        with self.assertRaisesRegex(ValueError, "Expected a passing client report"):
+            verifier.check_downloaded_reports(directory, self.args.revision, self.args.attempt)
 
 
 if __name__ == "__main__":

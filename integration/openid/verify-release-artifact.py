@@ -1,4 +1,4 @@
-"""Verify a retained GitHub OpenID matrix artifact and replay its release evidence."""
+"""Verify OpenID matrix job reports or replay a retained GitHub artifact."""
 
 import argparse
 import hashlib
@@ -92,6 +92,19 @@ def read_policy(revision, name):
     if result.returncode:
         raise ValueError(f"Cannot read committed OpenID release policy: {name}")
     return read_object(result.stdout)
+
+
+def read_suite_policy(revision):
+    lock = read_policy(revision, "suite-lock.json")
+    profiles = read_policy(revision, "profiles.json")
+    plans = profiles.get("plans")
+    if (
+        not isinstance(plans, dict)
+        or not plans
+        or profiles.get("source_revision") != lock.get("source_revision")
+    ):
+        raise ValueError("Committed OpenID profile manifest does not match the suite lock")
+    return lock, plans
 
 
 def check_companion(report, client, lock, schema):
@@ -188,17 +201,10 @@ def check_api(report, client, lock, plans):
     check_plan_inventory(report.get("plan_inventory"), plans)
 
 
-def read_archive(archive, attempt, directory, lock, plans):
-    files = archive.infolist()
-    names = [member.filename for member in files]
-    if SUMMARY not in names or len(names) != len(set(names)):
-        raise ValueError("Expected one release summary and unique archive paths")
-
+def check_reports(names, read, attempt, lock, plans):
     selections = {}
-    for member in files:
-        if member.filename == SUMMARY:
-            continue
-        match = REPORT_PATH.fullmatch(member.filename)
+    for path in names:
+        match = REPORT_PATH.fullmatch(path)
         if not match or int(match["attempt"]) != attempt:
             raise ValueError("Unexpected path in the release artifact")
         kind = match["kind"]
@@ -210,18 +216,16 @@ def read_archive(archive, attempt, directory, lock, plans):
         members = selections.setdefault(key, {})
         if kind in members:
             raise ValueError(f"Duplicate {kind} report for {'/'.join(key)}")
-        members[kind] = member
+        members[kind] = path
 
     if not selections:
         raise ValueError("No client reports in the release artifact")
 
-    clients = []
-    companions = {}
     for (profile, transport), members in sorted(selections.items()):
         label = f"{profile}/{transport}"
         if members.keys() != {"api", "client", "preflight"}:
             raise ValueError(f"Expected client, preflight and API reports for {label}")
-        data = {name: read_member(archive, member) for name, member in members.items()}
+        data = {kind: read(path) for kind, path in members.items()}
         client = read_object(data["client"])
         if client.get("profile") != profile or client.get("transport") != transport:
             raise ValueError("Release report identity differs from its selection")
@@ -230,14 +234,79 @@ def read_archive(archive, attempt, directory, lock, plans):
             check_api(read_object(data["api"]), client, lock, plans)
         except (KeyError, TypeError, ValueError) as error:
             raise ValueError(f"{label}: {error}") from error
-        target = directory / f"client-{len(clients)}.json"
-        target.write_bytes(data["client"])
-        clients.append(str(target))
-        companions[label] = {
+        companion_hashes = {
             f"{kind}_sha256": hashlib.sha256(data[kind]).hexdigest()
             for kind in ("preflight", "api")
         }
+        yield label, client, data["client"], companion_hashes
+
+
+def read_archive(archive, attempt, directory, lock, plans):
+    names = archive.namelist()
+    if SUMMARY not in names or len(names) != len(set(names)):
+        raise ValueError("Expected one release summary and unique archive paths")
+    names.remove(SUMMARY)
+
+    def read(path):
+        return read_member(archive, archive.getinfo(path))
+
+    clients = []
+    companions = {}
+    for label, _, data, hashes in check_reports(names, read, attempt, lock, plans):
+        target = directory / f"client-{len(clients)}.json"
+        target.write_bytes(data)
+        clients.append(str(target))
+        companions[label] = hashes
     return read_member(archive, archive.getinfo(SUMMARY)), clients, companions
+
+
+def check_downloaded_reports(directory, revision, attempt):
+    if not directory.is_dir() or directory.is_symlink():
+        raise ValueError("Expected a regular downloaded report directory")
+    lock, plans = read_suite_policy(revision)
+    matrix = read_policy(revision, "release-matrix.json")
+    try:
+        rows = matrix["selections"]
+        expected = {f"{row['profile']}/{row['transport']}" for row in rows}
+    except (KeyError, TypeError) as error:
+        raise ValueError("Invalid committed release matrix") from error
+    if not expected or len(expected) != len(rows):
+        raise ValueError("Invalid committed release matrix selections")
+
+    files = {}
+    for path in directory.rglob("*"):
+        if path.is_symlink():
+            raise ValueError("Downloaded report directories require regular files")
+        if path.is_file():
+            files[f"release-inputs/{path.relative_to(directory).as_posix()}"] = path
+
+    def read(path):
+        with files[path].open("rb") as report:
+            data = report.read(MAX_REPORT_BYTES + 1)
+        if not 0 < len(data) <= MAX_REPORT_BYTES:
+            raise ValueError("Expected a nonempty evidence file of at most 64 MiB")
+        return data
+
+    observed = set()
+    for label, client, _, _ in check_reports(files, read, attempt, lock, plans):
+        if (
+            client.get("checkout_revision") != revision
+            or client.get("checkout_dirty") is not False
+            or client.get("status") != "passed"
+            or client.get("gate_passed") is not True
+        ):
+            raise ValueError(
+                f"Expected a passing client report at the selected revision for {label}"
+            )
+        observed.add(label)
+    if expected != observed:
+        missing = ", ".join(sorted(expected - observed)) or "none"
+        unexpected = ", ".join(sorted(observed - expected)) or "none"
+        raise ValueError(
+            "Downloaded report selections differ from the matrix "
+            f"(missing {missing}, unexpected {unexpected})"
+        )
+    return len(observed)
 
 
 def read_member(archive, member):
@@ -266,15 +335,7 @@ def verify(args):
         if hashlib.file_digest(file, "sha256").hexdigest() != digest:
             raise ValueError("Release artifact ZIP differs from the GitHub SHA-256 digest")
         directory = Path(tmp)
-        lock = read_policy(args.revision, "suite-lock.json")
-        profiles = read_policy(args.revision, "profiles.json")
-        plans = profiles.get("plans")
-        if (
-            not isinstance(plans, dict)
-            or not plans
-            or profiles.get("source_revision") != lock.get("source_revision")
-        ):
-            raise ValueError("Committed OpenID profile manifest does not match the suite lock")
+        lock, plans = read_suite_policy(args.revision)
         with ZipFile(file) as archive:
             summary, clients, companions = read_archive(
                 archive, args.attempt, directory, lock, plans
@@ -309,20 +370,43 @@ def verify(args):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--repository", required=True, help="GitHub OWNER/REPO")
+    parser.add_argument("--repository", help="GitHub OWNER/REPO for ZIP replay")
     parser.add_argument("--revision", required=True, help="Full expected Git commit SHA")
-    parser.add_argument("--run-id", required=True, type=int)
+    parser.add_argument("--run-id", type=int, help="GitHub run ID for ZIP replay")
     parser.add_argument("--attempt", required=True, type=int)
-    parser.add_argument("run_metadata", type=Path, help="GitHub workflow run attempt JSON")
-    parser.add_argument("artifact_metadata", type=Path, help="GitHub aggregate artifact JSON")
-    parser.add_argument("archive", type=Path, help="Original GitHub artifact ZIP bytes")
+    parser.add_argument(
+        "--downloaded-reports", type=Path, help="Check the downloaded job artifact directories in CI"
+    )
+    parser.add_argument(
+        "run_metadata", type=Path, nargs="?", help="GitHub workflow run attempt JSON"
+    )
+    parser.add_argument(
+        "artifact_metadata", type=Path, nargs="?", help="GitHub aggregate artifact JSON"
+    )
+    parser.add_argument(
+        "archive", type=Path, nargs="?", help="Original GitHub artifact ZIP bytes"
+    )
     args = parser.parse_args()
     if not re.fullmatch(r"[a-f0-9]{40}", args.revision):
         parser.error("--revision requires a full lowercase Git commit SHA")
-    if args.run_id <= 0 or args.attempt <= 0:
+    if args.attempt <= 0 or (args.run_id is not None and args.run_id <= 0):
         parser.error("--run-id and --attempt must be positive")
+    zip_inputs = (
+        args.repository, args.run_id, args.run_metadata, args.artifact_metadata, args.archive,
+    )
+    if args.downloaded_reports is not None:
+        if any(value is not None for value in zip_inputs):
+            parser.error("--downloaded-reports must be used independently of ZIP replay")
+    elif any(value is None for value in zip_inputs):
+        parser.error("ZIP replay requires --repository, --run-id and all three input files")
     try:
-        print(json.dumps(verify(args), indent=2))
+        if args.downloaded_reports is not None:
+            count = check_downloaded_reports(
+                args.downloaded_reports, args.revision, args.attempt
+            )
+            print(f"Verified preflight and API reports for {count} declared OpenID selections.")
+        else:
+            print(json.dumps(verify(args), indent=2))
     except (BadZipFile, OSError, ValueError) as error:
         parser.exit(1, f"{error}\n")
 

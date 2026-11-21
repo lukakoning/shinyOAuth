@@ -74,9 +74,10 @@ This dispatch starts all 39 selections; use `openid-conformance.yml` for a
 single selection. The matrix does not stop other selections after one fails.
 The aggregate job downloads matching artifacts from its own workflow run and
 attempt, keeps their directories separate, and gives every client report to
-the existing revision-bound checker. Preflight and API reports are retained
-separately from client matrix inputs. A failed or cancelled selection job
-fails the aggregate even if its client report passed. Artifact names
+the existing revision-bound checker. A second step verifies the downloaded
+preflight and API reports for each declared selection against the same
+attempt and commit. Both steps must pass. A failed or cancelled selection job
+also fails the aggregate. Artifact names
 include the attempt number, preserving earlier attempts and avoiding upload
 name conflicts. Retry the complete workflow with **Re-run all jobs** or start
 a fresh dispatch. A partial rerun has an incomplete current-attempt report set
@@ -86,6 +87,16 @@ The aggregate upload includes only the original sanitized `evidence.json`
 files and the summary, with a requested retention of 90 days. Repository and
 organization artifact policies still apply. Durable release storage and
 authenticated artifact provenance require separate release evidence.
+
+To recheck the preflight and API evidence from downloaded selection directories,
+use the same command as the aggregate job. Keep the selection artifact names
+as the directory names under the download path.
+
+```sh
+python3 integration/openid/verify-release-artifact.py \
+  --revision FULL_COMMIT_SHA --attempt ATTEMPT_NUMBER \
+  --downloaded-reports integration/openid/.artifacts/release-inputs
+```
 
 ## Verify and retain a completed attempt
 

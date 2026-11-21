@@ -99,6 +99,13 @@ jobs:
           cat(result[["stderr"]], file = stderr())
           if (result[["status"]] != 0L) stop("Declared release matrix evidence failed")
 
+      - name: Verify preflight and API reports for each declared selection
+        run: |
+          python3 integration/openid/verify-release-artifact.py \
+            --revision "$GITHUB_SHA" \
+            --attempt "$GITHUB_RUN_ATTEMPT" \
+            --downloaded-reports integration/openid/.artifacts/release-inputs
+
       - name: Require every selection job to succeed
         if: ${{ always() && needs.selections.result != 'success' }}
         run: |
