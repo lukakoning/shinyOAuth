@@ -458,3 +458,29 @@ matched GitHub's digest. Independent checks also accepted its preflight,
 metadata are under `.artifacts/hosted-44911471869/`. These results qualify
 the targeted selection. The ongoing matrix attempt retains its original
 failure and continues to collect evidence for the remaining selections.
+
+## Matrix CI and trusted FAPI login, 2026-11-21
+
+`3e4a793` adds the preflight and API report check to the matrix workflow
+after the client aggregate. The workflow uses the same report validator as
+offline ZIP replay and checks every declared selection for the chosen
+revision and attempt. Nine verifier tests passed. The exact command accepted
+39 synthetic client reports and their 78 accompanying reports on Windows and
+Linux. With all 39 client reports present, removing an API report or changing
+its cancelled-probe evidence failed the gate. A downloaded, genuine passing
+`fapi-dpop-full/sync` selection reached the expected matrix-incomplete error.
+The full hosted execution of the new aggregate step remains open.
+
+`cda9f80` requires the manual DPoP nonce case to use Chrome DevTools pointer
+input. The login button must observe a trusted click with transient user
+activation after the runner records zero pre-click PAR, authorization and
+token requests. The manifest requires this field only for the selected case.
+See the [HTML activation rules](https://html.spec.whatwg.org/multipage/interaction.html#tracking-user-activation).
+
+Clean Windows `fapi-dpop` runs passed all three modules with `sync` and
+`mirai`. Both original JSON reports recorded the activation field and
+passed independent release revalidation and the release-source check at
+`cda9f80f5a381605dc77459f88b018ad2e5f4a62`. The reports stay under
+`.artifacts/fapi-dpop-20261121-152003-ffc30462d679/` (sync) and
+`.artifacts/fapi-dpop-20261121-152003-1d062055fd07/` (mirai).
+Production consent and cross-site initiation remain application concerns.

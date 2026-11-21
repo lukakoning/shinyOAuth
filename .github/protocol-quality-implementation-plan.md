@@ -13,14 +13,14 @@ aggregate before assigning any release-matrix completion credit.
    The targeted selection passed on Windows and GitHub. The complete matrix
    still needs a fresh attempt for the selected release revision.
 2. Verify the completed passing attempt with the offline artifact checker.
-   The verifier checks preflight and API inventories for each client selection
-   (`0da2fb4`). Future matrix dispatches also enforce source artifact digests
-   (`0768f2f1`). Individual job artifacts request seven days and the
-   aggregate requests 90. Permanent release storage remains open.
-3. Use the [FAPI requirement map](../integration/openid/requirements.md) to
-   assess the remaining application and deployment controls after the selected
-   manual-initiation check. Optional mTLS alias selection remains a separate
-   scope decision.
+   CI and offline replay both check preflight and API inventories for each
+   client selection (`3e4a793`). Future matrix dispatches also enforce source
+   artifact digests (`0768f2f1`). Individual job artifacts request seven days
+   and the aggregate requests 90. Permanent release storage remains open.
+3. The selected FAPI manual-initiation case now requires a trusted Chrome
+   click with transient activation. The [FAPI requirement map](../integration/openid/requirements.md)
+   tracks the remaining application and deployment controls. Optional mTLS
+   alias selection remains a separate scope decision.
 
 **Historical steering-agent review and handoff (2026-11-18).** Author: the separate Codex
 steering/review agent, at the user's request. Reviewed clean checkout
@@ -2994,6 +2994,13 @@ per-selection preflight and API verification to the offline receipt.
 hosted matrix. The same 23-module selection passed on Windows and GitHub
 at that revision. The [release review](../integration/openid/release-review.md#preflight-and-api-evidence-and-chrome-startup-2026-11-21)
 records the failed attempt, verified artifact, and scope of the retry tests.
+
+SA08 and C15 verification (2026-11-21): `3e4a793` makes the matrix workflow
+verify the downloaded preflight and API reports after the revision-bound
+client check. The exact command accepts the 39-row synthetic input on
+Windows and Linux and rejects missing or altered companion evidence.
+`cda9f80` requires trusted Chrome pointer input and transient activation
+in the selected manual FAPI case. See the [acceptance record](../integration/openid/release-review.md#matrix-ci-and-trusted-fapi-login-2026-11-21).
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second
