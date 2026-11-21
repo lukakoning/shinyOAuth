@@ -23,8 +23,12 @@ jobs:
           r-version: "4.5.1"
           use-public-rspm: true
 
-      - name: Install matrix reader
-        run: Rscript -e 'install.packages("jsonlite")'
+      - name: Install report checker dependencies
+        shell: Rscript {0}
+        run: |
+          packages <- c("jsonlite", "openssl", "processx")
+          install.packages(packages, repos = Sys.getenv("RSPM"))
+          stopifnot(all(vapply(packages, requireNamespace, logical(1), quietly = TRUE)))
 
       - name: Validate the committed selection matrix
         id: matrix
@@ -64,7 +68,11 @@ jobs:
           use-public-rspm: true
 
       - name: Install report checker dependencies
-        run: Rscript -e 'install.packages(c("jsonlite", "openssl", "processx"))'
+        shell: Rscript {0}
+        run: |
+          packages <- c("jsonlite", "openssl", "processx")
+          install.packages(packages, repos = Sys.getenv("RSPM"))
+          stopifnot(all(vapply(packages, requireNamespace, logical(1), quietly = TRUE)))
 
       - name: Download reports from this workflow run
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0

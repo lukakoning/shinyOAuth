@@ -2936,6 +2936,12 @@ checks validate report handling. Live matrix evidence comes from a separate
 hosted execution. Private fixture receipts are in
 `codex/release-workflow-blocks/`.
 
+The [first hosted attempt](https://github.com/lukakoning/shinyOAuth/actions/runs/44907373886)
+stopped before matrix expansion because `install.packages()` had no configured
+mirror. Both setup jobs now pass the RSPM repository from setup-r explicitly
+and check that all three report checker dependencies load. Checking them in
+preparation catches setup failures before starting the 39 browser jobs.
+
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second
 full provider. Add another mock server only when a remaining test case justifies
