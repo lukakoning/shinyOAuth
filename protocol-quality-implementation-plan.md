@@ -63,9 +63,9 @@ limit. C06 retains the original OIDF/Keycloak header limits and no
 shared-worker-cache claim. SA07 implements rejected-callback URL cleanup
 and selected HTTPS cross-site Form Post success/denial with versioned
 browser evidence; broader deployment/browser policies remain open. SA08
-implements a declared OIDF selection gate; full matrix execution and
-durable retention remain open. SA03 remains conditional. See the
-[release
+implements a declared OIDF selection gate and a manual workflow for all
+declared pairs. Full matrix execution and durable retention remain open.
+SA03 remains conditional. See the [release
 review](https://lukakoning.github.io/integration/openid/release-review.md).
 
 | Milestone | Current implemented scope | Remaining boundary |
@@ -77,7 +77,7 @@ review](https://lukakoning.github.io/integration/openid/release-review.md).
 | C11-C12 | Four full mTLS selections and the 29-module Message Signing selection | mTLS simulated-server enforcement/registration limits and exact signing/callback configurations remain explicit. |
 | C13-C14 | Pinned second-provider public/confidential code/refresh/browser flows and the declared advanced-flow/lifecycle selections | These are interoperability evidence, not additional OIDF certification profiles. |
 | C15 | Rejected-callback URL cleanup, versioned browser proof, selected HTTPS cross-site success/denial and requirement-selected regressions | Other production/proxy/browser/cookie-policy cases and named cryptography gaps stay open. |
-| C16 / SA08 | CI smoke, manual larger selections, acquisition/source checks and a declared OIDF aggregate gate | Execution of every declared selection at one revision, other provider/platform evidence and durable release retention remain. |
+| C16 / SA08 | CI smoke, manual larger selections, acquisition/source checks, a declared OIDF aggregate gate and manual matrix orchestration | Execution of every declared selection at one revision, other provider/platform evidence and durable release retention remain. |
 
 Use the implemented commands in the [environment
 README](https://lukakoning.github.io/integration/openid/README.md).
@@ -3223,6 +3223,86 @@ budget. Independent review, air, jarl and patch whitespace checks
 passed. A clean-checkout full Keycloak run and fresh hosted checks
 follow this commit; no full-suite or final 39-selection release claim is
 made here. User edits to DESCRIPTION and NEWS remain excluded.
+
+SA08 manual matrix orchestration (2026-11-20): a new dispatch-only
+`openid-release-matrix.yml` validates the selected commit’s existing
+matrix with the existing R helpers and runs every declared
+profile/transport pair. It reuses `openid-conformance.yml` from the same
+commit, retaining preflight, API inventory, regression, browser and
+release-source gates in each job. At most three selection jobs run
+together; one failure does not cancel the other rows. The aggregate
+always runs after a successful matrix preparation, downloads only this
+run and attempt’s original sanitized JSON, and invokes the existing
+revision-bound release CLI. Failed/cancelled selection jobs also fail
+the aggregate independently of a stored client report’s result.
+
+Review identified immutable artifact-name conflicts on partial reruns.
+Both selection and aggregate names now include the workflow attempt
+number, and downloads select only that attempt. Rerunning all jobs or
+starting a fresh dispatch is required for complete matrix evidence; old
+attempts cannot fill missing rows. The aggregate requests 90-day
+retention for original JSON and its summary, subject to repository
+policy. This is bounded CI retention, not durable release publication or
+authenticated provenance. Existing summary limits and certification
+status remain unchanged. The workflow has not yet executed all 39
+selections and receives no matrix-completion credit.
+
+CI clean-entrypoint acceptance (2026-11-20): fixes `6d87b800` and
+`486c5d17` are pushed to master. The actual tracked Keycloak one-shot at
+clean `486c5d17793ebef1d70aaa6a17ee71fff1e00798` passed 2,663 assertions
+across 217 test rows and 59 files, with zero failures, errors, test
+warnings or skips. Test execution took 449.9 seconds; the complete
+entrypoint took 490.32 seconds and exited successfully. It created a
+fresh realm/TLS stack, installed the selected checkout in its own
+temporary library, and removed its owned container through the tracked
+cleanup path. Before/after source and all 39 installed-file guards
+passed; the actual namespace matched that private installation. The
+detached worktree stayed clean and main DESCRIPTION/NEWS bytes stayed
+unchanged. Two Browser.close teardown timeout messages remain in private
+stderr logs; they were not suppressed and produced no test
+warning/error. Exact CSV, source/installation inventories and receipts
+remain ignored under `codex/keycloak-actions-fix/full-clean-*`.
+
+Hosted checks at `486c5d17` also passed. All eight [R-CMD-check
+jobs](https://github.com/lukakoning/shinyOAuth/actions/runs/44648052584)
+passed, including the seven full checks and the CRAN selection. The
+[integration
+workflow](https://github.com/lukakoning/shinyOAuth/actions/runs/44648053287)
+passed all steps, including 886 browser and 2,663 Keycloak assertions
+with zero failures, warnings or skips. The [SMART
+workflow](https://github.com/lukakoning/shinyOAuth/actions/runs/44648052615)
+passed at the same revision.
+
+The [Message Signing/mirai
+run](https://github.com/lukakoning/shinyOAuth/actions/runs/44648169990)
+passed all 29 selected modules. Independent review matched the three
+uploaded sanitized reports to GitHub’s artifact digest and verified all
+1,002 source file hashes against the selected archive. The 16 API
+inventories, 10 callback cleanup records and release-source check
+passed. The serialized installation records agree across the run. The
+downloaded artifact contains reports only, so the physical
+installed-file check belongs to the separate local run. The private
+receipt is in `codex/keycloak-actions-fix/hosted-44648169990/`.
+
+SA08 workflow validation (2026-11-21): the complete synthetic input set
+exposed an order-sensitive comparison in the Message Signing discovery
+witness. The aggregate checker sorts JSON object fields, which changed
+the witness order and caused a valid report to fail. The checker now
+requires exactly the original two fields and their expected values
+regardless of field order. The evidence suite checks both orders and
+rejects missing, duplicate, extra and changed fields. Both sync and
+mirai fixtures exercise the aggregate gate. The normal evidence suite
+passed all 8,321 assertions on Windows, including 47 new assertions,
+with zero failures, errors, test warnings or skips.
+
+The exact workflow R steps exported the declared 39 pairs and rejected
+seven invalid or incomplete inputs on Windows and Linux. The corrected
+checker accepted all 39 synthetic reports on each platform and matched
+their input byte hashes. A read-only replay of the original real Message
+Signing report at `8cd6d166` retained its verdict after
+canonicalization. These checks validate report handling. Live matrix
+evidence comes from a separate hosted execution. Private fixture
+receipts are in `codex/release-workflow-blocks/`.
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
