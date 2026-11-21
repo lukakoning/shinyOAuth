@@ -273,6 +273,69 @@ class ReleaseArtifactTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Expected a passing client report"):
             verifier.check_downloaded_reports(directory, self.args.revision, self.args.attempt)
 
+    def retention_fixture(self):
+        self.args.retain = self.args.archive.parent / "retained"
+        self.artifact["expired"] = False
+        self.write_fixture()
+        actions = f"repos/{self.args.repository}/actions"
+        run = f"{actions}/runs/{self.args.run_id}"
+        artifact = f"{actions}/artifacts/{self.artifact['id']}"
+        return {
+            f"{run}/attempts/{self.args.attempt}": self.args.run_metadata.read_bytes(),
+            f"{run}/artifacts?name={self.artifact['name']}&per_page=2": json.dumps({
+                "total_count": 1, "artifacts": [self.artifact],
+            }).encode(),
+            artifact: self.args.artifact_metadata.read_bytes(),
+            f"{artifact}/zip": self.args.archive.read_bytes(),
+        }
+
+    def mock_github_api(self, responses):
+        def api(endpoint, stdout=None):
+            data = responses[endpoint]
+            if stdout is not None:
+                stdout.write(data)
+                return None
+            return data
+
+        return patch.object(verifier, "github_api", side_effect=api)
+
+    def test_retains_original_bytes_and_receipt_in_a_new_bundle(self):
+        responses = self.retention_fixture()
+        with self.mock_github_api(responses), self.mock_replay(self.summary):
+            receipt = verifier.retain(self.args)
+
+        for original in (self.args.run_metadata, self.args.artifact_metadata, self.args.archive):
+            self.assertEqual(
+                (self.args.retain / original.name).read_bytes(), original.read_bytes()
+            )
+        receipt_path = self.args.retain / "receipt.json"
+        self.assertEqual(json.loads(receipt_path.read_bytes()), receipt)
+        with patch.object(verifier, "github_api") as api:
+            with self.assertRaisesRegex(ValueError, "destination already exists"):
+                verifier.retain(self.args)
+            api.assert_not_called()
+        self.assertEqual(json.loads(receipt_path.read_bytes()), receipt)
+
+    def test_retention_rejects_in_progress_run_before_artifact_lookup(self):
+        self.run.update(status="in_progress", conclusion=None)
+        responses = self.retention_fixture()
+        run_endpoint = next(iter(responses))
+        with self.mock_github_api({run_endpoint: responses[run_endpoint]}) as api:
+            with self.assertRaisesRegex(ValueError, "successful OpenID matrix workflow attempt"):
+                verifier.retain(self.args)
+            api.assert_called_once_with(run_endpoint)
+        self.assertFalse(self.args.retain.exists())
+
+    def test_retention_cleans_up_after_archive_verification_fails(self):
+        responses = self.retention_fixture()
+        zip_endpoint = next(endpoint for endpoint in responses if endpoint.endswith("/zip"))
+        responses[zip_endpoint] += b"unexpected bytes"
+        with self.mock_github_api(responses):
+            with self.assertRaisesRegex(ValueError, "SHA-256 digest"):
+                verifier.retain(self.args)
+        self.assertFalse(self.args.retain.exists())
+        self.assertEqual(list(self.args.retain.parent.glob(".openid-matrix-*")), [])
+
 
 if __name__ == "__main__":
     unittest.main()

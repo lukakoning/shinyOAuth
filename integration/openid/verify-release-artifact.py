@@ -1,4 +1,4 @@
-"""Verify OpenID matrix job reports or replay a retained GitHub artifact."""
+"""Verify OpenID matrix job reports, replay a GitHub artifact or retain a verified bundle."""
 
 import argparse
 import hashlib
@@ -39,7 +39,7 @@ def read_object(data):
     return result
 
 
-def check_metadata(args, run, artifact):
+def check_run_metadata(args, run):
     repository = run.get("repository", {})
     head_repository = run.get("head_repository", {})
     if not isinstance(repository, dict) or not isinstance(head_repository, dict):
@@ -63,14 +63,21 @@ def check_metadata(args, run, artifact):
         or run.get("conclusion") != "success"
     ):
         raise ValueError("Expected the selected successful OpenID matrix workflow attempt")
+    return repository_id
 
+
+def aggregate_name(attempt):
+    return f"openid-declared-matrix-evidence-attempt-{attempt}"
+
+
+def check_artifact_metadata(args, repository_id, artifact):
     artifact_run = artifact.get("workflow_run", {})
     artifact_id = artifact.get("id")
     digest = artifact.get("digest")
     if (
         type(artifact_id) is not int
         or artifact_id <= 0
-        or artifact.get("name") != f"openid-declared-matrix-evidence-attempt-{args.attempt}"
+        or artifact.get("name") != aggregate_name(args.attempt)
         or not isinstance(artifact_run, dict)
         or artifact_run.get("id") != args.run_id
         or artifact_run.get("repository_id") != repository_id
@@ -330,7 +337,7 @@ def summary_for_comparison(data):
 def verify(args):
     run = read_object(args.run_metadata.read_bytes())
     artifact = read_object(args.artifact_metadata.read_bytes())
-    digest = check_metadata(args, run, artifact)
+    digest = check_artifact_metadata(args, check_run_metadata(args, run), artifact)
     with args.archive.open("rb") as file, tempfile.TemporaryDirectory() as tmp:
         if hashlib.file_digest(file, "sha256").hexdigest() != digest:
             raise ValueError("Release artifact ZIP differs from the GitHub SHA-256 digest")
@@ -368,14 +375,82 @@ def verify(args):
     }
 
 
+def github_api(endpoint, stdout=subprocess.PIPE):
+    try:
+        return subprocess.run(
+            ["gh", "api", "--hostname", "github.com", endpoint],
+            stdout=stdout,
+            check=True,
+        ).stdout
+    except subprocess.CalledProcessError as error:
+        raise ValueError(f"GitHub API request failed: {endpoint}") from error
+
+
+def retain(args):
+    destination = args.retain
+    if destination.exists() or destination.is_symlink():
+        raise ValueError(f"Bundle destination already exists: {destination}")
+
+    actions_api = f"repos/{args.repository}/actions"
+    run_api = f"{actions_api}/runs/{args.run_id}"
+    run_data = github_api(f"{run_api}/attempts/{args.attempt}")
+    repository_id = check_run_metadata(args, read_object(run_data))
+    name = aggregate_name(args.attempt)
+    listing = read_object(github_api(f"{run_api}/artifacts?name={name}&per_page=2"))
+    artifacts = listing.get("artifacts")
+    if (
+        listing.get("total_count") != 1
+        or not isinstance(artifacts, list)
+        or len(artifacts) != 1
+        or not isinstance(artifacts[0], dict)
+        or artifacts[0].get("name") != name
+        or type(artifacts[0].get("id")) is not int
+        or artifacts[0]["id"] <= 0
+        or artifacts[0].get("expired") is not False
+    ):
+        raise ValueError("Expected one available aggregate artifact for the selected attempt")
+    artifact_api = f"{actions_api}/artifacts/{artifacts[0]['id']}"
+    artifact_data = github_api(artifact_api)
+    artifact = read_object(artifact_data)
+    check_artifact_metadata(args, repository_id, artifact)
+    if artifact["id"] != artifacts[0]["id"] or artifact.get("expired") is not False:
+        raise ValueError("Aggregate artifact identity or availability changed")
+
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=".openid-matrix-", dir=destination.parent) as tmp:
+        stage = Path(tmp) / "bundle"
+        stage.mkdir()
+        replay = argparse.Namespace(
+            repository=args.repository, revision=args.revision,
+            run_id=args.run_id, attempt=args.attempt,
+            run_metadata=stage / "run.json", artifact_metadata=stage / "artifact.json",
+            archive=stage / "artifact.zip",
+        )
+        replay.run_metadata.write_bytes(run_data)
+        replay.artifact_metadata.write_bytes(artifact_data)
+        with replay.archive.open("wb") as archive:
+            github_api(f"{artifact_api}/zip", stdout=archive)
+        receipt = verify(replay)
+        (stage / "receipt.json").write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
+        # A collector publishes the whole bundle at once. A concurrent successful
+        # collector leaves a nonempty destination that rename will refuse to replace.
+        if destination.exists() or destination.is_symlink():
+            raise ValueError(f"Bundle destination already exists: {destination}")
+        stage.rename(destination)
+    return receipt
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--repository", help="GitHub OWNER/REPO for ZIP replay")
+    parser.add_argument("--repository", help="GitHub OWNER/REPO for ZIP replay or retention")
     parser.add_argument("--revision", required=True, help="Full expected Git commit SHA")
-    parser.add_argument("--run-id", type=int, help="GitHub run ID for ZIP replay")
+    parser.add_argument("--run-id", type=int, help="GitHub run ID for ZIP replay or retention")
     parser.add_argument("--attempt", required=True, type=int)
     parser.add_argument(
         "--downloaded-reports", type=Path, help="Check the downloaded job artifact directories in CI"
+    )
+    parser.add_argument(
+        "--retain", type=Path, help="Fetch and verify a successful GitHub attempt into a new directory"
     )
     parser.add_argument(
         "run_metadata", type=Path, nargs="?", help="GitHub workflow run attempt JSON"
@@ -391,13 +466,18 @@ def main():
         parser.error("--revision requires a full lowercase Git commit SHA")
     if args.attempt <= 0 or (args.run_id is not None and args.run_id <= 0):
         parser.error("--run-id and --attempt must be positive")
-    zip_inputs = (
-        args.repository, args.run_id, args.run_metadata, args.artifact_metadata, args.archive,
-    )
+    files = (args.run_metadata, args.artifact_metadata, args.archive)
     if args.downloaded_reports is not None:
-        if any(value is not None for value in zip_inputs):
-            parser.error("--downloaded-reports must be used independently of ZIP replay")
-    elif any(value is None for value in zip_inputs):
+        if any(value is not None for value in (args.repository, args.run_id, args.retain, *files)):
+            parser.error("--downloaded-reports must be used independently of ZIP replay or retention")
+    elif args.retain is not None:
+        if args.run_id is None or not re.fullmatch(
+            r"[a-zA-Z0-9-]+/(?!\.{1,2}$)[a-zA-Z0-9_.-]+", args.repository or ""
+        ):
+            parser.error("--retain requires --repository OWNER/REPO and --run-id")
+        if any(value is not None for value in files):
+            parser.error("--retain downloads its own input files")
+    elif any(value is None for value in (args.repository, args.run_id, *files)):
         parser.error("ZIP replay requires --repository, --run-id and all three input files")
     try:
         if args.downloaded_reports is not None:
@@ -405,6 +485,9 @@ def main():
                 args.downloaded_reports, args.revision, args.attempt
             )
             print(f"Verified preflight and API reports for {count} declared OpenID selections.")
+        elif args.retain is not None:
+            receipt = retain(args)
+            print(f"Retained {receipt['client_report_count']} verified OpenID selections in {args.retain}.")
         else:
             print(json.dumps(verify(args), indent=2))
     except (BadZipFile, OSError, ValueError) as error:
