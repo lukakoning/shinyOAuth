@@ -98,7 +98,7 @@ topic column is an index, not a replacement for the normative text.
 | [5.3.3.1(9)](https://openid.net/specs/fapi-security-profile-2_0-final.html#section-5.3.3.1-2.9), discovered metadata | Client; public OIDC/OAuth discovery constructors | E7; fixture obtains protocol endpoints from discovery, with its configured trusted issuer | Manually constructed providers and arbitrary endpoint overrides remain general OAuth features. A FAPI application must keep them within an explicitly reviewed configuration; signed metadata is not an automatic gap in these TLS-discovered selections. |
 | [5.3.3.1(10)](https://openid.net/specs/fapi-security-profile-2_0-final.html#section-5.3.3.1-2.10), issuer custody | Application/operator, with client input validation | E7 validates configured issuer URLs; harness supplies the suite-owned issuer over its authenticated local control channel | The package cannot establish the authority of an application-supplied issuer. Review deployment configuration and any user/tenant issuer selector; never treat HTTPS syntax alone as trust. |
 | [5.3.3.1(11)](https://openid.net/specs/fapi-security-profile-2_0-final.html#section-5.3.3.1-2.11), issuer equality | Client; trusted issuer input and exact matching | E7; discovery-mismatch rejection in each applicable FAPI selection | The OIDC helper also accepts document URLs with explicit `issuer_match = "url"` compatibility behavior. Select exact issuer input for this claim; do not credit that compatibility mode as exact configured-issuer equality. |
-| [5.3.3.1(12)](https://openid.net/specs/fapi-security-profile-2_0-final.html#section-5.3.3.1-2.12), initiation consent | Client application and browser-facing deployment | [oauth_module_server.R](../../R/oauth_module_server.R), manual `request_login()` / automatic redirect; [test-module-server.R](../../tests/testthat/test-module-server.R), manual login and browser-token protection; E8 covers callback/browser swapping | Existing callback-CSRF tests do not by themselves establish initiation-CSRF protection or user awareness. Name the consent/intent model for manual and automatic login, then add a real cross-site initiation attempt with an observable no-start/no-PAR outcome where consent is absent. This is a C15 candidate. |
+| [5.3.3.1(12)](https://openid.net/specs/fapi-security-profile-2_0-final.html#section-5.3.3.1-2.12), initiation consent | Client application and browser-facing deployment | The [DPoP nonce browser case](README.md) checks the ready app and live discovery before **Log in**, with zero PAR, authorization and token requests, then completes the selected flow. [Module tests](../../tests/testthat/test-module-server.R) cover manual login and browser-token protection. | Production consent, automatic initiation and cross-site initiation protection need their own application and deployment evidence. E8 measures callback binding. |
 | [5.3.3.1(13)](https://openid.net/specs/fapi-security-profile-2_0-final.html#section-5.3.3.1-2.13), least privilege | Application; configured scopes/resource targets | [utils__scopes.R](../../R/utils__scopes.R), [utils__resource_binding.R](../../R/utils__resource_binding.R), and [test-refresh-scope-narrowing.R](../../tests/testthat/test-refresh-scope-narrowing.R); OAuth fixture requests `accounts` | Scope parsing and narrowing cannot decide business necessity. Application owners must justify configured scopes/resources. |
 | [5.3.3.1 note 1](https://openid.net/specs/fapi-security-profile-2_0-final.html#section-5.3.3.1-3), clock guidance | Conditional client recommendation; private-key JWT on devices with inaccurate clocks | E5 uses `Sys.time()` for assertion timestamps and creates fresh assertions on supported retries | No HTTP-Date-based clock synchronization is implemented here. Server deployments should maintain their clocks; assess the optional adjustment before claiming support for inaccurate-clock devices. This note does not add a new authorization-flow module requirement. |
 | [5.3.3.2(1)](https://openid.net/specs/fapi-security-profile-2_0-final.html#section-5.3.3.2-2.1), code grant | Client; every listed authorization-flow selection | E8 sets `response_type = "code"`; E1 checks actual PAR and token grant values | No implicit/hybrid-flow claim. |
@@ -143,15 +143,16 @@ topic column is an index, not a replacement for the normative text.
 
 ## Work selected by the map
 
-1. Define authorization-initiation consent for the public module/wrappers, then
-   test a cross-site trigger before PAR. Reuse existing callback-swapping and
-   browser-binding fixtures, but require evidence about initiation itself.
-2. Implement C15 callback-error URL cleanup while preserving the existing HTTP
-   rejection, privacy headers, no-reflection and zero-token-request assertions.
-3. Add a compact FAPI configuration assessment/example that checks issuer-string
-   assertions, strict callback issuer handling, discovered endpoints, PAR/minimal
-   parameters, S256 and all configured JWT purposes. Keep general OAuth defaults
-   available and keep this assessment distinct from the ID-token profile option.
+1. Extend the manual-initiation evidence to the chosen application's consent
+   model and browser-facing controls. The selected DPoP nonce case covers ordinary
+   navigation to the login screen.
+2. C15 covers callback-error URL cleanup in the selected browser paths. Review
+   uncovered deployment paths against the same rejection and privacy criteria.
+   See the [acceptance record](release-review.md#rejected-callback-cleanup-acceptance-2026-11-19).
+3. Extend the [Message Signing configuration assessment](requirements-jwt-signing.md)
+   to the selected direct FAPI configuration. Check issuer-string assertions,
+   RFC 9207 callback issuer handling, discovered endpoints, PAR/minimal parameters,
+   S256 and the configured JWT purposes against that configuration.
 4. Decide whether alias-only mTLS ecosystems are a supported feature. If they
    are, model `use_mtls_endpoint_aliases` independently of authentication and
    sender constraint, then test both enabled and omitted metadata behavior.

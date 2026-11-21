@@ -362,4 +362,36 @@ their respective revisions and are not combined into a complete release.
 Private receipts remain ignored under `codex/cross-site-acceptance/`,
 `codex/shared-quality-acceptance/` and `codex/warm-jwks-par/`.
 Durable retention, other release/provider/platform selections and certification
-remain separate work; workflow artifact retention is still seven days.
+remain separate work. These individual workflow artifacts had seven days of
+retention.
+
+## Matrix artifact verification and FAPI initiation, 2026-11-21
+
+The [first hosted matrix attempt](https://github.com/lukakoning/shinyOAuth/actions/runs/44907373886)
+stopped during R dependency setup. The
+[second attempt](https://github.com/lukakoning/shinyOAuth/actions/runs/44907547397)
+passed preparation and expanded its 39-selection matrix at `681992ad`.
+The aggregate remains pending. Individual artifacts request seven days and
+the aggregate requests 90 days, subject to repository policy.
+
+The [offline verifier](release-matrix.md#verify-and-retain-a-completed-attempt)
+matches the ZIP to the run-attempt and artifact metadata, checks its GitHub
+SHA-256, and reruns the revision-bound release checker. Five verifier tests
+passed, and the full replay accepted a ZIP containing 39 synthetic client
+reports. A real standalone selection ZIP downloaded through the GitHub API
+matched its advertised digest. Verification of the complete hosted matrix
+requires its finished attempt and aggregate ZIP.
+
+At `b5e9c7cf`, the Windows sync and mirai `fapi-dpop` runs passed all three
+selected modules. Both reports passed the release-source check. For each run,
+the normal nonce case recorded a visible login control and one discovery
+request, with zero PAR, authorization and token requests in the suite log
+before the driver invoked the login control. The same browser completed the
+code flow, UserInfo and the accounts request. The outcome measures the
+fixture's network activity at that point. Transaction queuing, trusted user
+activation and production consent remain outside this browser observation.
+R emitted startup locale warnings and Chrome logged websocket EOF messages.
+Both runner commands exited successfully.
+The two sanitized reports stay under the ignored `.artifacts/` directories
+`fapi-dpop-20261121-142800-0006b08948a5` and
+`fapi-dpop-20261121-142923-222d158d8ed6`.

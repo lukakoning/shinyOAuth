@@ -10,14 +10,14 @@ aggregate before assigning any release-matrix completion credit.
 1. Track the running matrix and record failed jobs with their stage and input
    revision. Fix a confirmed failure before repeating the full matrix. Keep
    the declared selections and their acceptance criteria in force.
-2. Add an offline receipt check for a completed GitHub matrix attempt. Match
-   the downloaded archive to GitHub's recorded digest, bind it to the chosen
-   run, attempt and source revision, and replay the release checker against the
-   original client JSON. Individual job artifacts request seven days and the
-   aggregate requests 90. Permanent release storage remains an open decision.
-3. Keep C15 tied to the remaining requirement rows. Start with explicit user
-   initiation in the FAPI fixture. Record the application and deployment scope
-   before taking on optional mTLS alias selection or another provider fixture.
+2. Verify the completed attempt with the offline artifact checker in `2e21a3fd`.
+   The next dispatch also enforces digest matching for source artifact
+   downloads (`0768f2f1`). Individual job artifacts request seven days and the
+   aggregate requests 90. Permanent release storage remains open.
+3. Use the [FAPI requirement map](../integration/openid/requirements.md) to
+   assess the remaining application and deployment controls after the selected
+   manual-initiation check. Optional mTLS alias selection remains a separate
+   scope decision.
 
 **Historical steering-agent review and handoff (2026-11-18).** Author: the separate Codex
 steering/review agent, at the user's request. Reviewed clean checkout
@@ -86,8 +86,8 @@ conditional. See the
 | C10 | All 23 OIDC DPoP modules and all 11 OAuth DPoP modules with encrypted/reference state | The encrypted-state advisory and FAPI configuration/requirement limits remain distinct from module execution. |
 | C11-C12 | Four full mTLS selections and the 29-module Message Signing selection | mTLS simulated-server enforcement/registration limits and exact signing/callback configurations remain explicit. |
 | C13-C14 | Pinned second-provider public/confidential code/refresh/browser flows and the declared advanced-flow/lifecycle selections | These are interoperability evidence, not additional OIDF certification profiles. |
-| C15 | Rejected-callback URL cleanup, versioned browser proof, selected HTTPS cross-site success/denial and requirement-selected regressions | Other production/proxy/browser/cookie-policy cases and named cryptography gaps stay open. |
-| C16 / SA08 | CI smoke, manual larger selections, acquisition/source checks, a declared OIDF aggregate gate and manual matrix orchestration | The hosted matrix is in progress at `681992ad`. Artifact receipt verification, other provider/platform evidence and durable release retention remain. |
+| C15 | Rejected-callback URL cleanup, selected HTTPS cross-site success/denial, provider request counts before the FAPI login click and requirement-selected regressions | Production consent and initiation controls, other proxy/browser/cookie-policy cases and named cryptography gaps stay open. |
+| C16 / SA08 | CI smoke, manual larger selections, acquisition/source checks, a declared OIDF aggregate gate, manual matrix orchestration and offline artifact verification | The hosted matrix is in progress at `681992ad`. Its actual aggregate receipt, other provider/platform evidence and durable release retention remain. |
 
 Use the implemented commands in the [environment README](../integration/openid/README.md).
 `core`, `extended` and `fapi-signing` below are historical planning aliases,
@@ -2961,6 +2961,20 @@ mirror. Both setup jobs now pass the RSPM repository from setup-r explicitly
 and check that all three report checker dependencies load. Checking them in
 preparation catches setup failures before starting the 39 browser jobs.
 
+SA08 and C15 follow-up (2026-11-21): the next matrix dispatch fails on a
+downloaded artifact digest mismatch (`0768f2f1`). The offline verifier
+(`2e21a3fd`) passed five tests and replayed a 39-report synthetic ZIP against
+its committed policy. It still needs the live aggregate reported by the running
+matrix at `681992ad`. The release review records both runs and artifact scope.
+
+The manual-initiation check in `b5e9c7cf` passed
+`Rscript integration/openid/run-tests.R --profile fapi-dpop --transport sync`
+and the same command with `mirai`. All three selected modules in each run
+reported `FINISHED/PASSED`, and the release-source check accepted both
+reports. The selected nonce case observes provider request counts before the
+driver invokes the login control. The check covers this fixture and the
+manifest-marked module. See the [release review](../integration/openid/release-review.md#matrix-artifact-verification-and-fapi-initiation-2026-11-21).
+
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second
 full provider. Add another mock server only when a remaining test case justifies
@@ -3336,10 +3350,9 @@ as needed for diagnosis and never upload them by a broad artifact glob.
 Generate an allowlisted report for CI. If formal certification needs raw logs,
 prepare that bundle separately with the required access and provenance.
 
-**Planned command interface.** These commands describe the future runners;
-they do not exist yet. Each implementing commit must add the corresponding
-usage documentation and validate unknown flags instead of silently falling
-back to a smaller test set.
+**Original command proposal.** This block records the initial plan. Use the
+current [OpenID](../integration/openid/README.md) and
+[oidc-provider](../integration/oidc-provider/README.md) run instructions.
 
 ```sh
 R CMD INSTALL .
