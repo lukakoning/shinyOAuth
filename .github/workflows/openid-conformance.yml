@@ -1,6 +1,16 @@
 name: OpenID client conformance
 
 on:
+  workflow_call:
+    inputs:
+      profile:
+        description: Client module selection
+        required: true
+        type: string
+      transport:
+        description: Client transport
+        required: true
+        type: string
   workflow_dispatch:
     inputs:
       profile:
@@ -124,7 +134,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: openid-client-${{ env.OPENID_PROFILE }}-${{ env.OPENID_TRANSPORT }}-evidence
+          name: openid-client-${{ env.OPENID_PROFILE }}-${{ env.OPENID_TRANSPORT }}-evidence-attempt-${{ github.run_attempt }}
           path: |
             integration/openid/.artifacts/preflight-*/evidence.json
             integration/openid/.artifacts/api-*/evidence.json

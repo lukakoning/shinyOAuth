@@ -1,0 +1,109 @@
+name: OpenID declared release matrix
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      selections: ${{ steps.matrix.outputs.selections }}
+    steps:
+      - name: Checkout selected revision
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
+        with:
+          r-version: "4.5.1"
+          use-public-rspm: true
+
+      - name: Install matrix reader
+        run: Rscript -e 'install.packages("jsonlite")'
+
+      - name: Validate the committed selection matrix
+        id: matrix
+        shell: Rscript {0}
+        run: |
+          source("integration/openid/helper-environment.R")
+          source("integration/openid/helper-suite.R")
+          source("integration/openid/helper-release.R")
+          matrix <- openid_release_matrix()
+          selections <- jsonlite::toJSON(list(include = matrix[["selections"]]), auto_unbox = TRUE)
+          cat("selections=", selections, "\n", sep = "", file = Sys.getenv("GITHUB_OUTPUT"), append = TRUE)
+
+  selections:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix: ${{ fromJSON(needs.prepare.outputs.selections) }}
+    uses: ./.github/workflows/openid-conformance.yml
+    with:
+      profile: ${{ matrix.profile }}
+      transport: ${{ matrix.transport }}
+
+  aggregate:
+    if: ${{ always() && needs.prepare.result == 'success' }}
+    needs: [prepare, selections]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout selected revision
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
+        with:
+          r-version: "4.5.1"
+          use-public-rspm: true
+
+      - name: Install report checker dependencies
+        run: Rscript -e 'install.packages(c("jsonlite", "openssl", "processx"))'
+
+      - name: Download reports from this workflow run
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: openid-client-*-evidence-attempt-${{ github.run_attempt }}
+          path: integration/openid/.artifacts/release-inputs
+          merge-multiple: false
+
+      - name: Check every declared selection at the selected revision
+        shell: Rscript {0}
+        run: |
+          inputs <- list.files("integration/openid/.artifacts/release-inputs", pattern = "^evidence[.]json$", recursive = TRUE, full.names = TRUE)
+          clients <- inputs[vapply(inputs, function(path) {
+            report <- jsonlite::read_json(path)
+            !is.null(report[["profile"]]) && !identical(report[["profile"]], "api")
+          }, logical(1))]
+          if (!length(clients)) stop("No client reports were produced by the declared matrix")
+          result <- processx::run(file.path(R.home("bin"), "Rscript"), c(
+            "integration/openid/run-release-check.R", "--revision", Sys.getenv("GITHUB_SHA"),
+            "--output", "integration/openid/.artifacts/release-summary.json", clients
+          ), error_on_status = FALSE)
+          cat(result[["stdout"]])
+          cat(result[["stderr"]], file = stderr())
+          if (result[["status"]] != 0L) stop("Declared release matrix evidence failed")
+
+      - name: Require every selection job to succeed
+        if: ${{ always() && needs.selections.result != 'success' }}
+        run: |
+          echo "At least one declared selection job failed or was cancelled."
+          exit 1
+
+      - name: Retain original sanitized reports and aggregate summary
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: openid-declared-matrix-evidence-attempt-${{ github.run_attempt }}
+          path: |
+            integration/openid/.artifacts/release-inputs/**/evidence.json
+            integration/openid/.artifacts/release-summary.json
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 90

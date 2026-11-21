@@ -32,7 +32,17 @@ existing realm does not replace its client registrations.
 
 The shared test options set `shinyOAuth.expose_error_body = FALSE`. Assertions
 use condition classes, module error codes and structured audit fields.
-The release runner retains a zero-skip budget by default.
+The release runner fails on test failures and warnings, and retains a zero-skip
+budget by default. Positive clients using OIDC discovery explicitly request
+`openid`; pure-OAuth and negative authentication fixtures keep their own scope
+settings.
+
+Rejected HTTP callbacks first return an opaque 303 cleanup redirect. The tests
+follow that one same-route continuation and require the original 400, 413 or
+415 response, its approved diagnosis and both-hop privacy headers. Browser
+checks also require a marker-only final URL, no authenticated application
+render and no reflected credentials. An accepted Form Post bridge has its own
+303 transition and is checked separately.
 
 ```bash
 # One-shot script (starts Keycloak, waits, runs tests, tears down):

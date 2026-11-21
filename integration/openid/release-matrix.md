@@ -57,6 +57,36 @@ the stored assessment against that result. JSON object-key order does not
 change the meaning of evidence; ordered arrays remain ordered. A recorded
 `gate_passed = true` alone is insufficient.
 
+## Run the matrix on GitHub
+
+The manual **OpenID declared release matrix** workflow reads the matrix from
+the selected branch or tag revision and runs every declared pair, with at most
+three selection jobs at once. It calls the existing OpenID workflow from the
+same commit, so preflight, API inventories, regression tests, browser execution
+and the release-source check stay part of each selection. GitHub documents
+[same-commit local workflow calls](https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows).
+
+```sh
+gh workflow run openid-release-matrix.yml --ref BRANCH_OR_TAG
+```
+
+This dispatch starts all 39 selections; use `openid-conformance.yml` for a
+single selection. The matrix does not stop other selections after one fails.
+The aggregate job downloads matching artifacts from its own workflow run and
+attempt, keeps their directories separate, and gives every client report to
+the existing revision-bound checker. Preflight and API reports are retained
+separately from client matrix inputs. A failed or cancelled selection job
+fails the aggregate even if its client report passed. Artifact names
+include the attempt number, preserving earlier attempts and avoiding upload
+name conflicts. Retry the complete workflow with **Re-run all jobs** or start
+a fresh dispatch. A partial rerun has an incomplete current-attempt report set
+and cannot fill its missing rows with an earlier attempt's reports.
+
+The aggregate upload includes only the original sanitized `evidence.json`
+files and the summary, with a requested retention of 90 days. Repository and
+organization artifact policies still apply. Durable release storage and
+authenticated artifact provenance require separate release evidence.
+
 ## Interpret and retain the result
 
 `matrix_complete = true` means all declared OIDF client selections passed their
@@ -82,8 +112,9 @@ bytes; they do not authenticate who produced a JSON report. This command does
 not verify workflow artifact digests, preflight/API inventories, operating-system
 coverage or second-provider selections. Those remain separate release checks.
 
-The current workflow still retains artifacts for seven days. This command
-does not publish a release asset or provide durable retention. SA08 remains
+Individual selection workflows retain artifacts for seven days; the manual
+matrix workflow requests 90 days for its aggregate. This command does not
+publish a release asset or provide durable retention. SA08 remains
 partial until the declared matrix actually runs against one selected revision
 and its evidence has an approved durable home. Synthetic matrix-validator
 tests and selected real client reports do not establish that execution.
