@@ -395,3 +395,27 @@ Both runner commands exited successfully.
 The two sanitized reports stay under the ignored `.artifacts/` directories
 `fapi-dpop-20261121-142800-0006b08948a5` and
 `fapi-dpop-20261121-142923-222d158d8ed6`.
+
+## Direct FAPI query configuration, 2026-11-21
+
+The manifest at `25bc1c74ebe965b5a874ef8d19268cc063054eca` requires the
+[direct query configuration assessment](configuration.md#direct-fapi-query-callback)
+for the normal DPoP nonce case. The live discovery metadata advertised RFC
+9207 issuer identification. The constructed client required the issuer and
+compared it to the expected issuer. The other assessment fields cover the
+selected HTTPS, S256, PAR, JWT algorithm and DPoP policies.
+
+On Windows, `Rscript integration/openid/run-tests.R --profile fapi-dpop --transport sync`
+and the same command for `mirai` both ran from a clean checkout. All three
+selected suite modules passed per transport. The nonce case passed all 26
+configuration checks in each run. Both serialized reports passed release
+revalidation and the release-source check. The reports stay under
+`.artifacts/fapi-dpop-20261121-144021-1e2ab0beb7f1` (sync) and
+`.artifacts/fapi-dpop-20261121-144021-d264bf9f3d29` (mirai).
+
+The focused configuration suite passed 269 assertions. Four representative
+Message Signing configuration outputs matched their pre-refactor versions.
+A 39-report synthetic artifact from an older committed policy also replayed
+successfully. These checks cover the recorded configuration and report
+compatibility. Broader profiles and deployment controls retain their own
+acceptance requirements.

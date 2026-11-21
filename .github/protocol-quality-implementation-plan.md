@@ -58,8 +58,9 @@ the [requirement maps](../integration/openid/requirements.md) account for FAPI's
 20 client clauses, relevant network/cryptography duties, OIDC code/discovery,
 OAuth code/refresh/metadata, PAR/JWT client authentication and JWT/Message
 Signing. Direct mTLS/DPoP/resource-indicator client clauses now have a companion
-map. G1-G4 now have their recorded regressions; G3 adds a named Message Signing
-configuration assessment, while G2 retains its observed purpose-policy limits.
+map. G1-G4 now have their recorded regressions. Configuration assessments
+cover the named Message Signing and direct FAPI query selections, while G2
+retains its observed purpose-policy limits.
 The RFC 9700 map now accounts for sections 2–4, including attacker assumptions
 and explicit implementation, evidence and deployment gaps;
 remaining inherited-security and aggregate coverage work stays open. SA06's
@@ -2974,6 +2975,15 @@ reported `FINISHED/PASSED`, and the release-source check accepted both
 reports. The selected nonce case observes provider request counts before the
 driver invokes the login control. The check covers this fixture and the
 manifest-marked module. See the [release review](../integration/openid/release-review.md#matrix-artifact-verification-and-fapi-initiation-2026-11-21).
+
+SA04 direct FAPI configuration (2026-11-21): `25bc1c7` adds a named
+assessment to the normal nonce case of `fapi-dpop`. The fixture requires
+advertised RFC 9207 support, effective issuer presence/comparison, HTTPS,
+S256, parameter-based PAR, issuer-audience ES256 client assertions,
+configured JWT algorithms and DPoP. The committed manifest makes the
+assessment required evidence for that case. Prior reports retain their
+committed policy. The [acceptance record](../integration/openid/release-review.md#direct-fapi-query-configuration-2026-11-21)
+records the passing browser runs and the assessed scope.
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second
