@@ -75,11 +75,12 @@ jobs:
           stopifnot(all(vapply(packages, requireNamespace, logical(1), quietly = TRUE)))
 
       - name: Download reports from this workflow run
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: openid-client-*-evidence-attempt-${{ github.run_attempt }}
           path: integration/openid/.artifacts/release-inputs
           merge-multiple: false
+          digest-mismatch: error
 
       - name: Check every declared selection at the selected revision
         shell: Rscript {0}
