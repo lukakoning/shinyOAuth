@@ -443,30 +443,57 @@ openid_api <- function(
 }
 
 openid_browser <- function(spki, .env = parent.frame()) {
-  profile <- tempfile("shinyOAuth-openid-chrome-")
-  dir.create(profile)
-  profile <- normalizePath(profile, winslash = "/")
-  expected_prefix <- paste0(
-    normalizePath(tempdir(), winslash = "/"),
-    "/shinyOAuth-openid-chrome-"
-  )
-  if (!startsWith(profile, expected_prefix)) {
-    stop("Unexpected browser profile directory")
-  }
-  withr::defer(unlink(profile, recursive = TRUE), envir = .env)
-  withr::local_options(chromote.timeout = 30)
-  browser <- chromote::Chromote[["new"]](
-    browser = chromote::Chrome[["new"]](
-      args = c(
-        "--headless",
-        "--disable-gpu",
-        "--no-sandbox",
-        "--disable-dev-shm-usage",
-        paste0("--user-data-dir=", profile),
-        paste0("--ignore-certificate-errors-spki-list=", spki)
+  force(.env)
+  launch <- function() {
+    profile <- tempfile("shinyOAuth-openid-chrome-")
+    if (!dir.create(profile)) {
+      stop("Cannot create a temporary browser profile")
+    }
+    profile <- normalizePath(profile, winslash = "/", mustWork = TRUE)
+    expected_prefix <- paste0(
+      normalizePath(tempdir(), winslash = "/", mustWork = TRUE),
+      "/shinyOAuth-openid-chrome-"
+    )
+    if (!startsWith(profile, expected_prefix)) {
+      stop("Unexpected browser profile directory")
+    }
+    withr::defer(unlink(profile, recursive = TRUE), envir = .env)
+    chromote::Chromote[["new"]](
+      browser = chromote::Chrome[["new"]](
+        args = c(
+          "--headless",
+          "--disable-gpu",
+          "--no-sandbox",
+          "--disable-dev-shm-usage",
+          paste0("--user-data-dir=", profile),
+          paste0("--ignore-certificate-errors-spki-list=", spki)
+        )
       )
     )
+  }
+  withr::local_options(chromote.timeout = 30)
+  browser <- tryCatch(
+    launch(),
+    error_stop_port_search = function(error) {
+      # Chromote also uses this class for failures to launch the executable.
+      if (
+        !startsWith(
+          conditionMessage(error),
+          "Chrome debugging port not open after "
+        )
+      ) {
+        stop(error)
+      }
+      NULL
+    }
   )
+  if (is.null(browser)) {
+    # Let processx clean up the failed launch before opening a fresh profile.
+    gc()
+    message("Chrome debugging port timed out; retrying browser startup once")
+    Sys.sleep(1)
+    browser <- launch()
+  }
   withr::defer(openid_close_browser(browser), envir = .env)
   browser
 }

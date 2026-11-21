@@ -58,6 +58,99 @@ testthat::test_that("readiness has a bounded failure and API paths stay local", 
   )
 })
 
+testthat::test_that("a Chrome port timeout retries once with a fresh pinned profile", {
+  withr::local_options(chromote.timeout = 7)
+  profiles <- character()
+  closed <- FALSE
+  stub <- list(
+    get_browser = function() {
+      list(
+        get_process = function() list(is_alive = function() FALSE)
+      )
+    },
+    close = function(wait) {
+      closed <<- wait
+      invisible(NULL)
+    }
+  )
+  testthat::local_mocked_bindings(
+    Chrome = list(new = function(args) {
+      profile <- sub(
+        "^--user-data-dir=",
+        "",
+        grep("--user-data-dir=", args, value = TRUE)
+      )
+      profiles <<- c(profiles, profile)
+      testthat::expect_true(dir.exists(profile))
+      testthat::expect_true(
+        "--ignore-certificate-errors-spki-list=pin" %in% args
+      )
+      testthat::expect_identical(getOption("chromote.timeout"), 30)
+      if (length(profiles) == 1L) {
+        rlang::abort(
+          "Chrome debugging port not open after 30 seconds.",
+          class = "error_stop_port_search"
+        )
+      }
+      profile
+    }),
+    Chromote = list(new = function(browser) {
+      force(browser)
+      stub
+    }),
+    .package = "chromote"
+  )
+  start <- function() {
+    browser <- openid_browser("pin")
+    testthat::expect_false(closed)
+    testthat::expect_true(all(dir.exists(profiles)))
+    browser
+  }
+  testthat::expect_message(
+    actual <- start(),
+    "retrying browser startup once"
+  )
+  testthat::expect_identical(actual, stub)
+  testthat::expect_length(unique(profiles), 2L)
+  testthat::expect_identical(getOption("chromote.timeout"), 7)
+  testthat::expect_true(closed)
+  testthat::expect_false(any(dir.exists(profiles)))
+})
+
+testthat::test_that("a second Chrome port timeout or executable failure fails startup", {
+  for (message in c(
+    "Chrome debugging port not open after 30 seconds.",
+    "Failed to start Chrome."
+  )) {
+    local({
+      profiles <- character()
+      testthat::local_mocked_bindings(
+        Chrome = list(new = function(args) {
+          path <- sub(
+            "^--user-data-dir=",
+            "",
+            grep("--user-data-dir=", args, value = TRUE)
+          )
+          profiles <<- c(profiles, path)
+          rlang::abort(message, class = "error_stop_port_search")
+        }),
+        Chromote = list(new = function(browser) force(browser)),
+        .package = "chromote"
+      )
+      start <- function() openid_browser("pin")
+      suppressMessages(testthat::expect_error(
+        start(),
+        class = "error_stop_port_search"
+      ))
+      testthat::expect_length(
+        unique(profiles),
+        if (startsWith(message, "Chrome debugging")) 2L else 1L
+      )
+      testthat::expect_false(any(dir.exists(profiles)))
+    })
+  }
+})
+
 testthat::test_that("image reuse requires the exact locked content digest", {
   digest <- paste0("sha256:", paste(rep("a", 64L), collapse = ""))
   image <- paste0("registry.example/suite@", digest)

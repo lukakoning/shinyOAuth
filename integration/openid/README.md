@@ -230,7 +230,10 @@ worker pools; forced termination remains a fallback. A driver running inside a
 container needs an init process (for example, Docker's `--init`) to reap exited
 workers. Zombie entries fail the cleanup check. Chrome's close-command promise
 is observed, and its process must stop even if it never acknowledges the command.
-Every browser gets a separate temporary profile and a 30-second startup budget.
+Every browser launch gets a separate temporary profile and a 30-second startup
+budget. A Chrome debugging-port timeout permits one fresh launch before the
+browser flow starts. A second timeout fails the selection. The runner retains
+the first timeout in its log.
 
 The core selections keep pools private to each module case and reuse them
 within that case. A separate shared-pool selection checks reuse across issuers.
