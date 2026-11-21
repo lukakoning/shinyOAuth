@@ -462,6 +462,27 @@ testthat::test_that("refresh coverage requires all three pinned modules and full
   )[["gate_passed"]])
 })
 
+testthat::test_that("the runner app check evaluates each refresh case with its preceding login", {
+  f <- refresh_fixture()
+  results <- f[["report"]][["results"]]
+  expectations <- f[["manifest"]][["profiles"]][["refresh"]][["modules"]]
+  for (i in seq_along(results)) {
+    row <- results[[i]]
+    expected <- expectations[[i]]
+    check <- function(value) {
+      openid_case_app_matches(
+        value,
+        expected,
+        paste0(f[["context"]][["run_id"]], "-", row[["suite_id"]]),
+        f[["context"]][["package_version"]]
+      )
+    }
+    testthat::expect_true(check(row))
+    row[["before_refresh"]] <- NULL
+    testthat::expect_false(check(row))
+  }
+})
+
 testthat::test_that("sender-bound refresh requires usable connections and blocked raw export", {
   f <- refresh_fixture()
   row <- f[["report"]][["results"]][[1L]]

@@ -350,6 +350,23 @@ openid_refresh_matches <- function(
     expectation[["claim"]] %in% unlist(after[["claims"]])
 }
 
+openid_case_app_matches <- function(
+  result,
+  expectation,
+  case_id,
+  package_version
+) {
+  if (identical(expectation[["action"]], "refresh")) {
+    return(openid_refresh_matches(
+      result,
+      expectation,
+      case_id,
+      package_version
+    ))
+  }
+  openid_app_matches(result[["app"]], expectation, case_id, package_version)
+}
+
 openid_rotation_matches <- function(
   result,
   expectation,
@@ -1132,21 +1149,12 @@ openid_check_report <- function(report, context, manifest) {
           )
         }
         if (
-          if (refreshing) {
-            !openid_refresh_matches(
-              result,
-              expectation,
-              paste0(context[["run_id"]], "-", result[["suite_id"]]),
-              context[["package_version"]]
-            )
-          } else {
-            !openid_app_matches(
-              result[["app"]],
-              expectation,
-              paste0(context[["run_id"]], "-", result[["suite_id"]]),
-              context[["package_version"]]
-            )
-          }
+          !openid_case_app_matches(
+            result,
+            expectation,
+            paste0(context[["run_id"]], "-", result[["suite_id"]]),
+            context[["package_version"]]
+          )
         ) {
           stop("Missing or incorrect application evidence")
         }

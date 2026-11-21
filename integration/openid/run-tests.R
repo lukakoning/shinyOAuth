@@ -198,8 +198,8 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
       )
       report[["results"]][[length(report[["results"]]) + 1L]] <- row
       checks <- c(
-        app = openid_app_matches(
-          row[["app"]],
+        app = openid_case_app_matches(
+          row,
           expectation,
           paste0(context[["run_id"]], "-", row[["suite_id"]]),
           context[["package_version"]]
