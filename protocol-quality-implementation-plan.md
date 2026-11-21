@@ -2,23 +2,24 @@
 
 **shinyOAuth protocol quality: implementation plan**
 
-**Execution priorities (2026-11-21).** The previous revision’s [first
-matrix
-attempt](https://github.com/lukakoning/shinyOAuth/actions/runs/44907373886)
-failed before any selection started. At `681992ad`, the [second
-attempt](https://github.com/lukakoning/shinyOAuth/actions/runs/44907547397)
-passed preparation and started the selection jobs. The [fresh matrix
-attempt](https://github.com/lukakoning/shinyOAuth/actions/runs/44915531642)
-uses `44471599157e75642147ea86c323a69d6bed7809`. Verify all 39 rows and
-the aggregate for that revision before assigning release-matrix
-completion credit.
+**Execution priorities (2026-11-21).** The matrix at `681992ad` exposed
+a Chrome debugging-port timeout in `fapi-dpop-full/sync` and a runner
+validation error in `refresh/sync` and `refresh/mirai`. The Chrome retry
+passed a targeted GitHub run. The refresh correction at `98362fc` passed
+all three refresh transports on Windows and `refresh/sync` on GitHub.
+The matrix at `4447159` predates the refresh correction. [Earlier
+matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/44907547397),
+[matrix with Chrome
+retry](https://github.com/lukakoning/shinyOAuth/actions/runs/44915531642),
+[refresh validation
+record](https://lukakoning.github.io/integration/openid/release-review.html#refresh-module-validation-2026-11-21).
 
-1.  Track the fresh matrix and record any failed job with its stage and
-    input revision. The earlier run’s first failure hit a Chrome
-    debugging-port timeout. The fixture allows one fresh launch for that
-    startup condition, and the targeted selection passed on Windows and
-    GitHub. Failed aggregates retain a diagnostic row and available
-    input hashes per declared selection (`6a893c0`).
+1.  Track the 39-selection matrix at
+    `98362fcd703ecdfc98ea38d16eee5301612d01a2`. Record each failed job’s
+    stage and source revision. Failed aggregates retain a diagnostic row
+    and available input hashes per declared selection (`6a893c0`).
+    [Matrix with refresh
+    correction](https://github.com/lukakoning/shinyOAuth/actions/runs/44916619030).
 2.  Verify the completed passing attempt with the offline artifact
     checker. CI and offline replay both check preflight and API
     inventories for each client selection (`3e4a793`). Future matrix
@@ -3404,6 +3405,15 @@ GitHub started the [fresh 39-selection
 matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/44915531642)
 at that exact revision. See the [release
 review](https://lukakoning.github.io/integration/openid/release-review.html#pre-login-state-and-fresh-matrix-2026-11-21).
+
+SA08 refresh runner follow-up (2026-11-21). `98362fc` applies the
+refresh evidence gate both when collecting a module result and when
+validating the whole report. All three pinned modules passed with
+`sync`, `mirai` and `future` on Windows. The original Windows reports
+passed source and protocol revalidation. The targeted GitHub `sync` run
+passed with a verified artifact. The new 39-selection attempt uses the
+same source revision. [Release
+review](https://lukakoning.github.io/integration/openid/release-review.html#refresh-module-validation-2026-11-21).
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
