@@ -506,3 +506,26 @@ bytes, and its full offline artifact replay passed. The clean
 `6a893c0152a6f6333f0b923966010ab698174e31` passed the evidence regressions
 and all 16 pinned suite-plan inventories. The API report records verified
 source and cleanup under `.artifacts/api-20261121-153136-b5f8db0c1cfd/`.
+
+## Pre-login state and fresh matrix, 2026-11-21
+
+At `44471599157e75642147ea86c323a69d6bed7809`, the manual DPoP nonce case
+checks the same Shiny session immediately before the trusted click. The
+fixture reports the login and callback queue flags and a state-store count.
+Each flag must be false and the count must be zero. The manifest requires
+the sampled state alongside the existing browser activation and pre-click
+provider request checks.
+
+Clean Windows `fapi-dpop` runs passed all three modules on `sync` and
+`mirai`. Both JSON reports recorded the clear session state and passed
+independent release revalidation and the release-source check. The reports
+stay under `.artifacts/fapi-dpop-20261121-153943-f1d1d7d54544/` (sync) and
+`.artifacts/fapi-dpop-20261121-153943-878ed456b9a6/` (mirai). An earlier
+39-row synthetic artifact also replayed successfully under its own policy.
+Application consent and cross-site initiation still need deployment evidence.
+
+The [fresh GitHub matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/44915531642)
+was dispatched at that exact revision. Preparation passed and the first three
+selection jobs started. The earlier matrix retains its original results.
+Release qualification awaits the fresh run's selection verdicts, companion
+checks and aggregate receipt.

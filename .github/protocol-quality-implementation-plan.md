@@ -4,25 +4,27 @@
 [first matrix attempt](https://github.com/lukakoning/shinyOAuth/actions/runs/44907373886)
 failed before any selection started. At `681992ad`, the
 [second attempt](https://github.com/lukakoning/shinyOAuth/actions/runs/44907547397)
-passed preparation and started the selection jobs. Verify all 39 rows and the
-aggregate before assigning any release-matrix completion credit.
+passed preparation and started the selection jobs. The
+[fresh matrix attempt](https://github.com/lukakoning/shinyOAuth/actions/runs/44915531642)
+uses `44471599157e75642147ea86c323a69d6bed7809`. Verify all 39 rows and the
+aggregate for that revision before assigning release-matrix completion credit.
 
-1. Track the running matrix and record failed jobs with their stage and input
-   revision. Its first failed selection hit a Chrome debugging-port timeout.
-   The fixture now allows one fresh browser launch for that startup condition.
-   The targeted selection passed on Windows and GitHub. The complete matrix
-   still needs a fresh attempt for the selected release revision. Failed
-   aggregates now retain a diagnostic row and the available input hashes
-   for each declared selection (`6a893c0`).
+1. Track the fresh matrix and record any failed job with its stage and input
+   revision. The earlier run's first failure hit a Chrome debugging-port
+   timeout. The fixture allows one fresh launch for that startup condition,
+   and the targeted selection passed on Windows and GitHub. Failed aggregates
+   retain a diagnostic row and available input hashes per declared selection
+   (`6a893c0`).
 2. Verify the completed passing attempt with the offline artifact checker.
    CI and offline replay both check preflight and API inventories for each
    client selection (`3e4a793`). Future matrix dispatches also enforce source
    artifact digests (`0768f2f1`). Individual job artifacts request seven days
    and the aggregate requests 90. Permanent release storage remains open.
-3. The selected FAPI manual-initiation case now requires a trusted Chrome
-   click with transient activation. The [FAPI requirement map](../integration/openid/requirements.md)
-   tracks the remaining application and deployment controls. Optional mTLS
-   alias selection remains a separate scope decision.
+3. The selected FAPI manual-initiation case samples the app queue and state
+   store before a trusted Chrome click with transient activation. The
+   [FAPI requirement map](../integration/openid/requirements.md) tracks the
+   remaining application and deployment controls. Optional mTLS alias
+   selection remains a separate scope decision.
 
 **Historical steering-agent review and handoff (2026-11-18).** Author: the separate Codex
 steering/review agent, at the user's request. Reviewed clean checkout
@@ -93,7 +95,7 @@ conditional. See the
 | C11-C12 | Four full mTLS selections and the 29-module Message Signing selection | mTLS simulated-server enforcement/registration limits and exact signing/callback configurations remain explicit. |
 | C13-C14 | Pinned second-provider public/confidential code/refresh/browser flows and the declared advanced-flow/lifecycle selections | These are interoperability evidence, not additional OIDF certification profiles. |
 | C15 | Rejected-callback URL cleanup, selected HTTPS cross-site success/denial, provider request counts before the FAPI login click and requirement-selected regressions | Production consent and initiation controls, other proxy/browser/cookie-policy cases and named cryptography gaps stay open. |
-| C16 / SA08 | CI smoke, manual larger selections, acquisition/source checks, a declared OIDF aggregate gate, manual matrix orchestration and offline artifact verification | The hosted matrix is in progress at `681992ad`. Its actual aggregate receipt, other provider/platform evidence and durable release retention remain. |
+| C16 / SA08 | CI smoke, manual larger selections, acquisition/source checks, a declared OIDF aggregate gate, manual matrix orchestration and offline artifact verification | A fresh hosted matrix has started at `4447159`. Its aggregate receipt, other provider/platform evidence and durable release retention remain open. |
 
 Use the implemented commands in the [environment README](../integration/openid/README.md).
 `core`, `extended` and `fapi-signing` below are historical planning aliases,
@@ -3010,6 +3012,13 @@ Each single submitted report is checked against the same revision and plan
 policy. A partial replay of 27 digest-verified artifacts from the active
 hosted matrix identified 26 passing rows, one reported failure and 12 missing
 rows. The overall gate failed. See the [release review](../integration/openid/release-review.md#failed-matrix-selection-diagnostics-2026-11-21).
+
+C15 and SA08 follow-up (2026-11-21): `4447159` checks the Shiny session for
+a queued login, pending callback or state-store records immediately before
+the trusted click in the selected DPoP nonce case. The Windows `sync` and
+`mirai` selections passed and both reports were revalidated. GitHub started
+the [fresh 39-selection matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/44915531642)
+at that exact revision. See the [release review](../integration/openid/release-review.md#pre-login-state-and-fresh-matrix-2026-11-21).
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second
