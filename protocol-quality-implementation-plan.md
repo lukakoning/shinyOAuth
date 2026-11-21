@@ -11,12 +11,15 @@ passed preparation and started the selection jobs. Verify all 39 rows
 and the aggregate before assigning any release-matrix completion credit.
 
 1.  Track the running matrix and record failed jobs with their stage and
-    input revision. Fix a confirmed failure before repeating the full
-    matrix. Keep the declared selections and their acceptance criteria
-    in force.
-2.  Verify the completed attempt with the offline artifact checker in
-    `2e21a3fd`. The next dispatch also enforces digest matching for
-    source artifact downloads (`0768f2f1`). Individual job artifacts
+    input revision. Its first failed selection hit a Chrome
+    debugging-port timeout. The fixture now allows one fresh browser
+    launch for that startup condition. The targeted selection passed on
+    Windows and GitHub. The complete matrix still needs a fresh attempt
+    for the selected release revision.
+2.  Verify the completed passing attempt with the offline artifact
+    checker. The verifier checks preflight and API inventories for each
+    client selection (`0da2fb4`). Future matrix dispatches also enforce
+    source artifact digests (`0768f2f1`). Individual job artifacts
     request seven days and the aggregate requests 90. Permanent release
     storage remains open.
 3.  Use the [FAPI requirement
@@ -3363,6 +3366,15 @@ retain their committed policy. The [acceptance
 record](https://lukakoning.github.io/integration/openid/release-review.html#direct-fapi-query-configuration-2026-11-21)
 records the passing browser runs and the assessed scope.
 
+SA08 artifact and browser startup follow-up (2026-11-21): `0da2fb4` adds
+per-selection preflight and API verification to the offline receipt.
+`70fa6991` handles the Chrome debugging-port startup timeout seen in the
+hosted matrix. The same 23-module selection passed on Windows and GitHub
+at that revision. The [release
+review](https://lukakoning.github.io/integration/openid/release-review.html#preflight-and-api-evidence-and-chrome-startup-2026-11-21)
+records the failed attempt, verified artifact, and scope of the retry
+tests.
+
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
 interoperability with a second full provider. Add another mock server
@@ -3771,8 +3783,11 @@ independent modules. Multi-step rotation/refresh tests deliberately
 preserve the app, relevant cache and original transaction or grant.
 Respect that state in the scenario manifest. Never cache a successful
 verdict across suite or package revisions, and never keep retrying a
-protocol failure until it passes. An infrastructure retry starts a new
-recorded attempt without discarding the failed attempt.
+protocol failure until it passes. A repeated selection or matrix starts
+a new recorded attempt and preserves the previous result. A Chrome
+debugging-port timeout permits one new browser launch with a fresh
+profile before any browser flow, with the first timeout recorded in the
+job log.
 
 The sanitized JSON report should contain `schema_version`, run/attempt
 IDs, checkout SHA and dirty flag, installed package identity, suite
