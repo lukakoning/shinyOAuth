@@ -484,3 +484,25 @@ passed independent release revalidation and the release-source check at
 `.artifacts/fapi-dpop-20261121-152003-ffc30462d679/` (sync) and
 `.artifacts/fapi-dpop-20261121-152003-1d062055fd07/` (mirai).
 Production consent and cross-site initiation remain application concerns.
+
+## Failed matrix selection diagnostics, 2026-11-21
+
+`6a893c0` adds per-selection diagnostics to failed client aggregate receipts.
+The checker identifies missing and duplicate reports, validates individual
+submitted reports against the selected source and policy, and retains an
+input SHA-256 for each assigned report. An invocation with no client inputs
+produced all 39 missing rows and returned a failing exit status.
+
+A snapshot of 27 original client reports from the
+[running GitHub matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/44907547397)
+was replayed against `681992ad`. Every input ZIP matched GitHub's digest. The
+failed receipt recorded 26 independently passing selections, the reported
+`fapi-dpop-full/sync` failure and 12 missing selections. It stays under
+`.artifacts/hosted-44907547397-diagnostics-27.json`.
+
+The successful 39-row synthetic summary matched the previous checker's
+bytes, and its full offline artifact replay passed. The clean
+`Rscript integration/openid/run-tests.R --check-api` run at
+`6a893c0152a6f6333f0b923966010ab698174e31` passed the evidence regressions
+and all 16 pinned suite-plan inventories. The API report records verified
+source and cleanup under `.artifacts/api-20261121-153136-b5f8db0c1cfd/`.
