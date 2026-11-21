@@ -1,3 +1,14 @@
+# shinyOAuth (development version)
+
+* OAuth and OIDC discovery now match advertised client authentication and PKCE
+  methods case-sensitively. Incorrectly cased identifiers no longer count as
+  supported methods; caller option spelling remains unchanged.
+
+* Advertised response modes now retain their exact case and whitespace through
+  discovery, provider configuration and login-state binding. A capability such
+  as `FORM_POST` no longer authorizes `form_post`; caller `response_mode`
+  options keep their existing normalization.
+
 # shinyOAuth 0.8.0
 
 * Fixed encrypted-state decryption errors with openssl 2.6.0, which now
@@ -12,15 +23,6 @@
 * `oauth_provider_oauth_discover()` configures OAuth-only providers from their
   published server metadata (RFC 8414), avoiding manual endpoint configuration
   without requiring OpenID Connect support.
-
-* OAuth and OIDC discovery now match advertised client authentication and PKCE
-  methods case-sensitively. Incorrectly cased identifiers no longer count as
-  supported methods; caller option spelling remains unchanged.
-
-* Advertised response modes now retain their exact case and whitespace through
-  discovery, provider configuration and login-state binding. A capability such
-  as `FORM_POST` no longer authorizes `form_post`; caller `response_mode`
-  options keep their existing normalization.
 
 * `oauth_provider_oidc_discover(id_token_profile = "fapi2")` supports providers
   that advertise FAPI 2.0 signing algorithms but omit RS256, while respecting
