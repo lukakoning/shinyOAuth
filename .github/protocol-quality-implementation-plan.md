@@ -1,6 +1,25 @@
 **shinyOAuth protocol quality: implementation plan**
 
-**Steering-agent review and handoff (2026-11-18).** Author: the separate Codex
+**Execution priorities (2026-11-21).** The previous revision's
+[first matrix attempt](https://github.com/lukakoning/shinyOAuth/actions/runs/44907373886)
+failed before any selection started. At `681992ad`, the
+[second attempt](https://github.com/lukakoning/shinyOAuth/actions/runs/44907547397)
+passed preparation and started the selection jobs. Verify all 39 rows and the
+aggregate before assigning any release-matrix completion credit.
+
+1. Track the running matrix and record failed jobs with their stage and input
+   revision. Fix a confirmed failure before repeating the full matrix. Keep
+   the declared selections and their acceptance criteria in force.
+2. Add an offline receipt check for a completed GitHub matrix attempt. Match
+   the downloaded archive to GitHub's recorded digest, bind it to the chosen
+   run, attempt and source revision, and replay the release checker against the
+   original client JSON. Individual job artifacts request seven days and the
+   aggregate requests 90. Permanent release storage remains an open decision.
+3. Keep C15 tied to the remaining requirement rows. Start with explicit user
+   initiation in the FAPI fixture. Record the application and deployment scope
+   before taking on optional mTLS alias selection or another provider fixture.
+
+**Historical steering-agent review and handoff (2026-11-18).** Author: the separate Codex
 steering/review agent, at the user's request. Reviewed clean checkout
 `43dd6d80488bae74010e3759017034af068fdce6`, the implementation, retained reports,
 pinned upstream plan sources and current OIDF instructions. The user asked this
@@ -68,7 +87,7 @@ conditional. See the
 | C11-C12 | Four full mTLS selections and the 29-module Message Signing selection | mTLS simulated-server enforcement/registration limits and exact signing/callback configurations remain explicit. |
 | C13-C14 | Pinned second-provider public/confidential code/refresh/browser flows and the declared advanced-flow/lifecycle selections | These are interoperability evidence, not additional OIDF certification profiles. |
 | C15 | Rejected-callback URL cleanup, versioned browser proof, selected HTTPS cross-site success/denial and requirement-selected regressions | Other production/proxy/browser/cookie-policy cases and named cryptography gaps stay open. |
-| C16 / SA08 | CI smoke, manual larger selections, acquisition/source checks, a declared OIDF aggregate gate and manual matrix orchestration | Execution of every declared selection at one revision, other provider/platform evidence and durable release retention remain. |
+| C16 / SA08 | CI smoke, manual larger selections, acquisition/source checks, a declared OIDF aggregate gate and manual matrix orchestration | The hosted matrix is in progress at `681992ad`. Artifact receipt verification, other provider/platform evidence and durable release retention remain. |
 
 Use the implemented commands in the [environment README](../integration/openid/README.md).
 `core`, `extended` and `fapi-signing` below are historical planning aliases,
