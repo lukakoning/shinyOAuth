@@ -254,3 +254,84 @@ openid_check_release <- function(
     }
   )
 }
+
+openid_release_selection_diagnostics <- function(
+  reports,
+  matrix,
+  manifest,
+  source,
+  input_sha256
+) {
+  matrix <- openid_release_canonical(matrix)
+  manifest <- openid_release_canonical(manifest)
+  required <- openid_validate_release_matrix(matrix, manifest)
+  keys <- vapply(
+    reports,
+    function(report) {
+      if (
+        !is.list(report) ||
+          sum(names(report) == "profile", na.rm = TRUE) != 1L ||
+          sum(names(report) == "transport", na.rm = TRUE) != 1L ||
+          !openid_string(report[["profile"]]) ||
+          !openid_string(report[["transport"]])
+      ) {
+        return(NA_character_)
+      }
+      openid_release_key(report)
+    },
+    character(1)
+  )
+
+  diagnose <- function(indices, selection) {
+    if (!length(indices)) {
+      return("missing")
+    }
+    if (length(indices) > 1L) {
+      return("duplicate")
+    }
+    report <- tryCatch(
+      openid_release_canonical(reports[[indices]]),
+      error = function(error) NULL
+    )
+    if (is.null(report)) {
+      return("invalid_report")
+    }
+    if (
+      !identical(report[["status"]], "passed") ||
+        !isTRUE(report[["gate_passed"]])
+    ) {
+      return("reported_failure")
+    }
+    if (!identical(report[["package_version"]], source[["package_version"]])) {
+      return("package_version_mismatch")
+    }
+    if (
+      !openid_release_source_matches(
+        list(report),
+        source[["revision"]],
+        source[["tree"]],
+        source[["archive_sha256"]]
+      )
+    ) {
+      return("source_mismatch")
+    }
+    tryCatch(
+      {
+        openid_release_recheck(report, matrix, manifest, selection)
+        "passed"
+      },
+      error = function(error) "evidence_failed"
+    )
+  }
+
+  lapply(seq_along(required), function(i) {
+    selection <- matrix[["selections"]][[i]]
+    indices <- which(keys == required[[i]])
+    list(
+      profile = selection[["profile"]],
+      transport = selection[["transport"]],
+      status = diagnose(indices, selection),
+      report_sha256 = input_sha256[indices]
+    )
+  })
+}

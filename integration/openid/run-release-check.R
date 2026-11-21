@@ -1,13 +1,13 @@
 run_openid_release_check <- function(args = commandArgs(TRUE)) {
   if (
-    length(args) < 5L ||
+    length(args) < 4L ||
       !identical(args[[1L]], "--revision") ||
       !grepl("^[a-f0-9]{40}$", args[[2L]]) ||
       !identical(args[[3L]], "--output") ||
       !nzchar(args[[4L]])
   ) {
     stop(
-      "Usage: Rscript integration/openid/run-release-check.R --revision COMMIT --output summary.json evidence.json [evidence.json ...]"
+      "Usage: Rscript integration/openid/run-release-check.R --revision COMMIT --output summary.json [evidence.json ...]"
     )
   }
   for (name in c(
@@ -94,13 +94,15 @@ run_openid_release_check <- function(args = commandArgs(TRUE)) {
   archive <- tempfile("openid-release-", fileext = ".tar")
   on.exit(unlink(archive), add = TRUE)
   openid_git_archive(".", archive, revision)
+  archive_sha256 <- openid_file_hash(archive)
+  reports <- lapply(inputs, function(input) input[["value"]])
   check <- openid_check_release(
-    lapply(inputs, function(input) input[["value"]]),
+    reports,
     matrix_input[["value"]],
     manifest,
     revision,
     tree,
-    openid_file_hash(archive),
+    archive_sha256,
     package_version
   )
   check[["matrix_sha256"]] <- matrix_input[["sha256"]]
@@ -114,9 +116,22 @@ run_openid_release_check <- function(args = commandArgs(TRUE)) {
   check[["requested_source"]] <- list(
     revision = revision,
     tree = tree,
-    archive_sha256 = openid_file_hash(archive),
+    archive_sha256 = archive_sha256,
     package_version = package_version
   )
+  if (!isTRUE(check[["gate_passed"]])) {
+    # A receipt still identifies the inputs when invalid policy prevents row diagnostics.
+    check[["selection_diagnostics"]] <- tryCatch(
+      openid_release_selection_diagnostics(
+        reports,
+        matrix_input[["value"]],
+        manifest,
+        check[["requested_source"]],
+        check[["input_sha256"]]
+      ),
+      error = function(error) NULL
+    )
+  }
   for (i in seq_along(check[["entries"]])) {
     index <- check[["entries"]][[i]][["report_index"]]
     check[["entries"]][[i]][["report_sha256"]] <- inputs[[index]][["sha256"]]

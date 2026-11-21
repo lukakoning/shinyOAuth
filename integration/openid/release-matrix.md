@@ -156,11 +156,21 @@ The summary contains the selected source/archive identity, hashes of the
 committed policy files, each original input file's SHA-256 and recomputed
 assessments. It contains no input paths, source contents, raw callback URLs,
 credentials or private diagnostics. Existing output files are not overwritten.
-A failed aggregate writes a failed summary when it has valid inputs/policy and
-exits unsuccessfully; malformed inputs or missing committed policy fail before
-aggregation. Both passing and failed summaries retain the requested source
-and input-file hashes, so a failed receipt still identifies the exact bytes
-that were checked.
+A failed aggregate writes a failed summary when it can read the inputs and
+committed policy, and then exits unsuccessfully. Both passing and failed
+summaries retain the requested source and input-file hashes. The failed
+summary also records a diagnostic
+row for each declared selection in matrix order. A row can be `missing`,
+`duplicate`, `invalid_report`, `reported_failure`, `package_version_mismatch`,
+`source_mismatch`, `evidence_failed` or `passed`. It contains the SHA-256
+digests of the input reports assigned to that row. A passing row records an
+independent check of that selection within the failed attempt. The aggregate
+remains failed.
+
+With zero client inputs, the checker writes a failed summary with every row
+marked missing. Malformed JSON or an unavailable committed policy can fail
+before aggregation. Earlier successful summary formats remain suitable for
+offline replay.
 
 Individual selection workflows retain artifacts for seven days; the manual
 matrix workflow requests 90 days for its aggregate. Permanent release storage,

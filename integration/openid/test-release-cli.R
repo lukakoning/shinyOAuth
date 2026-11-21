@@ -109,7 +109,12 @@ release_cli_test_fixture <- function(root, evidence_root) {
   )
 }
 
-release_cli_test_run <- function(f, output, revision = f[["revision"]]) {
+release_cli_test_run <- function(
+  f,
+  output,
+  revision = f[["revision"]],
+  evidence = f[["evidence"]]
+) {
   executable <- file.path(
     R.home("bin"),
     if (.Platform$OS.type == "windows") "Rscript.exe" else "Rscript"
@@ -122,7 +127,7 @@ release_cli_test_run <- function(f, output, revision = f[["revision"]]) {
       revision,
       "--output",
       output,
-      f[["evidence"]]
+      evidence
     ),
     wd = f[["root"]],
     error_on_status = FALSE
@@ -148,6 +153,7 @@ testthat::test_that("release CLI reads committed policy and hashes original JSON
   testthat::expect_identical(result[["status"]], 0L, info = result[["stderr"]])
   summary <- jsonlite::read_json(output)
   testthat::expect_true(summary[["matrix_complete"]])
+  testthat::expect_null(summary[["selection_diagnostics"]])
   testthat::expect_equal(summary[["selection_count"]], 1L)
   testthat::expect_identical(summary[["package_version"]], "0.0.0.9000")
   testthat::expect_identical(summary[["matrix_sha256"]], f[["matrix_sha256"]])
@@ -175,6 +181,27 @@ testthat::test_that("release CLI reads committed policy and hashes original JSON
   testthat::expect_false(grepl(evidence_root, text, fixed = TRUE))
   testthat::expect_false(grepl("report_index", text, fixed = TRUE))
   # This is a synthetic one-cell Git fixture, not execution of the shipped matrix.
+})
+
+testthat::test_that("release CLI writes a failed receipt even without any client report", {
+  root <- withr::local_tempdir("openid-release-cli-empty-")
+  evidence_root <- withr::local_tempdir("openid-release-cli-empty-input-")
+  f <- release_cli_test_fixture(root, evidence_root)
+  output <- file.path(evidence_root, "empty-summary.json")
+  result <- release_cli_test_run(f, output, evidence = character())
+  testthat::expect_gt(result[["status"]], 0L)
+  summary <- jsonlite::read_json(output)
+  testthat::expect_false(summary[["matrix_complete"]])
+  testthat::expect_identical(summary[["input_sha256"]], list())
+  testthat::expect_identical(
+    summary[["selection_diagnostics"]],
+    list(list(
+      profile = "smoke",
+      transport = "sync",
+      status = "missing",
+      report_sha256 = list()
+    ))
+  )
 })
 
 testthat::test_that("release CLI cannot retrofit policy or overwrite an existing input", {

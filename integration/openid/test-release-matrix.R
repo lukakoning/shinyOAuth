@@ -94,6 +94,72 @@ release_matrix_test_failed <- function(check, info = NULL) {
   testthat::expect_identical(check[["certification_status"]], "not_assessed")
 }
 
+testthat::test_that("failed receipts diagnose each declared selection independently", {
+  f <- release_matrix_test_fixture()
+  matrix <- release_matrix_test_matrix(list(
+    c("smoke", "sync"),
+    c("config", "mirai"),
+    c("smoke", "future")
+  ))
+  first <- f[["reports"]][[1L]]
+  second <- f[["reports"]][[2L]]
+  source <- list(
+    revision = f[["revision"]],
+    tree = f[["tree"]],
+    archive_sha256 = f[["archive"]],
+    package_version = first[["package_version"]]
+  )
+  hashes <- as.list(c(strrep("a", 64L), strrep("b", 64L), strrep("c", 64L)))
+  diagnose <- function(reports) {
+    openid_release_selection_diagnostics(
+      reports,
+      matrix,
+      f[["manifest"]],
+      source,
+      hashes[seq_along(reports)]
+    )
+  }
+  cases <- list(
+    reported_failure = function(value) {
+      value[["status"]] <- "failed"
+      value[["gate_passed"]] <- FALSE
+      value
+    },
+    package_version_mismatch = function(value) {
+      value[["package_version"]] <- "99.0.0"
+      value
+    },
+    source_mismatch = function(value) {
+      value[["checkout_dirty"]] <- TRUE
+      value
+    },
+    evidence_failed = function(value) {
+      value[["results"]][[1L]][["suite_result"]] <- "FAILED"
+      value
+    },
+    invalid_report = function(value) c(value, list(assessment = list()))
+  )
+  for (status in names(cases)) {
+    reports <- list(first, cases[[status]](second))
+    rows <- diagnose(reports)
+    testthat::expect_identical(
+      vapply(rows, function(row) row[["status"]], character(1)),
+      c("passed", status, "missing")
+    )
+    testthat::expect_identical(rows[[1L]][["report_sha256"]], hashes[1L])
+    testthat::expect_identical(rows[[2L]][["report_sha256"]], hashes[2L])
+    testthat::expect_identical(rows[[3L]][["report_sha256"]], list())
+    release_matrix_test_failed(release_matrix_test_check(f, reports, matrix))
+  }
+
+  reports <- list(first, second, first)
+  rows <- diagnose(reports)
+  testthat::expect_identical(rows[[1L]][["status"]], "duplicate")
+  testthat::expect_identical(rows[[1L]][["report_sha256"]], hashes[c(1L, 3L)])
+  testthat::expect_identical(rows[[2L]][["status"]], "passed")
+  release_matrix_test_failed(release_matrix_test_check(f, reports, matrix))
+})
+
 testthat::test_that("the declared default matrix covers supported profiles and transports explicitly", {
   manifest <- openid_profiles("../..")
   matrix <- openid_release_matrix("../..")
