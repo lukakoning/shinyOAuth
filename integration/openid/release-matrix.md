@@ -87,7 +87,45 @@ files and the summary, with a requested retention of 90 days. Repository and
 organization artifact policies still apply. Durable release storage and
 authenticated artifact provenance require separate release evidence.
 
-## Interpret and retain the result
+## Verify and retain a completed attempt
+
+Run the verifier from the repository root with Python 3.11 or later, R and
+the same report checker dependencies. The selected Git commit must be
+available locally. Save the GitHub API responses and download the original
+aggregate ZIP before it expires. Set `artifact` to the ID of
+`openid-declared-matrix-evidence-attempt-N` from the selected run's artifact
+list. The commands below use a POSIX shell or Git Bash to preserve the ZIP
+bytes during redirection.
+
+```sh
+repo=OWNER/REPO
+revision=FULL_COMMIT_SHA
+run=RUN_ID
+attempt=ATTEMPT_NUMBER
+artifact=AGGREGATE_ARTIFACT_ID
+bundle=integration/openid/.artifacts/verified-matrix-$run-$attempt
+mkdir -p integration/openid/.artifacts
+mkdir "$bundle"
+gh api "repos/$repo/actions/runs/$run/attempts/$attempt" > "$bundle/run.json"
+gh api "repos/$repo/actions/artifacts/$artifact" > "$bundle/artifact.json"
+gh api "repos/$repo/actions/artifacts/$artifact/zip" > "$bundle/artifact.zip"
+python integration/openid/verify-release-artifact.py \
+  --repository "$repo" --revision "$revision" --run-id "$run" --attempt "$attempt" \
+  "$bundle/run.json" "$bundle/artifact.json" "$bundle/artifact.zip" > "$bundle/receipt.json"
+```
+
+The verifier checks the repository, successful workflow attempt, revision and
+artifact identity against the saved API responses. It compares the ZIP's
+SHA-256 with the artifact digest, replays the release checker on the original
+client reports, and compares its result with the summary in the ZIP.
+Preflight and API JSON may accompany the client reports. This check covers
+their archive bytes, while protocol revalidation covers the client reports.
+Keep the ZIP, API responses and receipt together. The GitHub responses captured
+at download time are the offline receipt's trust source.
+See the [run-attempt API](https://docs.github.com/en/rest/actions/workflow-runs#get-a-workflow-run-attempt)
+and [artifact API](https://docs.github.com/en/rest/actions/artifacts#get-an-artifact).
+
+## Interpret the result
 
 `matrix_complete = true` means all declared OIDF client selections passed their
 existing scoped gates. Each entry retains its own upstream-plan, coverage and
@@ -106,15 +144,8 @@ aggregation. Both passing and failed summaries retain the requested source
 and input-file hashes, so a failed receipt still identifies the exact bytes
 that were checked.
 
-Preserve the original sanitized reports and their provenance together with the
-summary and policy hashes. File hashes detect changes relative to the retained
-bytes; they do not authenticate who produced a JSON report. This command does
-not verify workflow artifact digests, preflight/API inventories, operating-system
-coverage or second-provider selections. Those remain separate release checks.
-
 Individual selection workflows retain artifacts for seven days; the manual
-matrix workflow requests 90 days for its aggregate. This command does not
-publish a release asset or provide durable retention. SA08 remains
-partial until the declared matrix actually runs against one selected revision
-and its evidence has an approved durable home. Synthetic matrix-validator
-tests and selected real client reports do not establish that execution.
+matrix workflow requests 90 days for its aggregate. Permanent release storage,
+signed provenance, operating-system coverage and second-provider selections
+remain separate SA08 work. Acceptance requires an actual completed matrix and
+a verified receipt for its selected revision.
