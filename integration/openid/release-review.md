@@ -419,3 +419,42 @@ A 39-report synthetic artifact from an older committed policy also replayed
 successfully. These checks cover the recorded configuration and report
 compatibility. Broader profiles and deployment controls retain their own
 acceptance requirements.
+
+## Preflight and API evidence and Chrome startup, 2026-11-21
+
+At `0da2fb4`, the offline artifact verifier requires one preflight and one
+API report alongside each client report. It checks their association with
+the same checkout, the locked suite and TLS evidence, the API installation
+identity, and each committed plan's modules, variants and cancelled probe.
+The receipt records both reports' original SHA-256 digests per selection.
+Seven regression tests and a replay with 39 synthetic client reports and
+78 companion reports passed. The verifier also checked the untouched
+companion reports from 13 published selection ZIPs against the 16 pinned
+plan definitions in each ZIP. One of those ZIPs contains the failed client
+run described below.
+
+The [first failed matrix selection](https://github.com/lukakoning/shinyOAuth/actions/runs/44907547397/job/136863926219)
+was `fapi-dpop-full/sync` at `681992ad`. Preflight and API checks passed.
+The client runner recorded 16 completed module results before Chrome failed
+to open its debugging port within 30 seconds on the next module. The
+original sanitized artifact and its GitHub metadata are retained under the
+ignored directory
+`.artifacts/hosted-44907547397-fapi-dpop-full-sync/`.
+
+At `70fa6991`, only that Chrome debugging-port timeout allows one fresh
+startup before browser navigation. The 46 environment assertions passed.
+They covered profile isolation, cleanup, unchanged startup options and
+failure propagation for a second timeout or an executable error.
+
+The clean Windows run `Rscript integration/openid/run-tests.R --profile fapi-dpop-full --transport sync`
+passed all 23 selected modules in 247.92 seconds of module runtime. Its
+report passed the release-source check and stays in
+`.artifacts/fapi-dpop-full-20261121-145739-5c70993507b2/`.
+The [targeted GitHub run](https://github.com/lukakoning/shinyOAuth/actions/runs/44911471869)
+passed all 23 modules at the same revision in 176.99 seconds of module
+runtime. It did not encounter the startup timeout. The original ZIP
+matched GitHub's digest. Independent checks also accepted its preflight,
+16 API plan inventories and client release-source record. The ZIP and
+metadata are under `.artifacts/hosted-44911471869/`. These results qualify
+the targeted selection. The ongoing matrix attempt retains its original
+failure and continues to collect evidence for the remaining selections.
