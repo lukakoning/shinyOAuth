@@ -57,11 +57,18 @@ and the existing connection. Both UserInfo calls must succeed with the current
 access token. A request without PKCE must fail before code issuance. An app-stop
 canary confirms that an incomplete browser flow cannot pass.
 
-The report validator also rejects 64 altered copies of the real successful
-report: missing cases or provider evidence, incorrect PKCE/authentication/code
-binding, stale UserInfo tokens, failed identity/refresh checks, missing worker
-evidence, a missing Form Post bridge, and incomplete cleanup. These are report
-validation controls; the missing-PKCE request is a live provider rejection.
+The report validator rejects 68 altered copies of the real successful report.
+The controls cover missing cases or provider evidence, incorrect PKCE,
+authentication or code binding, stale UserInfo tokens, failed identity or
+refresh checks, missing worker evidence, a missing Form Post bridge, incomplete
+cleanup and source or installation mismatches. The missing-PKCE request is a
+separate live provider rejection.
+
+Schema-2 baseline reports record the source snapshot and private installed
+package before and after the browser cases. Clean runs install from a canonical
+Git archive. The runner uses the [OpenID source identity helpers](../openid/source-identity.md)
+and requires the source and installation evidence to match the run context.
+Historical schema-1 reports retain their existing interoperability checks.
 
 Evidence is written to `.artifacts/basic-*/evidence.json`. Only these JSON files
 are eligible for workflow upload. They contain comparisons, counts and event

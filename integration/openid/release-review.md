@@ -696,3 +696,36 @@ and the encrypted-state length warning. The live failed aggregate at `98362fc`
 continued to produce its diagnostic receipt. All 16 verifier tests passed on
 Windows and GitHub. A release publication awaits a successful hosted matrix.
 [Hosted report checks](https://github.com/lukakoning/shinyOAuth/actions/runs/45019340785).
+
+## Second-provider baseline source identity, 2026-11-22
+
+`13618b0bb80d88be0459e616b26036ab9959e623` applies the source identity and
+private installation checks to the `oidc-provider` baseline. Clean runs
+install the selected Git archive. After the browser and worker processes
+stop, the harness rereads and verifies the checkout and R installation.
+Schema 2 adds four rejection controls for the schema version, source
+verification flag and final source and installation records. Archived schema-1
+reports for both transports passed their original interoperability checks.
+
+Clean Windows runs passed public and confidential query and Form Post cases
+with `sync` and `mirai`. Each report passed all 68 rejection controls. An
+independent check read the committed profile and provider locks, matched the
+fixture file digests to the recorded checkout, and verified both installations
+on disk. The canonical Git archive had SHA-256
+`336e6d7560beb575b42a5d9da583e5e764df110c237806c145b12b3e33988679`.
+The reports stay under
+`integration/oidc-provider/.artifacts/basic-20261122-115533-b5abf6708781/`
+(`sync`, 44.92 case seconds) and
+`integration/oidc-provider/.artifacts/basic-20261122-115533-25b746533da6/`
+(`mirai`, 53.76 case seconds). The baseline remains companion interoperability
+evidence for its own revision.
+
+Both hosted Ubuntu runs passed at the same revision. The retained ZIPs
+`14752809371` (`sync`) and `14753236724` (`mirai`) matched GitHub's digests.
+Independent replay verified four cases and all 68 controls for each transport,
+with the same canonical Git archive hash as on Windows. Hosted case times
+were 19.73 and 26.47 seconds. The originals stay under
+`integration/oidc-provider/.artifacts/hosted-45019732087-baseline/` and
+`integration/oidc-provider/.artifacts/hosted-45019734184-baseline/`.
+[Hosted sync](https://github.com/lukakoning/shinyOAuth/actions/runs/45019732087),
+[hosted mirai](https://github.com/lukakoning/shinyOAuth/actions/runs/45019734184).
