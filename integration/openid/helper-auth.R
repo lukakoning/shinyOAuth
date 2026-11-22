@@ -125,6 +125,74 @@ openid_form_post_requests_match <- function(result, expectation) {
     }
 }
 
+openid_userinfo_request_evidence <- function(logs, module) {
+  if (
+    !length(logs) ||
+      !all(vapply(
+        logs,
+        function(entry) identical(entry[["testId"]], module[["id"]]),
+        logical(1)
+      ))
+  ) {
+    stop("UserInfo logs do not belong to this suite instance")
+  }
+  path <- sub("^https://[^/]+", "", module[["issuer"]])
+  requests <- function(endpoint) {
+    Filter(
+      function(entry) {
+        identical(entry[["http"]], "incoming") &&
+          identical(entry[["incoming_path"]], paste0(path, endpoint))
+      },
+      logs
+    )
+  }
+  userinfo <- requests("userinfo")
+  one_userinfo_request <- length(userinfo) == 1L
+  suite_passed <- function(check) {
+    any(vapply(
+      logs,
+      function(entry) {
+        identical(entry[["src"]], check) &&
+          identical(entry[["result"]], "SUCCESS")
+      },
+      logical(1)
+    ))
+  }
+  list(
+    suite_id = module[["id"]],
+    token_request_count = length(requests("token")),
+    userinfo_request_count = length(userinfo),
+    userinfo_bearer_get = one_userinfo_request &&
+      {
+        request <- userinfo[[1L]]
+        authorization <- request[["incoming_headers"]][["authorization"]]
+        identical(request[["incoming_method"]], "GET") &&
+          openid_string(authorization) &&
+          grepl("^Bearer [^[:space:]]+$", authorization) &&
+          !"access_token" %in%
+            names(request[["incoming_query_string_params"]]) &&
+          !"access_token" %in% names(request[["incoming_body_form_params"]])
+      },
+    suite_accepted_bearer_token = suite_passed("RequireBearerAccessToken"),
+    suite_signed_userinfo = suite_passed("SignUserInfoResponse"),
+    suite_omitted_id_token_audience = suite_passed("RemoveAudFromIdToken")
+  )
+}
+
+openid_userinfo_requests_match <- function(result, expectation) {
+  proof <- result[["userinfo_requests"]]
+  authenticated <- identical(expectation[["outcome"]], "authenticated")
+  identical(proof[["suite_id"]], result[["suite_id"]]) &&
+    identical(proof[["token_request_count"]], 1L) &&
+    identical(proof[["userinfo_request_count"]], as.integer(authenticated)) &&
+    identical(proof[["userinfo_bearer_get"]], authenticated) &&
+    identical(proof[["suite_accepted_bearer_token"]], authenticated) &&
+    identical(proof[["suite_omitted_id_token_audience"]], !authenticated) &&
+    (!isTRUE(expectation[["require_signed_userinfo"]]) ||
+      (isTRUE(proof[["suite_signed_userinfo"]]) &&
+        isTRUE(result[["app"]][["signed_userinfo_validated"]])))
+}
+
 openid_auth_checks <- function(method) {
   if (identical(method, "client_secret_post")) {
     return(c(

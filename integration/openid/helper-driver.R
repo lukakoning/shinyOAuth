@@ -257,6 +257,7 @@ openid_run_case <- function(
     client_assertion_alg = plan[["spec"]][["client_assertion_alg"]],
     fapi = openid_fapi_plan(plan[["spec"]][["plan"]]),
     direct_configuration = isTRUE(expectation[["direct_configuration"]]),
+    require_signed_userinfo = isTRUE(expectation[["require_signed_userinfo"]]),
     pre_login_state = isTRUE(expectation[["pre_login_state"]]),
     message_signing = identical(
       plan[["spec"]][["plan"]],
@@ -549,6 +550,12 @@ openid_run_case <- function(
       openid_api(stack, paste0("/api/log/", module[["id"]])),
       module,
       plan
+    )
+  }
+  if (isTRUE(expectation[["observe_userinfo_requests"]])) {
+    row[["userinfo_requests"]] <- openid_userinfo_request_evidence(
+      openid_api(stack, paste0("/api/log/", module[["id"]])),
+      module
     )
   }
   if (identical(context[["profile"]], "form-post-cross-site")) {

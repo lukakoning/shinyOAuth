@@ -6,7 +6,7 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
       setequal(args[c(1L, 3L)], c("--profile", "--transport"))
     if (!valid) {
       stop(
-        "Usage: Rscript integration/openid/run-tests.R --check-api | --profile smoke|basic|config|form-post|form-post-cross-site|refresh|auth-post|auth-secret-jwt|auth-private-jwt|fapi-dpop|fapi-dpop-full|fapi-oauth-dpop|fapi-oauth-dpop-reference|fapi-oauth-mtls|fapi-oauth-mtls-auth|fapi-mtls|fapi-mtls-auth|fapi-message-signing --transport sync|mirai|future"
+        "Usage: Rscript integration/openid/run-tests.R --check-api | --profile smoke|basic|config|form-post|form-post-cross-site|refresh|auth-post|comprehensive-userinfo|auth-secret-jwt|auth-private-jwt|fapi-dpop|fapi-dpop-full|fapi-oauth-dpop|fapi-oauth-dpop-reference|fapi-oauth-mtls|fapi-oauth-mtls-auth|fapi-mtls|fapi-mtls-auth|fapi-message-signing --transport sync|mirai|future"
       )
     }
     options <- setNames(args[c(2L, 4L)], args[c(1L, 3L)])
@@ -20,6 +20,7 @@ run_openid_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
           "form-post-cross-site",
           "refresh",
           "auth-post",
+          "comprehensive-userinfo",
           "auth-secret-jwt",
           "auth-private-jwt",
           "fapi-dpop",

@@ -1265,6 +1265,16 @@
         }
       ]
     },
+    "comprehensive-userinfo": {
+      "plan": "auth-post",
+      "complete_profile": false,
+      "coverage_limitations": ["comprehensive_plan_selection_only"],
+      "modules": [
+        {"module": "oidcc-client-test-userinfo-signed", "outcome": "authenticated", "userinfo_claims": ["sub"], "observe_userinfo_requests": true, "require_signed_userinfo": true},
+        {"module": "oidcc-client-test-userinfo-bearer-header", "outcome": "authenticated", "userinfo_claims": ["sub"], "observe_userinfo_requests": true},
+        {"module": "oidcc-client-test-missing-aud", "outcome": "rejected", "claim": "aud", "observe_userinfo_requests": true}
+      ]
+    },
     "auth-secret-jwt": {
       "plan": "auth-secret-jwt",
       "complete_profile": false,

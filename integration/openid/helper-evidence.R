@@ -1149,6 +1149,14 @@ openid_check_report <- function(report, context, manifest) {
           )
         }
         if (
+          isTRUE(expectation[["observe_userinfo_requests"]]) &&
+            !openid_userinfo_requests_match(result, expectation)
+        ) {
+          stop(
+            "Missing UserInfo request or signed response validation evidence"
+          )
+        }
+        if (
           !openid_case_app_matches(
             result,
             expectation,

@@ -152,7 +152,7 @@ openid_fixture_app <- function(config) {
   ) {
     discovery_args[["userinfo_allowed_algs"]] <- c("ES256", "EdDSA", "Ed25519")
   }
-  if (!is.null(advanced)) {
+  if (!is.null(advanced) || isTRUE(config[["require_signed_userinfo"]])) {
     discovery_args[["userinfo_signed_jwt_required"]] <- TRUE
     discovery_args[["userinfo_allowed_algs"]] <- "RS256"
   }
@@ -319,6 +319,19 @@ openid_fixture_app <- function(config) {
           NULL
         },
         userinfo_present = !is.null(token) && length(token@userinfo) > 0L,
+        signed_userinfo_validated = if (
+          isTRUE(config[["require_signed_userinfo"]])
+        ) {
+          !is.null(provider) &&
+            provider@userinfo_signed_jwt_required &&
+            !is.null(token) &&
+            isTRUE(token@id_token_validated) &&
+            provider@userinfo_id_token_match &&
+            is.character(token@userinfo[["sub"]]) &&
+            identical(token@userinfo[["sub"]], token@id_token_claims[["sub"]])
+        } else {
+          NULL
+        },
         userinfo_claims = if (is.null(token)) {
           list()
         } else {
