@@ -25,6 +25,7 @@ on:
           - form-post-cross-site
           - refresh
           - auth-post
+          - comprehensive-userinfo
           - auth-secret-jwt
           - auth-private-jwt
           - shared-pool
@@ -145,6 +146,7 @@ jobs:
             integration/openid/.artifacts/form-post-cross-site-*/evidence.json
             integration/openid/.artifacts/refresh-*/evidence.json
             integration/openid/.artifacts/auth-post-*/evidence.json
+            integration/openid/.artifacts/comprehensive-userinfo-*/evidence.json
             integration/openid/.artifacts/auth-secret-jwt-*/evidence.json
             integration/openid/.artifacts/auth-private-jwt-*/evidence.json
             integration/openid/.artifacts/shared-pool-*/evidence.json

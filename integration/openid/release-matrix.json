@@ -36,6 +36,14 @@
       "transport": "mirai"
     },
     {
+      "profile": "comprehensive-userinfo",
+      "transport": "sync"
+    },
+    {
+      "profile": "comprehensive-userinfo",
+      "transport": "mirai"
+    },
+    {
       "profile": "config",
       "transport": "sync"
     },
