@@ -7,9 +7,10 @@ application outcome. Use the pinned OIDF plan where it has a matching case
 and the independent provider for focused browser scenarios.
 
 The [OIDC authentication-age browser case](../integration/oidc-provider/README.md#authentication-age)
-covers `max_age=0` and signed `auth_time` validation on a fresh login. The
-[OIDC requirement map](../integration/openid/requirements-oidc.md) tracks the
-remaining case with an existing provider session.
+covers `max_age=0` and signed `auth_time` validation on a fresh login and on
+reauthentication with an active provider session. The
+[OIDC requirement map](../integration/openid/requirements-oidc.md) links these
+flows to the authorization request and ID-token validation requirements.
 
 **Release evidence status (2026-11-22).** The first complete hosted OIDF matrix
 passed all 39 declared selections and the aggregate at

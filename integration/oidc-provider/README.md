@@ -222,15 +222,24 @@ same PKCE challenge reached authorization. The provider records `auth_time`
 from its signed ID token. The app reports the claim after shinyOAuth validates
 the token. The test requires the two claim values to match and the authentication
 time to fall between the actual login interaction and code issuance.
-Reauthentication with an existing provider session remains open.
+
+After the first refresh, the case signs out of the app and logs in again in
+the same Chrome tab. The provider's native login interaction must identify an
+active session whose authentication time matches the first ID token. The
+second PAR request must carry `max_age=0` without an explicit `prompt=login`.
+The provider must request login. The app must validate the second ID token with
+a strictly newer `auth_time` and complete the UserInfo request.
 [OIDC Core authorization request](https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest),
 [ID-token validation](https://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation).
 
-All four basic cases passed with both transports at `15d50747`. The reports
-include the received `max_age`, the PKCE match and the validated `auth_time`
-for the confidential query case.
+The first-login checks passed with both transports at `15d50747`.
 [Sync run](https://github.com/lukakoning/shinyOAuth/actions/runs/45039067494),
 [mirai run](https://github.com/lukakoning/shinyOAuth/actions/runs/45039067378).
+
+The extended case passed in clean Windows browser runs at `45bffda8` with
+both `sync` and `mirai`. All four basic cases passed for each transport. The
+provider's signed second `auth_time` matched the app's validated claim and was
+three seconds later than the original authentication in both runs.
 
 ## Run the provider release matrix
 
