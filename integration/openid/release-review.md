@@ -999,3 +999,27 @@ metadata are retained in
 `integration/oidc-provider/.artifacts/verified-paired-provider-45033763653-1/`.
 The OIDF aggregate and signed link are pending.
 [Paired matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/45033763653).
+
+## Portable paired evidence, 2026-11-22
+
+`ace80fa798ec64ce7af257363a30ce73f26d7b54` adds `--pack-paired` and
+`--paired-bundle-input`. The packer preserves the three original ZIPs,
+four GitHub responses and Sigstore proof. Both commands use independently
+trusted roots, verify the link and replay the two aggregates. The receipt
+and Markdown must match the replay. The archive uses fixed ZIP entry
+metadata and canonical LF receipt bytes.
+[Packaging and replay instructions](release-matrix.md#package-paired-evidence-for-release-storage).
+
+A synthetic paired fixture exercised both CLI modes with mocked upstream
+verification and checks for changed proof, metadata and derived reports.
+Repeated packing produced identical bytes. Repacking the real standalone
+OIDF archive from run `45017983714` also produced identical bytes and its
+offline replay reproduced the 39-selection receipt.
+[Completed standalone OIDF matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/45017983714).
+
+All 55 tests passed on Windows and hosted Ubuntu. The hosted report-only
+run exercised the verification suites and skipped both matrices and signing.
+[Hosted report checks](https://github.com/lukakoning/shinyOAuth/actions/runs/45036335433).
+
+The first production paired archive still awaits the signed link from run
+`45033763653`. [First paired matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/45033763653).

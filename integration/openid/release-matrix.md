@@ -263,6 +263,31 @@ For offline replay, use the paired verifier with these original files and
 the retained `attestation.jsonl`. Supply your independently trusted root file
 with `--attestation-root`.
 
+### Package paired evidence for release storage
+
+Pack the directory produced by `--retain-paired` with an independently
+trusted root file. The packer replays the link and both aggregates, checks
+the saved metadata and reports, and writes a new ZIP.
+
+```sh
+python integration/openid/verify-release-artifact.py --repository OWNER/REPO --revision FULL_COMMIT_SHA --run-id RUN_ID --attempt ATTEMPT_NUMBER --pack-paired "PATH_TO_RETAINED_DIRECTORY" --bundle-output "PATH_TO_NEW_PAIRED_RELEASE.zip" --attestation-root "PATH_TO_TRUSTED_ROOT.jsonl"
+```
+
+The archive contains the three original ZIPs, the four GitHub metadata
+files, the saved Sigstore proof, the receipt and the Markdown summary.
+It preserves the original ZIP, metadata and proof bytes. The archive
+uses fixed entry metadata and LF for the generated receipt. Keep the
+trusted root file separately and record the outer ZIP's SHA-256 when
+placing it in shared storage.
+
+Replay the portable ZIP from a checkout containing the selected commit.
+The verifier authenticates the saved proof with the supplied roots and
+recomputes both report outputs.
+
+```sh
+python integration/openid/verify-release-artifact.py --repository OWNER/REPO --revision FULL_COMMIT_SHA --run-id RUN_ID --attempt ATTEMPT_NUMBER --paired-bundle-input "PATH_TO_PAIRED_RELEASE.zip" --attestation-root "PATH_TO_TRUSTED_ROOT.jsonl"
+```
+
 ## Package a verified attempt for release storage
 
 From the repository root, pack the three original files of a passing attempt
