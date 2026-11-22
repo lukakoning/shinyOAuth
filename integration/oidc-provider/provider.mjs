@@ -55,6 +55,8 @@ export function fixture(config) {
   const record = (type, fields = {}) => events.push({ sequence: events.length + 1, type, ...fields });
   const observeAuthenticationTime = config.observe_authentication_time === true;
   const epochSeconds = () => Math.floor(Date.now() / 1000);
+  let pushedAgeRequest;
+  let pushedAgeChallenge;
   let challenge;
   let codeDigest;
   const issued = new Set();
@@ -71,6 +73,15 @@ export function fixture(config) {
       ...(resources ? resourceFacts(ctx, config) : {}),
     }));
   }
+  if (observeAuthenticationTime) provider.on('pushed_authorization_request.success', (ctx, client) => {
+    // Read the received form value before authorization normalizes max_age=0.
+    const form = ctx.oidc.body;
+    pushedAgeChallenge = form.code_challenge;
+    pushedAgeRequest = {
+      max_age: typeof form.max_age === 'string' ? form.max_age : null,
+      client_matches: client.clientId === config.client_id,
+    };
+  });
   provider.on('authorization.accepted', ctx => {
     const params = ctx.oidc.params;
     challenge = params.code_challenge;
@@ -80,6 +91,10 @@ export function fixture(config) {
       pkce_s256: params.code_challenge_method === 'S256' && /^[A-Za-z0-9_-]{43}$/.test(challenge),
       state_present: typeof params.state === 'string' && params.state.length >= 22,
       nonce_present: typeof params.nonce === 'string' && params.nonce.length >= 16,
+      ...(observeAuthenticationTime ? { pushed_age_request: pushedAgeRequest ? {
+        ...pushedAgeRequest,
+        challenge_matches: typeof pushedAgeChallenge === 'string' && challenge === pushedAgeChallenge,
+      } : null } : {}),
       ...(resources ? resourceFacts(ctx, config) : {}),
     });
   });

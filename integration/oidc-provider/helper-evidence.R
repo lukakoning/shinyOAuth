@@ -97,16 +97,14 @@ interop_provider_matches <- function(provider, row, lock, selection) {
   }
   max_age <- selection[["max_age"]]
   if (!is.null(max_age)) {
+    request <- events[[4L]][["pushed_age_request"]]
     observed <- events[[6L]][["auth_time"]]
     validated <- row[["before_refresh"]][["validated_auth_time"]]
     login_started <- events[[2L]][["login_started_at"]]
     code_issued <- events[[5L]][["code_issued_at"]]
     if (
-      !isTRUE(row[["authorization_age"]][["method"]] %in% c("GET", "POST")) ||
-        !identical(
-          row[["authorization_age"]][["max_age_values"]],
-          list(as.character(max_age))
-        ) ||
+      !identical(request[["max_age"]], as.character(max_age)) ||
+        !required(request, c("client_matches", "challenge_matches")) ||
         !all(vapply(
           list(observed, validated, login_started, code_issued),
           function(value) {
