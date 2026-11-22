@@ -24,6 +24,7 @@ class ReleaseArtifactTest(unittest.TestCase):
             revision="a" * 40,
             run_id=10,
             attempt=2,
+            failed_attempt=False,
             run_metadata=directory / "run.json",
             artifact_metadata=directory / "artifact.json",
             archive=directory / "artifact.zip",
@@ -140,22 +141,27 @@ class ReleaseArtifactTest(unittest.TestCase):
                 )
             if extra:
                 archive.writestr(extra, "{}")
+        self.write_metadata()
+
+    def write_metadata(self):
         digest = hashlib.sha256(self.args.archive.read_bytes()).hexdigest()
         self.artifact["digest"] = f"sha256:{digest}"
         self.args.run_metadata.write_text(json.dumps(self.run), encoding="utf-8")
         self.args.artifact_metadata.write_text(json.dumps(self.artifact), encoding="utf-8")
 
-    def mock_replay(self, replay):
+    def mock_replay(self, replay, inputs=None, returncode=0):
+        if inputs is None:
+            inputs = [json.dumps(self.report).encode()]
+
         def run(command, **options):
             self.assertEqual(command[:4], [
                 "Rscript", "integration/openid/run-release-check.R",
                 "--revision", self.args.revision,
             ])
             self.assertEqual(command[4], "--output")
-            self.assertEqual(len(command), 7)
-            self.assertEqual(Path(command[6]).read_bytes(), json.dumps(self.report).encode())
+            self.assertEqual([Path(path).read_bytes() for path in command[6:]], inputs)
             Path(command[5]).write_text(json.dumps(replay), encoding="utf-8")
-            return SimpleNamespace(returncode=0)
+            return SimpleNamespace(returncode=returncode, stderr="")
 
         return patch.object(verifier.subprocess, "run", side_effect=run)
 
@@ -206,6 +212,49 @@ class ReleaseArtifactTest(unittest.TestCase):
         self.write_fixture()
         with self.assertRaisesRegex(ValueError, "aggregate artifact"):
             verifier.verify(self.args)
+
+    def failed_attempt_fixture(self, inputs, status):
+        self.args.failed_attempt = True
+        self.run["conclusion"] = "failure"
+        hashes = [hashlib.sha256(data).hexdigest() for data in inputs]
+        self.summary = {
+            "status": "failed", "gate_passed": False, "matrix_complete": False,
+            "input_sha256": hashes,
+            "selection_diagnostics": [{
+                "profile": "smoke", "transport": "sync", "status": status,
+                "report_sha256": hashes,
+            }],
+        }
+        with ZipFile(self.args.archive, "w") as archive:
+            archive.writestr(verifier.SUMMARY, json.dumps(self.summary))
+            for i, data in enumerate(reversed(inputs)):
+                archive.writestr(self.member.replace("130000", f"13000{i}"), data)
+        self.write_metadata()
+
+    def test_failed_attempt_replays_every_report_in_the_original_order(self):
+        inputs = [json.dumps({**self.report, "run": i}).encode() for i in range(2)]
+        self.failed_attempt_fixture(inputs, "duplicate")
+        with self.mock_replay(self.summary, inputs=inputs, returncode=1):
+            receipt = verifier.verify(self.args)
+        self.assertIs(receipt["gate_passed"], False)
+        self.assertIs(receipt["matrix_complete"], False)
+        self.assertEqual(receipt["client_report_count"], 2)
+        self.assertEqual(receipt["selection_diagnostics"], self.summary["selection_diagnostics"])
+        self.assertNotIn("companion_reports", receipt)
+
+    def test_failed_attempt_replays_missing_all_reports(self):
+        self.failed_attempt_fixture([], "missing")
+        with self.mock_replay(self.summary, inputs=[], returncode=1):
+            receipt = verifier.verify(self.args)
+        self.assertEqual(receipt["client_report_count"], 0)
+        self.assertEqual(receipt["selection_diagnostics"][0]["status"], "missing")
+
+    def test_failed_attempt_rejects_changed_diagnostics(self):
+        self.failed_attempt_fixture([], "missing")
+        replay = {**self.summary, "selection_diagnostics": [{"status": "reported_failure"}]}
+        with self.mock_replay(replay, inputs=[], returncode=1):
+            with self.assertRaisesRegex(ValueError, "summary differs"):
+                verifier.verify(self.args)
 
     def test_rejects_extra_files_and_reports_in_the_wrong_directory(self):
         self.write_fixture(extra="release-inputs/browser.log")

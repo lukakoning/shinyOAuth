@@ -47,6 +47,7 @@ def check_run_metadata(args, run):
     repository_id = repository.get("id")
     repository_name = repository.get("full_name")
     workflow_path = run.get("path")
+    conclusion = "failure" if args.failed_attempt else "success"
     if (
         not isinstance(repository_name, str)
         or repository_name.lower() != args.repository.lower()
@@ -60,9 +61,10 @@ def check_run_metadata(args, run):
         or workflow_path.partition("@")[0] != WORKFLOW
         or run.get("event") != "workflow_dispatch"
         or run.get("status") != "completed"
-        or run.get("conclusion") != "success"
+        or run.get("conclusion") != conclusion
     ):
-        raise ValueError("Expected the selected successful OpenID matrix workflow attempt")
+        outcome = "failed" if args.failed_attempt else "successful"
+        raise ValueError(f"Expected the selected {outcome} OpenID matrix workflow attempt")
     return repository_id
 
 
@@ -208,18 +210,22 @@ def check_api(report, client, lock, plans):
     check_plan_inventory(report.get("plan_inventory"), plans)
 
 
+def report_path(path, attempt):
+    match = REPORT_PATH.fullmatch(path)
+    if not match or int(match["attempt"]) != attempt:
+        raise ValueError("Unexpected path in the release artifact")
+    kind = match["kind"]
+    if kind == match["profile"]:
+        kind = "client"
+    elif kind not in {"api", "preflight"}:
+        raise ValueError("Release report path differs from its selection")
+    return (match["profile"], match["transport"]), kind
+
+
 def check_reports(names, read, attempt, lock, plans):
     selections = {}
     for path in names:
-        match = REPORT_PATH.fullmatch(path)
-        if not match or int(match["attempt"]) != attempt:
-            raise ValueError("Unexpected path in the release artifact")
-        kind = match["kind"]
-        if kind == match["profile"]:
-            kind = "client"
-        elif kind not in {"api", "preflight"}:
-            raise ValueError("Release report path differs from its selection")
-        key = (match["profile"], match["transport"])
+        key, kind = report_path(path, attempt)
         members = selections.setdefault(key, {})
         if kind in members:
             raise ValueError(f"Duplicate {kind} report for {'/'.join(key)}")
@@ -248,11 +254,16 @@ def check_reports(names, read, attempt, lock, plans):
         yield label, client, data["client"], companion_hashes
 
 
-def read_archive(archive, attempt, directory, lock, plans):
+def archive_report_paths(archive):
     names = archive.namelist()
     if SUMMARY not in names or len(names) != len(set(names)):
         raise ValueError("Expected one release summary and unique archive paths")
     names.remove(SUMMARY)
+    return names
+
+
+def read_archive(archive, attempt, directory, lock, plans):
+    names = archive_report_paths(archive)
 
     def read(path):
         return read_member(archive, archive.getinfo(path))
@@ -265,6 +276,41 @@ def read_archive(archive, attempt, directory, lock, plans):
         clients.append(str(target))
         companions[label] = hashes
     return read_member(archive, archive.getinfo(SUMMARY)), clients, companions
+
+
+def read_failed_archive(archive, attempt, directory):
+    names = archive_report_paths(archive)
+    summary = read_member(archive, archive.getinfo(SUMMARY))
+    recorded = read_object(summary)
+    diagnostics = recorded.get("selection_diagnostics")
+    if (
+        recorded.get("status") != "failed"
+        or recorded.get("gate_passed") is not False
+        or recorded.get("matrix_complete") is not False
+        or not isinstance(diagnostics, list)
+        or not diagnostics
+    ):
+        raise ValueError("Expected a failed release summary with selection diagnostics")
+
+    paths_by_digest = {}
+    for index, name in enumerate(names):
+        _, kind = report_path(name, attempt)
+        if kind != "client":
+            continue
+        data = read_member(archive, archive.getinfo(name))
+        target = directory / f"client-{index}.json"
+        target.write_bytes(data)
+        digest = hashlib.sha256(data).hexdigest()
+        paths_by_digest.setdefault(digest, []).append(str(target))
+
+    # A failed replay can depend on which invalid input the checker saw first.
+    try:
+        clients = [paths_by_digest[digest].pop() for digest in summary_input_hashes(recorded)]
+    except (KeyError, IndexError) as error:
+        raise ValueError("Stored failure inputs differ from the archive client reports") from error
+    if any(paths_by_digest.values()):
+        raise ValueError("Stored failure inputs differ from the archive client reports")
+    return summary, clients, diagnostics
 
 
 def check_downloaded_reports(directory, revision, attempt):
@@ -322,15 +368,19 @@ def read_member(archive, member):
     return archive.read(member)
 
 
-def summary_for_comparison(data):
-    summary = read_object(data)
+def summary_input_hashes(summary):
     hashes = summary.get("input_sha256")
     if not isinstance(hashes, list) or not all(
         isinstance(value, str) and SHA256.fullmatch(value) for value in hashes
     ):
         raise ValueError("Invalid client report digests in the release summary")
+    return hashes
+
+
+def summary_for_comparison(data):
+    summary = read_object(data)
     # This field enumerates the inputs in invocation order. Entries carry their own digest.
-    summary["input_sha256"] = sorted(hashes)
+    summary["input_sha256"] = sorted(summary_input_hashes(summary))
     return json.dumps(summary, sort_keys=True)
 
 
@@ -342,11 +392,14 @@ def verify(args):
         if hashlib.file_digest(file, "sha256").hexdigest() != digest:
             raise ValueError("Release artifact ZIP differs from the GitHub SHA-256 digest")
         directory = Path(tmp)
-        lock, plans = read_suite_policy(args.revision)
         with ZipFile(file) as archive:
-            summary, clients, companions = read_archive(
-                archive, args.attempt, directory, lock, plans
-            )
+            if args.failed_attempt:
+                summary, clients, diagnostics = read_failed_archive(archive, args.attempt, directory)
+            else:
+                lock, plans = read_suite_policy(args.revision)
+                summary, clients, companions = read_archive(
+                    archive, args.attempt, directory, lock, plans
+                )
         replay_path = directory / "replay.json"
         result = subprocess.run(
             [
@@ -356,12 +409,13 @@ def verify(args):
             capture_output=True,
             text=True,
         )
-        if result.returncode:
+        expected_exit = 1 if args.failed_attempt else 0
+        if result.returncode != expected_exit or not replay_path.is_file():
             raise ValueError(f"Release checker replay failed: {result.stderr.strip()}")
         if summary_for_comparison(summary) != summary_for_comparison(replay_path.read_bytes()):
             raise ValueError("Stored release summary differs from the independent replay")
 
-    return {
+    receipt = {
         "repository": args.repository,
         "workflow": WORKFLOW,
         "run_id": args.run_id,
@@ -371,8 +425,12 @@ def verify(args):
         "artifact_sha256": digest,
         "summary_sha256": hashlib.sha256(summary).hexdigest(),
         "client_report_count": len(clients),
-        "companion_reports": companions,
     }
+    if args.failed_attempt:
+        receipt.update(gate_passed=False, matrix_complete=False, selection_diagnostics=diagnostics)
+    else:
+        receipt["companion_reports"] = companions
+    return receipt
 
 
 def github_api(endpoint, stdout=subprocess.PIPE):
@@ -423,6 +481,7 @@ def retain(args):
         replay = argparse.Namespace(
             repository=args.repository, revision=args.revision,
             run_id=args.run_id, attempt=args.attempt,
+            failed_attempt=args.failed_attempt,
             run_metadata=stage / "run.json", artifact_metadata=stage / "artifact.json",
             archive=stage / "artifact.zip",
         )
@@ -450,7 +509,10 @@ def main():
         "--downloaded-reports", type=Path, help="Check the downloaded job artifact directories in CI"
     )
     parser.add_argument(
-        "--retain", type=Path, help="Fetch and verify a successful GitHub attempt into a new directory"
+        "--retain", type=Path, help="Fetch and verify a GitHub attempt into a new directory"
+    )
+    parser.add_argument(
+        "--failed-attempt", action="store_true", help="Replay a failed client aggregate and its diagnostics"
     )
     parser.add_argument(
         "run_metadata", type=Path, nargs="?", help="GitHub workflow run attempt JSON"
@@ -468,7 +530,9 @@ def main():
         parser.error("--run-id and --attempt must be positive")
     files = (args.run_metadata, args.artifact_metadata, args.archive)
     if args.downloaded_reports is not None:
-        if any(value is not None for value in (args.repository, args.run_id, args.retain, *files)):
+        if args.failed_attempt or any(
+            value is not None for value in (args.repository, args.run_id, args.retain, *files)
+        ):
             parser.error("--downloaded-reports must be used independently of ZIP replay or retention")
     elif args.retain is not None:
         if args.run_id is None or not re.fullmatch(
@@ -487,7 +551,10 @@ def main():
             print(f"Verified preflight and API reports for {count} declared OpenID selections.")
         elif args.retain is not None:
             receipt = retain(args)
-            print(f"Retained {receipt['client_report_count']} verified OpenID selections in {args.retain}.")
+            if args.failed_attempt:
+                print(f"Retained and replayed failed OpenID matrix diagnostics in {args.retain}.")
+            else:
+                print(f"Retained {receipt['client_report_count']} verified OpenID selections in {args.retain}.")
         else:
             print(json.dumps(verify(args), indent=2))
     except (BadZipFile, OSError, ValueError) as error:
