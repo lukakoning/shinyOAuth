@@ -167,6 +167,44 @@ receipt's trust source.
 See the [run-attempt API](https://docs.github.com/en/rest/actions/workflow-runs#get-a-workflow-run-attempt)
 and [artifact API](https://docs.github.com/en/rest/actions/artifacts#get-an-artifact).
 
+## Verify signed provenance
+
+The `attest` job signs the digest of the original aggregate ZIP after the
+aggregate passes. Its signing permissions are scoped to that job. It checks
+that the aggregate comes from the current workflow attempt before issuing the
+attestation. [GitHub artifact attestations](https://docs.github.com/en/actions/concepts/security/artifact-attestations).
+
+Add `--require-attestation` when retaining or replaying a signed attempt.
+The verifier uses `gh` to check the signature, repository, GitHub-hosted
+runner, signer workflow and source revision. It matches the expected run and
+attempt against the signed certificate and compares the named subject and
+digest with the original ZIP. The verification receipt retains its existing
+format. The command reports the attestation result separately.
+[GitHub CLI verification](https://cli.github.com/manual/gh_attestation_verify),
+[Fulcio certificate fields](https://github.com/sigstore/fulcio/blob/main/docs/oid-info.md#13614157264121--run-invocation-uri).
+
+The default attestation check fetches the signature online. For offline
+verification, save the signature and trusted roots while online. Run the
+following commands in the directory where you will keep those files.
+
+```sh
+gh attestation download "PATH_TO_BUNDLE/artifact.zip" --repo OWNER/REPO --predicate-type https://slsa.dev/provenance/v1
+python -c "import pathlib, subprocess; pathlib.Path('trusted_root.jsonl').write_bytes(subprocess.check_output(['gh', 'attestation', 'trusted-root']))"
+```
+
+Replay the verified release archive with the downloaded Sigstore JSONL and the
+locally trusted root file.
+
+```sh
+python integration/openid/verify-release-artifact.py --repository OWNER/REPO --revision FULL_COMMIT_SHA --run-id RUN_ID --attempt ATTEMPT_NUMBER --bundle-input "PATH_TO_RELEASE.zip" --require-attestation --attestation-bundle "PATH_TO_ATTESTATION.jsonl" --attestation-root "PATH_TO_TRUSTED_ROOT.jsonl"
+```
+
+Use a trusted root obtained from the GitHub CLI and kept under your control.
+The signature identifies the original GitHub ZIP inside the release archive.
+The verifier checks the archive's derived receipt and Markdown by replaying
+its original inputs. [Saving a Sigstore bundle](https://cli.github.com/manual/gh_attestation_download),
+[saving trusted roots](https://cli.github.com/manual/gh_attestation_trusted-root).
+
 ## Package a verified attempt for release storage
 
 From the repository root, pack the three original files of a passing attempt

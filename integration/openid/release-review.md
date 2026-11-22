@@ -781,8 +781,8 @@ The summary SHA-256 is
 `5857da5e3af77ce72a42da12ac6e947c627bcf94f8429a7fa3be4393d64b3885`.
 The original ZIP, metadata and receipt stay under
 `.artifacts/verified-matrix-45017983714-1/`. The original GitHub aggregate
-expires on 2027-02-20. Shared release storage and signed provenance remain
-open.
+expires on 2027-02-20. This aggregate is unsigned. Shared release storage
+remains open.
 
 The suite recorded 372 `PASSED`, six accepted `WARNING` and six accepted
 `SKIPPED` verdicts across 384 module runs. Twenty-five selections exercised
@@ -814,6 +814,28 @@ matched the retained receipt, and the Markdown matched the Git blob of the
 published table. Repacking the original inputs reproduced the archive bytes.
 
 All 19 Python tests passed on Windows and hosted Ubuntu. The source has no
-matching release tag. Shared publication of the archive and signed provenance
-remain open. [Hosted report checks](https://github.com/lukakoning/shinyOAuth/actions/runs/45029575686),
+matching release tag. Shared publication of the archive remains open.
+[Hosted report checks](https://github.com/lukakoning/shinyOAuth/actions/runs/45029575686),
 [release archive instructions](release-matrix.md#package-a-verified-attempt-for-release-storage).
+
+## Signed OIDF aggregate provenance, 2026-11-22
+
+`30774baa707846aa8c5cd54596b1dc5999404625` adds a job that signs the digest
+of the original GitHub ZIP after the aggregate passes on the current
+attempt. The verifier can require a GitHub-hosted signature for the expected
+repository, workflow and revision, with the exact run, attempt and artifact
+subject. It accepts saved Sigstore inputs for offline verification.
+[Signed provenance instructions](release-matrix.md#verify-signed-provenance).
+
+All 22 Python tests passed on Windows and hosted Ubuntu. The report-only
+GitHub run skipped the signing job. The production verifier checked a
+public GitHub CLI release signature online and offline and rejected that
+signature when checked against the wrong attempt. Requiring a signature
+for the earlier OIDF archive failed, and ordinary offline replay reproduced
+its 39-selection receipt.
+[Hosted report checks](https://github.com/lukakoning/shinyOAuth/actions/runs/45030282076),
+[GitHub CLI release used for verification](https://github.com/cli/cli/releases/tag/v2.100.0).
+
+The first full matrix with signing enabled is in progress at
+`30774baa707846aa8c5cd54596b1dc5999404625`. Verification of its signed
+aggregate is pending. [Signing-enabled matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/45030528151).
