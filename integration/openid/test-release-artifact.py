@@ -419,6 +419,120 @@ class ReleaseArtifactTest(unittest.TestCase):
         self.assertEqual(command.call_args.args[0][:3], ["gh", "attestation", "verify"])
         self.assertEqual(command.call_count, 1)
 
+    def write_paired_fixture(self):
+        self.write_fixture()
+        directory = self.args.archive.parent
+        self.args.paired_link = directory / "link.zip"
+        self.args.provider_archive = directory / "provider.zip"
+        with ZipFile(self.args.provider_archive, "w") as provider:
+            provider.writestr("release-summary.json", "{}")
+        manifest = {
+            "schema_version": 1,
+            "repository": self.args.repository,
+            "revision": self.args.revision,
+            "run_id": self.args.run_id,
+            "attempt": self.args.attempt,
+            "artifacts": {
+                "oidf": {
+                    "id": self.artifact["id"], "name": self.artifact["name"], "sha256": self.artifact["digest"][7:],
+                },
+                "provider": {
+                    "id": 13, "name": "oidc-provider-release-evidence-attempt-2",
+                    "sha256": hashlib.sha256(self.args.provider_archive.read_bytes()).hexdigest(),
+                },
+            },
+        }
+        with ZipFile(self.args.paired_link, "w") as link:
+            link.writestr(verifier.PAIRED_MANIFEST, json.dumps(manifest))
+        return manifest
+
+    def test_paired_replay_authenticates_the_link_and_replays_both_aggregates(self):
+        manifest = self.write_paired_fixture()
+        link_digest = hashlib.sha256(self.args.paired_link.read_bytes()).hexdigest()
+        self.args.attestation_bundle = self.args.archive.parent / "saved.jsonl"
+        self.args.attestation_root = self.args.archive.parent / "trusted-root.jsonl"
+
+        def check_link(args, repository_id, name, digest):
+            self.assertEqual(repository_id, 11)
+            self.assertEqual(name, "openid-provider-release-link-attempt-2.zip")
+            self.assertEqual(digest, link_digest)
+            self.assertEqual(args.archive.read_bytes(), self.args.paired_link.read_bytes())
+            self.assertEqual(args.attestation_bundle, self.args.attestation_bundle)
+            self.assertEqual(args.attestation_root, self.args.attestation_root)
+
+        with self.mock_replay(self.summary) as command, patch.object(
+            verifier, "verify_attestation", side_effect=check_link
+        ) as signed:
+            replay_oidf = command.side_effect
+
+            def replay(arguments, **options):
+                if arguments[0] == sys.executable:
+                    self.assertEqual(arguments[2:-1], [
+                        "evidence", "--revision", self.args.revision, "--run-id", "10", "--attempt", "2", "--archive",
+                    ])
+                    self.assertEqual(Path(arguments[-1]).read_bytes(), self.args.provider_archive.read_bytes())
+                    return SimpleNamespace(returncode=0, stdout=b'{"selections":[{}]}')
+                return replay_oidf(arguments, **options)
+
+            command.side_effect = replay
+            receipt = verifier.verify_paired_evidence(self.args)
+        self.assertEqual(command.call_count, 2)
+        signed.assert_called_once()
+        self.assertEqual(receipt["client_report_count"], 1)
+        self.assertEqual(receipt["paired_evidence"], {
+            "link_sha256": link_digest, "artifacts": manifest["artifacts"], "provider_report_count": 1,
+        })
+
+    def test_paired_replay_checks_the_signature_before_reading_the_link(self):
+        self.write_paired_fixture()
+        self.args.paired_link.write_bytes(b"untrusted input")
+        with patch.object(verifier, "verify_attestation", side_effect=ValueError("bad signature")):
+            with self.assertRaisesRegex(ValueError, "bad signature"):
+                verifier.verify_paired_evidence(self.args)
+
+    def test_paired_link_requires_exact_run_and_distinct_expected_references(self):
+        manifest = self.write_paired_fixture()
+        for field, value in (("repository", "other/repo"), ("revision", "f" * 40), ("run_id", 11), ("attempt", 1)):
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "selected repository"):
+                verifier.paired_artifacts(self.args, manifest | {field: value})
+        manifest = self.write_paired_fixture()
+        manifest["artifacts"]["provider"]["name"] = manifest["artifacts"]["oidf"]["name"]
+        with self.assertRaisesRegex(ValueError, "Invalid provider aggregate reference"):
+            verifier.paired_artifacts(self.args, manifest)
+        manifest = self.write_paired_fixture()
+        manifest["artifacts"]["provider"]["id"] = manifest["artifacts"]["oidf"]["id"]
+        with self.assertRaisesRegex(ValueError, "distinct aggregate artifacts"):
+            verifier.paired_artifacts(self.args, manifest)
+
+    def test_paired_replay_rejects_extra_members_and_swapped_or_changed_aggregates(self):
+        self.write_paired_fixture()
+        with patch.object(verifier, "verify_attestation"), patch.object(verifier.subprocess, "run") as replay:
+            with ZipFile(self.args.paired_link, "a") as link:
+                link.writestr("extra.json", "{}")
+            with self.assertRaisesRegex(ValueError, "Expected one unencrypted"):
+                verifier.verify_paired_evidence(self.args)
+
+            self.write_paired_fixture()
+            self.args.provider_archive.write_bytes(self.args.archive.read_bytes())
+            with self.assertRaisesRegex(ValueError, "Provider aggregate ZIP differs"):
+                verifier.verify_paired_evidence(self.args)
+
+            self.write_paired_fixture()
+            artifact = json.loads(self.args.artifact_metadata.read_bytes())
+            self.args.artifact_metadata.write_text(json.dumps(artifact | {"id": 40}), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "OIDF artifact metadata differs"):
+                verifier.verify_paired_evidence(self.args)
+        replay.assert_not_called()
+
+    def test_paired_replay_rejects_a_failed_provider_replay(self):
+        self.write_paired_fixture()
+        with patch.object(verifier, "verify_attestation"), patch.object(
+            verifier.subprocess, "run", return_value=SimpleNamespace(returncode=1, stderr=b"summary differs")
+        ) as replay:
+            with self.assertRaisesRegex(ValueError, "Provider aggregate replay failed: summary differs"):
+                verifier.verify_paired_evidence(self.args)
+        replay.assert_called_once()
+
     def test_rejects_failed_run_and_wrong_artifact_name(self):
         self.run["conclusion"] = "failure"
         self.write_fixture()

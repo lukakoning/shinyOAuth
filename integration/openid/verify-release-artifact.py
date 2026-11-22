@@ -24,6 +24,7 @@ BUNDLE_ORIGINALS = {
 BUNDLE_RECEIPT = "receipt.json"
 BUNDLE_REPORT = "release-report.md"
 BUNDLE_ATTESTATION = "attestation.jsonl"
+PAIRED_MANIFEST = "paired-release-evidence.json"
 MAX_REPORT_BYTES = 64 * 1024**2
 SHA256 = re.compile(r"[a-f0-9]{64}")
 REPORT_PATH = re.compile(
@@ -576,6 +577,95 @@ def bundle_inputs(args, directory):
     return argparse.Namespace(**(vars(args) | inputs))
 
 
+def paired_artifacts(args, manifest):
+    identity = {
+        "schema_version": 1, "revision": args.revision, "run_id": args.run_id, "attempt": args.attempt,
+    }
+    repository = manifest.get("repository")
+    if (
+        set(manifest) != {*identity, "repository", "artifacts"}
+        or not isinstance(repository, str) or repository.lower() != args.repository.lower()
+        or any(
+            type(manifest[key]) is not type(value) or manifest[key] != value
+            for key, value in identity.items()
+        )
+    ):
+        raise ValueError("Paired evidence does not identify the selected repository, revision and run attempt")
+
+    names = {
+        "oidf": aggregate_name(args.attempt),
+        "provider": f"oidc-provider-release-evidence-attempt-{args.attempt}",
+    }
+    artifacts = manifest["artifacts"]
+    if not isinstance(artifacts, dict) or artifacts.keys() != names.keys():
+        raise ValueError("Expected the OIDF and provider aggregates in the paired evidence")
+    for matrix, name in names.items():
+        artifact = artifacts[matrix]
+        if (
+            not isinstance(artifact, dict) or set(artifact) != {"id", "name", "sha256"}
+            or type(artifact["id"]) is not int or artifact["id"] <= 0
+            or artifact["name"] != name
+            or not isinstance(artifact["sha256"], str) or not SHA256.fullmatch(artifact["sha256"])
+        ):
+            raise ValueError(f"Invalid {matrix} aggregate reference in the paired evidence")
+    if artifacts["oidf"]["id"] == artifacts["provider"]["id"]:
+        raise ValueError("Expected distinct aggregate artifacts in the paired evidence")
+    return artifacts
+
+
+def verify_paired_evidence(args):
+    with tempfile.TemporaryDirectory() as tmp:
+        directory = Path(tmp)
+        replay = bundle_inputs(args, directory)
+        shutil.copyfile(args.run_metadata, replay.run_metadata)
+        shutil.copyfile(args.artifact_metadata, replay.artifact_metadata)
+        run = read_object(replay.run_metadata.read_bytes())
+        artifact = read_object(replay.artifact_metadata.read_bytes())
+        repository_id = check_run_metadata(args, run)
+        oidf_digest = check_artifact_metadata(args, repository_id, artifact)
+
+        link_name = f"openid-provider-release-link-attempt-{args.attempt}.zip"
+        link = directory / link_name
+        shutil.copyfile(args.paired_link, link)
+        link_args = argparse.Namespace(**(vars(args) | {"archive": link}))
+        with link.open("rb") as file:
+            link_digest = hashlib.file_digest(file, "sha256").hexdigest()
+            verify_attestation(link_args, repository_id, link_name, link_digest)
+            with ZipFile(file) as archive:
+                members = archive.infolist()
+                if len(members) != 1 or members[0].orig_filename != PAIRED_MANIFEST or members[0].flag_bits & 0x41:
+                    raise ValueError("Expected one unencrypted paired-release-evidence.json in the link ZIP")
+                artifacts = paired_artifacts(args, read_object(read_member(archive, members[0])))
+        if artifacts["oidf"]["id"] != artifact["id"] or artifacts["oidf"]["sha256"] != oidf_digest:
+            raise ValueError("OIDF artifact metadata differs from the signed link")
+
+        provider = directory / "provider.zip"
+        shutil.copyfile(args.provider_archive, provider)
+        with provider.open("rb") as file:
+            if hashlib.file_digest(file, "sha256").hexdigest() != artifacts["provider"]["sha256"]:
+                raise ValueError("Provider aggregate ZIP differs from the signed SHA-256 digest")
+        result = subprocess.run([
+            sys.executable, str(Path(__file__).resolve().parent.parent / "oidc-provider/release-matrix.py"),
+            "evidence", "--revision", args.revision, "--run-id", str(args.run_id), "--attempt", str(args.attempt),
+            "--archive", str(provider),
+        ], capture_output=True)
+        if result.returncode:
+            detail = result.stderr.decode("utf-8", errors="replace").strip()
+            raise ValueError(f"Provider aggregate replay failed: {detail}")
+        provider_reports = read_object(result.stdout).get("selections")
+        if not isinstance(provider_reports, list) or not provider_reports:
+            raise ValueError("Expected a verified provider report summary")
+
+        shutil.copyfile(args.archive, replay.archive)
+        receipt = verify(replay)
+        receipt["paired_evidence"] = {
+            "link_sha256": link_digest,
+            "artifacts": artifacts,
+            "provider_report_count": len(provider_reports),
+        }
+        return receipt
+
+
 def write_release_bundle(args):
     with tempfile.TemporaryDirectory() as tmp:
         directory = Path(tmp)
@@ -728,6 +818,10 @@ def main():
     inputs.add_argument(
         "--bundle-input", type=Path, help="Replay a saved release bundle offline"
     )
+    inputs.add_argument(
+        "--paired-link", type=Path, help="Verify the original signed link ZIP and replay both aggregates"
+    )
+    parser.add_argument("--provider-archive", type=Path, help="Original provider aggregate ZIP for paired replay")
     parser.add_argument(
         "--failed-attempt", action="store_true", help="Replay a failed client aggregate and its diagnostics"
     )
@@ -759,14 +853,19 @@ def main():
         parser.error("--revision requires a full lowercase Git commit SHA")
     if args.attempt <= 0 or (args.run_id is not None and args.run_id <= 0):
         parser.error("--run-id and --attempt must be positive")
+    paired = args.paired_link is not None
+    if paired != (args.provider_archive is not None):
+        parser.error("Paired replay requires both --paired-link and --provider-archive")
+    if paired and (args.failed_attempt or args.require_attestation or args.report_output or args.bundle_output):
+        parser.error("Paired replay uses the link attestation and emits a JSON receipt for a passing attempt")
     if args.require_attestation and (args.failed_attempt or args.downloaded_reports is not None):
         parser.error("--require-attestation needs the ZIP of a passing attempt")
     if args.attestation_bundle is not None and args.attestation_root is None:
         parser.error("--attestation-bundle requires --attestation-root")
     if args.attestation_root is not None and (
-        not args.require_attestation or (args.attestation_bundle is None and args.bundle_input is None)
+        not (args.require_attestation or paired) or (args.attestation_bundle is None and args.bundle_input is None)
     ):
-        parser.error("--attestation-root requires --require-attestation and either --attestation-bundle or --bundle-input")
+        parser.error("--attestation-root requires attestation verification and a saved or embedded attestation")
     if (args.report_output is not None or args.bundle_output is not None) and (
         args.failed_attempt or args.retain is not None or args.downloaded_reports is not None
         or args.bundle_input is not None
@@ -806,6 +905,8 @@ def main():
                 print(f"Retained {receipt['client_report_count']} verified OpenID selections in {args.retain}.")
         elif args.bundle_input is not None:
             print(json.dumps(verify_release_bundle(args), indent=2))
+        elif paired:
+            print(json.dumps(verify_paired_evidence(args), indent=2))
         elif args.bundle_output is not None:
             print(json.dumps(write_release_bundle(args), indent=2))
         else:

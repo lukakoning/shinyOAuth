@@ -31,6 +31,10 @@ jobs:
           python3 -B integration/openid/test-release-artifact.py -v
           python3 -B integration/openid/test-paired-evidence.py -v
 
+      - name: Test provider archive replay in report-only runs
+        if: ${{ inputs.report_checks_only && inputs.provider_companions }}
+        run: python3 -B integration/oidc-provider/test-release-matrix.py -v
+
       - name: Set up R
         uses: r-lib/actions/setup-r@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
         with:
