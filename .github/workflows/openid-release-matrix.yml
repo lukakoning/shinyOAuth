@@ -2,6 +2,11 @@ name: OpenID declared release matrix
 
 on:
   workflow_dispatch:
+    inputs:
+      report_checks_only:
+        description: Run report checker and matrix policy tests only
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -16,6 +21,9 @@ jobs:
     steps:
       - name: Checkout selected revision
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Test release report verification
+        run: python3 -B integration/openid/test-release-artifact.py -v
 
       - name: Set up R
         uses: r-lib/actions/setup-r@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
@@ -42,6 +50,7 @@ jobs:
           cat("selections=", selections, "\n", sep = "", file = Sys.getenv("GITHUB_OUTPUT"), append = TRUE)
 
   selections:
+    if: ${{ !inputs.report_checks_only }}
     needs: prepare
     strategy:
       fail-fast: false
@@ -53,7 +62,7 @@ jobs:
       transport: ${{ matrix.transport }}
 
   aggregate:
-    if: ${{ always() && needs.prepare.result == 'success' }}
+    if: ${{ always() && !inputs.report_checks_only && needs.prepare.result == 'success' }}
     needs: [prepare, selections]
     runs-on: ubuntu-latest
     timeout-minutes: 15

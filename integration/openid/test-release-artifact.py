@@ -2,6 +2,8 @@ import hashlib
 import importlib.util
 import json
 from pathlib import Path
+import subprocess
+import sys
 import tempfile
 from types import SimpleNamespace
 import unittest
@@ -321,6 +323,44 @@ class ReleaseArtifactTest(unittest.TestCase):
         directory = self.downloaded_fixture()
         with self.assertRaisesRegex(ValueError, "Expected a passing client report"):
             verifier.check_downloaded_reports(directory, self.args.revision, self.args.attempt)
+
+    def test_downloaded_reports_cli_exits_nonzero_for_altered_api_inventory(self):
+        repository = self.args.archive.parent / "policy-repository"
+        policy_dir = repository / "integration" / "openid"
+        policy_dir.mkdir(parents=True)
+        for name in ("suite-lock.json", "profiles.json", "release-matrix.json"):
+            (policy_dir / name).write_text(
+                json.dumps(verifier.read_policy(self.args.revision, name)), encoding="utf-8"
+            )
+
+        def git(*args):
+            return subprocess.check_output(["git", *args], cwd=repository, text=True).strip()
+
+        git("init", "--quiet")
+        git("add", "integration/openid")
+        git("-c", "user.name=Report Test", "-c", "user.email=test@example.com",
+            "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "record test policy")
+        revision = git("rev-parse", "HEAD")
+        tree = git("rev-parse", "HEAD^{tree}")
+        for report in (self.report, self.preflight, self.api):
+            report["checkout_revision"] = revision
+            report["checkout_source"].update(revision=revision, tree=tree)
+        self.report["installation"].update(revision=revision, tree=tree)
+
+        directory = self.downloaded_fixture()
+        command = [
+            sys.executable, "-B", str(Path(verifier.__file__).resolve()), "--revision", revision,
+            "--attempt", str(self.args.attempt), "--downloaded-reports", str(directory),
+        ]
+        valid = subprocess.run(command, cwd=repository, capture_output=True, text=True)
+        self.assertEqual(valid.returncode, 0, valid.stderr)
+        self.assertIn("for 1 declared OpenID selections", valid.stdout)
+
+        self.api["plan_inventory"]["basic"]["probe_cancelled"] = False
+        self.downloaded_fixture()
+        invalid = subprocess.run(command, cwd=repository, capture_output=True, text=True)
+        self.assertEqual(invalid.returncode, 1)
+        self.assertIn("smoke/sync: Invalid API plan inventory for basic", invalid.stderr)
 
     def retention_fixture(self):
         self.args.retain = self.args.archive.parent / "retained"
