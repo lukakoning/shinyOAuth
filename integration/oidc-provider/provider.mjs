@@ -111,8 +111,7 @@ export function fixture(config) {
     const params = ctx.oidc.params;
     const body = ctx.body;
     // Observe the claim in the provider's own issued token, without changing the response.
-    const authenticationTime = observeAuthenticationTime && params.grant_type === 'authorization_code' &&
-      typeof body.id_token === 'string'
+    const authenticationTime = observeAuthenticationTime && typeof body.id_token === 'string'
       ? JSON.parse(Buffer.from(body.id_token.split('.')[1], 'base64url').toString('utf8')).auth_time
       : undefined;
     if (typeof body.access_token === 'string') issued.add(body.access_token);
@@ -136,8 +135,8 @@ export function fixture(config) {
         ? typeof params.code === 'string' && digest(params.code) === codeDigest : null,
       access_token_present: typeof body.access_token === 'string',
       id_token_present: typeof body.id_token === 'string',
-      ...(observeAuthenticationTime && params.grant_type === 'authorization_code'
-        ? { auth_time: authenticationTime ?? null } : {}),
+      ...(observeAuthenticationTime
+        ? { auth_time: Number.isFinite(authenticationTime) ? authenticationTime : null } : {}),
       refresh_token_present: typeof body.refresh_token === 'string',
       refresh_token_rotated: params.grant_type === 'refresh_token'
         ? params.refresh_token === previousRefresh && body.refresh_token !== previousRefresh : null,

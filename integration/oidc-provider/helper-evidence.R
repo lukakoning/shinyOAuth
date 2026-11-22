@@ -41,6 +41,10 @@ interop_userinfo_matches <- function(event) {
     )
 }
 
+interop_auth_time_valid <- function(value) {
+  is.numeric(value) && length(value) == 1L && is.finite(value)
+}
+
 interop_login_events_match <- function(events, app, response_mode, max_age) {
   login <- events[[1L]]
   consent <- events[[2L]]
@@ -92,9 +96,7 @@ interop_login_events_match <- function(events, app, response_mode, max_age) {
     interop_event_flags(request, c("client_matches", "challenge_matches")) &&
     all(vapply(
       list(observed, validated, login_started, code_issued),
-      function(value) {
-        is.numeric(value) && length(value) == 1L && is.finite(value)
-      },
+      interop_auth_time_valid,
       logical(1)
     )) &&
     observed == validated &&
@@ -180,10 +182,26 @@ interop_provider_matches <- function(provider, row, lock, selection) {
   ) {
     return(FALSE)
   }
+  old_time <- events[[6L]][["auth_time"]]
+  if (isTRUE(selection[["refresh_auth_time"]])) {
+    observed <- refresh[["auth_time"]]
+    validated <- row[["app"]][["validated_auth_time"]]
+    if (
+      !isTRUE(row[["app"]][["id_token_validated"]]) ||
+        !all(vapply(
+          list(old_time, observed, validated),
+          interop_auth_time_valid,
+          logical(1)
+        )) ||
+        observed != old_time ||
+        validated != observed
+    ) {
+      return(FALSE)
+    }
+  }
   if (!reauthenticate) {
     return(TRUE)
   }
-  old_time <- events[[6L]][["auth_time"]]
   interop_login_events_match(
     events[10:15],
     row[["reauthentication"]][["app"]],
@@ -427,6 +445,30 @@ interop_source_rejections <- function(report, matches) {
   setNames(controls, fields)
 }
 
+interop_refresh_auth_time_mutations <- function(selection) {
+  if (!isTRUE(selection[["refresh_auth_time"]])) {
+    return(list())
+  }
+  provider_claim <- list("provider", "events", 8L, "auth_time")
+  validated_claim <- c("app", "validated_auth_time")
+  list(
+    missing_provider_refresh_auth_time = function(row) {
+      replace_nested(row, provider_claim, NULL)
+    },
+    changed_provider_refresh_auth_time = function(row) {
+      time <- row[["provider"]][["events"]][[8L]][["auth_time"]]
+      replace_nested(row, provider_claim, time + 1)
+    },
+    missing_validated_refresh_auth_time = function(row) {
+      replace_nested(row, validated_claim, NULL)
+    },
+    changed_validated_refresh_auth_time = function(row) {
+      time <- row[["app"]][["validated_auth_time"]]
+      replace_nested(row, validated_claim, time + 1)
+    }
+  )
+}
+
 interop_rejection_controls <- function(report, context, lock, cases) {
   matches <- function(value) interop_report_matches(value, context, lock, cases)
   if (!matches(report)) {
@@ -479,6 +521,12 @@ interop_rejection_controls <- function(report, context, lock, cases) {
       control[["results"]][[i]][["form_post"]] <- NULL
       controls[[paste0(i, "_missing_post_bridge")]] <- !matches(control)
     }
+    mutations <- interop_refresh_auth_time_mutations(cases[[i]])
+    for (name in names(mutations)) {
+      control <- report
+      control[["results"]][[i]] <- mutations[[name]](control[["results"]][[i]])
+      controls[[paste0(i, "_", name)]] <- !matches(control)
+    }
   }
   for (name in c("cleanup_verified", "driver_failure_control_passed")) {
     control <- report
@@ -526,7 +574,13 @@ interop_check_report <- function(report, context, lock, cases) {
         ),
         if (identical(cases[[i]][["response_mode"]], "form_post")) {
           paste0(i, "_missing_post_bridge")
-        }
+        },
+        paste0(
+          i,
+          "_",
+          names(interop_refresh_auth_time_mutations(cases[[i]])),
+          recycle0 = TRUE
+        )
       )
     })),
     "cleanup_verified",
