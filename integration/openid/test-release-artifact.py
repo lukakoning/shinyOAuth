@@ -9,7 +9,7 @@ import tempfile
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
-from zipfile import ZipFile
+from zipfile import ZIP_DEFLATED, ZIP_STORED, ZipFile
 
 
 spec = importlib.util.spec_from_file_location(
@@ -790,7 +790,7 @@ class ReleaseArtifactTest(unittest.TestCase):
             responses[f"{endpoint}/zip"] = data
         return responses, link_digest
 
-    def mock_pair_retention_replay(self, link_digest, proof=b"saved Sigstore proof\n"):
+    def mock_pair_retention_replay(self, link_digest, proof=b"saved Sigstore proof\n", *, trusted_root=None):
         def try_replay(command, **options):
             if command[:3] == ["gh", "attestation", "download"]:
                 link = Path(command[3])
@@ -800,9 +800,15 @@ class ReleaseArtifactTest(unittest.TestCase):
                 (options["cwd"] / f"sha256{separator}{link_digest}.jsonl").write_bytes(proof)
                 return SimpleNamespace(returncode=0)
             if command[:3] == ["gh", "attestation", "verify"]:
-                self.assertNotIn("--custom-trusted-root", command)
+                if trusted_root is None:
+                    self.assertNotIn("--custom-trusted-root", command)
+                else:
+                    root = Path(command[command.index("--custom-trusted-root") + 1])
+                    self.assertEqual(root, trusted_root)
+                    self.assertEqual(root.read_bytes(), b"independently obtained Sigstore roots\n")
                 bundle = Path(command[command.index("--bundle") + 1])
-                self.assertEqual(bundle.read_bytes(), proof)
+                if bundle.read_bytes() != proof:
+                    return SimpleNamespace(returncode=1, stderr=b"Invalid saved proof")
                 result = self.verified_attestation()
                 result["verificationResult"]["statement"]["subject"] = [{
                     "name": f"{verifier.paired_link_name(self.args.attempt)}.zip",
@@ -872,6 +878,97 @@ class ReleaseArtifactTest(unittest.TestCase):
             self.assertEqual([call.args[0] for call in api.call_args_list], list(responses))
             self.assertFalse(self.args.retain_paired.exists())
             self.assertEqual(list(self.args.retain_paired.parent.glob(".openid-matrix-*")), [])
+
+    def paired_bundle_fixture(self):
+        responses, digest = self.paired_retention_fixture()
+        with self.mock_github_api(responses), self.mock_pair_retention_replay(digest):
+            receipt = verifier.retain_paired(self.args)
+        self.args.pack_paired = self.args.retain_paired
+        directory = self.args.archive.parent
+        self.args.bundle_output = directory / "paired-release.zip"
+        self.args.attestation_root = directory / "trusted-root.jsonl"
+        self.args.attestation_root.write_bytes(b"independently obtained Sigstore roots\n")
+        return receipt, digest
+
+    def test_paired_bundle_round_trip_preserves_originals_and_is_reproducible(self):
+        expected, digest = self.paired_bundle_fixture()
+        self.args.paired_bundle_input = self.args.bundle_output
+        with self.mock_pair_retention_replay(digest, trusted_root=self.args.attestation_root):
+            self.assertEqual(verifier.write_paired_bundle(self.args), expected)
+            original = self.args.paired_bundle_input.read_bytes()
+            self.assertEqual(verifier.verify_paired_bundle(self.args), expected)
+            with self.assertRaises(FileExistsError):
+                verifier.write_paired_bundle(self.args)
+            self.assertEqual(self.args.paired_bundle_input.read_bytes(), original)
+            self.args.bundle_output = self.args.bundle_output.with_name("repacked-pair.zip")
+            self.assertEqual(verifier.write_paired_bundle(self.args), expected)
+        self.assertEqual(self.args.bundle_output.read_bytes(), original)
+
+        with ZipFile(self.args.paired_bundle_input) as bundle:
+            self.assertEqual(len(bundle.namelist()), 10)
+            self.assertEqual(set(bundle.namelist()), {path.name for path in self.args.pack_paired.iterdir()})
+            self.assertTrue(all(member.compress_type == ZIP_STORED for member in bundle.infolist()))
+            self.assertTrue(all(member.create_system == 3 for member in bundle.infolist()))
+            for name in bundle.namelist():
+                with self.subTest(name=name):
+                    data = bundle.read(name)
+                    if name == verifier.BUNDLE_RECEIPT:
+                        self.assertEqual(json.loads(data), expected)
+                        self.assertTrue(data.endswith(b"\n"))
+                        self.assertNotIn(b"\r", data)
+                    else:
+                        self.assertEqual(data, (self.args.pack_paired / name).read_bytes())
+            self.assertNotIn(b"\r", bundle.read(verifier.BUNDLE_REPORT))
+
+    def test_paired_bundle_rejects_missing_extra_or_compressed_members(self):
+        _, digest = self.paired_bundle_fixture()
+        members = {path.name: path.read_bytes() for path in self.args.pack_paired.iterdir()}
+        self.args.paired_bundle_input = self.args.bundle_output
+        without_proof = {name: data for name, data in members.items() if name != verifier.BUNDLE_ATTESTATION}
+        for payload, compression in (
+            (without_proof, ZIP_STORED),
+            (members | {"trusted-root.jsonl": b"untrusted"}, ZIP_STORED),
+            (members, ZIP_DEFLATED),
+        ):
+            with self.subTest(files=len(payload), compression=compression):
+                with ZipFile(self.args.paired_bundle_input, "w", compression=compression) as bundle:
+                    for name, data in payload.items():
+                        bundle.writestr(name, data)
+                with self.mock_pair_retention_replay(digest, trusted_root=self.args.attestation_root) as replay:
+                    with self.assertRaisesRegex(ValueError, "Expected the ten original and derived files"):
+                        verifier.verify_paired_bundle(self.args)
+                replay.assert_not_called()
+
+    def test_paired_bundle_rejects_changed_proof_receipt_report_and_metadata(self):
+        _, digest = self.paired_bundle_fixture()
+        self.args.paired_bundle_input = self.args.bundle_output.with_name("altered-pair.zip")
+        members = {path.name: path.read_bytes() for path in self.args.pack_paired.iterdir()}
+        link = json.loads(members["link-artifact.json"]) | {"digest": "sha256:" + "0" * 64}
+        provider = json.loads(members["provider-artifact.json"]) | {"id": 20}
+        changes = (
+            (verifier.BUNDLE_ATTESTATION, b"altered Sigstore proof\n", "Invalid saved proof"),
+            (verifier.BUNDLE_RECEIPT, b"{}\n", "receipt or Markdown differs"),
+            (verifier.BUNDLE_REPORT, b"Changed release report\n", "receipt or Markdown differs"),
+            ("link-artifact.json", json.dumps(link).encode(), "Link artifact metadata differs"),
+            ("provider-artifact.json", json.dumps(provider).encode(), "Provider artifact metadata differs"),
+        )
+        for name, data, error in changes:
+            with self.subTest(name=name):
+                with ZipFile(self.args.paired_bundle_input, "w") as bundle:
+                    for member, payload in (members | {name: data}).items():
+                        bundle.writestr(member, payload)
+                with self.mock_pair_retention_replay(digest, trusted_root=self.args.attestation_root):
+                    with self.assertRaisesRegex(ValueError, error):
+                        verifier.verify_paired_bundle(self.args)
+                source = self.args.pack_paired / name
+                source.write_bytes(data)
+                try:
+                    with self.mock_pair_retention_replay(digest, trusted_root=self.args.attestation_root):
+                        with self.assertRaisesRegex(ValueError, error):
+                            verifier.write_paired_bundle(self.args)
+                    self.assertFalse(self.args.bundle_output.exists())
+                finally:
+                    source.write_bytes(members[name])
 
 
 if __name__ == "__main__":

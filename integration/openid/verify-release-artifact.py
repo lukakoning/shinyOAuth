@@ -27,6 +27,13 @@ BUNDLE_REPORT = "release-report.md"
 BUNDLE_ATTESTATION = "attestation.jsonl"
 PAIRED_MANIFEST = "paired-release-evidence.json"
 PAIRED_ORIGINALS = {"paired_link": "link.zip", "provider_archive": "provider.zip"}
+PAIRED_LINK_METADATA = "link-artifact.json"
+PROVIDER_METADATA = "provider-artifact.json"
+PAIRED_BUNDLE_FILES = (
+    *BUNDLE_ORIGINALS.values(), *PAIRED_ORIGINALS.values(), PAIRED_LINK_METADATA, PROVIDER_METADATA,
+    BUNDLE_ATTESTATION, BUNDLE_REPORT, BUNDLE_RECEIPT,
+)
+PAIRED_BUNDLE_ZIPS = {BUNDLE_ORIGINALS["archive"], *PAIRED_ORIGINALS.values()}
 MAX_REPORT_BYTES = 64 * 1024**2
 SHA256 = re.compile(r"[a-f0-9]{64}")
 REPORT_PATH = re.compile(
@@ -677,6 +684,88 @@ def verify_paired_evidence(args):
         return replay_paired_aggregates(replay, repository_id, link_digest, artifacts)
 
 
+def write_bundle_archive(directory, output_path, names):
+    output = output_path.open("xb")
+    try:
+        with output, ZipFile(output, "w") as bundle:
+            for name in names:
+                path = directory / name
+                entry = ZipInfo(name)
+                entry.create_system = 3
+                entry.file_size = path.stat().st_size
+                with path.open("rb") as source, bundle.open(entry, "w") as member:
+                    shutil.copyfileobj(source, member)
+    except (OSError, RuntimeError):
+        output_path.unlink(missing_ok=True)
+        raise
+
+
+def replay_paired_bundle_files(args, directory, report_path):
+    replay = paired_inputs(args, directory)
+    replay.attestation_bundle = directory / BUNDLE_ATTESTATION
+    repository_id = check_run_metadata(replay, read_object(replay.run_metadata.read_bytes()))
+    link_digest, artifacts = verify_paired_link(replay, repository_id)
+
+    link = read_object((directory / PAIRED_LINK_METADATA).read_bytes())
+    if (
+        check_artifact_metadata(replay, repository_id, link, name=paired_link_name(args.attempt)) != link_digest
+        or link["id"] in {artifact["id"] for artifact in artifacts.values()}
+    ):
+        raise ValueError("Link artifact metadata differs from the verified link")
+    provider = read_object((directory / PROVIDER_METADATA).read_bytes())
+    reference = artifacts["provider"]
+    if (
+        check_artifact_metadata(replay, repository_id, provider, name=reference["name"]) != reference["sha256"]
+        or provider["id"] != reference["id"]
+    ):
+        raise ValueError("Provider artifact metadata differs from the signed link")
+
+    receipt = replay_paired_aggregates(replay, repository_id, link_digest, artifacts, report_path=report_path)
+    saved_receipt = read_object((directory / BUNDLE_RECEIPT).read_bytes())
+    saved_report = (directory / BUNDLE_REPORT).read_bytes()
+    if saved_receipt != receipt or saved_report != report_path.read_bytes():
+        raise ValueError("Paired bundle receipt or Markdown differs from the independent replay")
+    return receipt
+
+
+def write_paired_bundle(args):
+    with tempfile.TemporaryDirectory() as tmp:
+        directory = Path(tmp)
+        for name in PAIRED_BUNDLE_FILES:
+            source = args.pack_paired / name
+            if not source.is_file() or source.is_symlink():
+                raise ValueError(f"Expected retained paired evidence file: {name}")
+            if name not in PAIRED_BUNDLE_ZIPS and not 0 < source.stat().st_size <= MAX_REPORT_BYTES:
+                raise ValueError(f"Expected a nonempty evidence file of at most 64 MiB: {name}")
+            shutil.copyfile(source, directory / name)
+
+        report = directory / "replayed-release-report.md"
+        receipt = replay_paired_bundle_files(args, directory, report)
+        (directory / BUNDLE_RECEIPT).write_bytes((json.dumps(receipt, indent=2) + "\n").encode("utf-8"))
+        write_bundle_archive(directory, args.bundle_output, PAIRED_BUNDLE_FILES)
+        return receipt
+
+
+def verify_paired_bundle(args):
+    with ZipFile(args.paired_bundle_input) as bundle, tempfile.TemporaryDirectory() as tmp:
+        members = bundle.infolist()
+        if (
+            len(members) != len(PAIRED_BUNDLE_FILES)
+            or {member.orig_filename for member in members} != set(PAIRED_BUNDLE_FILES)
+            or any(member.compress_type != ZIP_STORED or member.flag_bits & 0x41 for member in members)
+        ):
+            raise ValueError("Expected the ten original and derived files in a stored paired release bundle")
+        directory = Path(tmp)
+        for member in members:
+            target = directory / member.orig_filename
+            if member.orig_filename in PAIRED_BUNDLE_ZIPS:
+                with bundle.open(member) as source, target.open("wb") as copied:
+                    shutil.copyfileobj(source, copied)
+            else:
+                target.write_bytes(read_member(bundle, member))
+        return replay_paired_bundle_files(args, directory, directory / "replayed-release-report.md")
+
+
 def write_release_bundle(args):
     with tempfile.TemporaryDirectory() as tmp:
         directory = Path(tmp)
@@ -697,19 +786,7 @@ def write_release_bundle(args):
         receipt_bytes = (json.dumps(receipt, indent=2) + "\n").encode("utf-8")
         (directory / BUNDLE_RECEIPT).write_bytes(receipt_bytes)
 
-        output = args.bundle_output.open("xb")
-        try:
-            with output, ZipFile(output, "w") as bundle:
-                for name in names:
-                    path = directory / name
-                    entry = ZipInfo(name)
-                    entry.create_system = 3
-                    entry.file_size = path.stat().st_size
-                    with path.open("rb") as source, bundle.open(entry, "w") as member:
-                        shutil.copyfileobj(source, member)
-        except (OSError, RuntimeError):
-            args.bundle_output.unlink(missing_ok=True)
-            raise
+        write_bundle_archive(directory, args.bundle_output, names)
     return receipt
 
 
@@ -871,7 +948,7 @@ def retain_paired(args):
         replay = paired_inputs(args, stage)
         replay.run_metadata.write_bytes(run_data)
         expected_digest = collect_paired_artifact(
-            replay, repository_id, actions_api, link_reference, replay.paired_link, stage / "link-artifact.json",
+            replay, repository_id, actions_api, link_reference, replay.paired_link, stage / PAIRED_LINK_METADATA,
         )
         with replay.paired_link.open("rb") as file:
             if hashlib.file_digest(file, "sha256").hexdigest() != expected_digest:
@@ -885,7 +962,7 @@ def retain_paired(args):
         )
         collect_paired_artifact(
             replay, repository_id, actions_api, artifacts["provider"], replay.provider_archive,
-            stage / "provider-artifact.json",
+            stage / PROVIDER_METADATA,
         )
         receipt = replay_paired_aggregates(
             replay, repository_id, link_digest, artifacts, report_path=stage / BUNDLE_REPORT,
@@ -915,6 +992,12 @@ def main():
     )
     inputs.add_argument(
         "--paired-link", type=Path, help="Verify the original signed link ZIP and replay both aggregates"
+    )
+    inputs.add_argument(
+        "--pack-paired", type=Path, help="Pack evidence from a retained paired directory using --bundle-output"
+    )
+    inputs.add_argument(
+        "--paired-bundle-input", type=Path, help="Verify a portable paired release ZIP offline"
     )
     parser.add_argument("--provider-archive", type=Path, help="Original provider aggregate ZIP for paired replay")
     parser.add_argument(
@@ -949,6 +1032,8 @@ def main():
     if args.attempt <= 0 or (args.run_id is not None and args.run_id <= 0):
         parser.error("--run-id and --attempt must be positive")
     paired = args.paired_link is not None
+    pack_paired = args.pack_paired is not None
+    paired_bundle = pack_paired or args.paired_bundle_input is not None
     if paired != (args.provider_archive is not None):
         parser.error("Paired replay requires both --paired-link and --provider-archive")
     if paired and (args.failed_attempt or args.require_attestation or args.report_output or args.bundle_output):
@@ -958,11 +1043,18 @@ def main():
         or args.report_output or args.bundle_output
     ):
         parser.error("--retain-paired fetches its own signed evidence and writes all outputs to its destination")
+    if paired_bundle:
+        if args.attestation_root is None:
+            parser.error("Paired bundles require --attestation-root")
+        if pack_paired != (args.bundle_output is not None):
+            parser.error("Use --bundle-output with --pack-paired to create a paired bundle")
+        if args.failed_attempt or args.require_attestation or args.attestation_bundle or args.report_output:
+            parser.error("Paired bundles replay their saved attestation and reports")
     if args.require_attestation and (args.failed_attempt or args.downloaded_reports is not None):
         parser.error("--require-attestation needs the ZIP of a passing attempt")
     if args.attestation_bundle is not None and args.attestation_root is None:
         parser.error("--attestation-bundle requires --attestation-root")
-    if args.attestation_root is not None and (
+    if args.attestation_root is not None and not paired_bundle and (
         not (args.require_attestation or paired) or (args.attestation_bundle is None and args.bundle_input is None)
     ):
         parser.error("--attestation-root requires attestation verification and a saved or embedded attestation")
@@ -985,11 +1077,12 @@ def main():
             parser.error(f"{option} requires --repository OWNER/REPO and --run-id")
         if any(value is not None for value in files):
             parser.error(f"{option} downloads its own input files")
-    elif args.bundle_input is not None:
+    elif args.bundle_input is not None or paired_bundle:
+        option = "--pack-paired" if pack_paired else "--paired-bundle-input" if paired_bundle else "--bundle-input"
         if args.repository is None or args.run_id is None:
-            parser.error("--bundle-input requires --repository and --run-id")
+            parser.error(f"{option} requires --repository and --run-id")
         if args.failed_attempt or any(value is not None for value in files):
-            parser.error("--bundle-input replays a passing attempt from the files in the bundle")
+            parser.error(f"{option} replays a passing attempt from its own inputs")
     elif any(value is None for value in (args.repository, args.run_id, *files)):
         parser.error("ZIP replay requires --repository, --run-id and all three input files")
     try:
@@ -1012,6 +1105,10 @@ def main():
             )
         elif args.bundle_input is not None:
             print(json.dumps(verify_release_bundle(args), indent=2))
+        elif pack_paired:
+            print(json.dumps(write_paired_bundle(args), indent=2))
+        elif args.paired_bundle_input is not None:
+            print(json.dumps(verify_paired_bundle(args), indent=2))
         elif paired:
             print(json.dumps(verify_paired_evidence(args), indent=2))
         elif args.bundle_output is not None:
