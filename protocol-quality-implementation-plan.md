@@ -20,10 +20,12 @@ table](https://lukakoning.github.io/integration/openid/release-evidence/45017983
     [Release archive
     instructions](https://lukakoning.github.io/integration/openid/release-matrix.html#package-a-verified-attempt-for-release-storage).
 2.  Bind any future release claim to its chosen commit and selected
-    evidence. The verified OIDF matrix applies to `92bedf1d`. Later
-    provider and platform validations keep their own revision and scope.
-    Signed artifact provenance and a wider release evidence set remain
-    open.
+    evidence. The verified OIDF matrix applies to `92bedf1d`. Signing
+    and verification are implemented at `30774baa`. The first full
+    matrix with signing is in progress. Later provider and platform
+    validations keep their own revision and scope until companion
+    evidence is available for the chosen release. [Signing-enabled
+    matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/45030528151).
 3.  The selected FAPI manual-initiation case samples the app queue and
     state store before a trusted Chrome click with transient activation.
     The [FAPI requirement
@@ -107,7 +109,7 @@ review](https://lukakoning.github.io/integration/openid/release-review.md).
 | C11-C12 | Four full mTLS selections and the 29-module Message Signing selection | mTLS simulated-server enforcement/registration limits and exact signing/callback configurations remain explicit. |
 | C13-C14 | Pinned second-provider public/confidential code/refresh/browser flows and the declared advanced-flow/lifecycle selections | All four browser selections record verified source and private installation identity. Provider interoperability evidence remains scoped to each tested revision. |
 | C15 | Rejected-callback URL cleanup, selected HTTPS cross-site success/denial, provider request counts before the FAPI login click and requirement-selected regressions | Production consent and initiation controls, other proxy/browser/cookie-policy cases and named cryptography gaps stay open. |
-| C16 / SA08 | CI smoke, manual larger selections, acquisition/source checks, and a verified hosted matrix and published table for all 39 OIDF selections at `92bedf1d` | Shared release storage, signed artifact provenance and matching companion evidence for the chosen release revision remain open. |
+| C16 / SA08 | CI smoke, manual larger selections, acquisition/source checks, a verified hosted matrix and published table for all 39 OIDF selections at `92bedf1d`, and signing and verification at `30774baa` | The first signing-enabled matrix is in progress. Shared storage and matching companion evidence for the chosen release revision remain open. |
 
 Use the implemented commands in the [environment
 README](https://lukakoning.github.io/integration/openid/README.md).
@@ -3483,6 +3485,13 @@ The offline bundle check replayed the hosted run at `92bedf1d` and
 reproduced its receipt and published summary. The local archive is ready
 for shared retention. [Release
 review](https://lukakoning.github.io/integration/openid/release-review.html#portable-oidf-release-archive-2026-11-22).
+
+SA08 signed aggregate provenance (2026-11-22). `30774baa` adds an
+isolated signing job and optional online or offline signature
+verification for the original aggregate ZIP. Hosted report checks passed
+and a public GitHub attestation exercised the verifier. Run
+`45030528151` is the first full matrix with signing enabled. [Release
+review](https://lukakoning.github.io/integration/openid/release-review.html#signed-oidf-aggregate-provenance-2026-11-22).
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
