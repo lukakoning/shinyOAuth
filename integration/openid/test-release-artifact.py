@@ -282,6 +282,76 @@ class ReleaseArtifactTest(unittest.TestCase):
                     with self.mock_replay(self.summary), self.assertRaisesRegex(ValueError, error):
                         verifier.verify_release_bundle(self.args)
 
+    def test_release_bundle_keeps_the_verified_attestation_with_the_original_zip(self):
+        self.write_fixture()
+        directory = self.args.archive.parent
+        self.args.bundle_output = directory / "release.zip"
+        self.args.bundle_input = self.args.bundle_output
+        self.args.require_attestation = True
+        self.args.attestation_bundle = directory / "downloaded.jsonl"
+        self.args.attestation_root = directory / "trusted_root.jsonl"
+        self.args.attestation_bundle.write_bytes(b'{"signed":"proof"}\n')
+        proof = self.args.attestation_bundle.read_bytes()
+        trusted_root = self.args.attestation_root
+
+        def check_attestation(args, repository_id, name, digest):
+            self.assertEqual(args.attestation_bundle.name, verifier.BUNDLE_ATTESTATION)
+            self.assertEqual(args.attestation_root, trusted_root)
+            self.assertEqual(args.archive.read_bytes(), self.args.archive.read_bytes())
+            if args.attestation_bundle.read_bytes() != proof:
+                raise ValueError("Invalid signature")
+
+        with self.mock_replay(self.summary), patch.object(
+            verifier, "verify_attestation", side_effect=check_attestation
+        ) as verify_proof:
+            expected = verifier.write_release_bundle(self.args)
+            with ZipFile(self.args.bundle_input) as bundle:
+                self.assertEqual(len(bundle.namelist()), 6)
+                self.assertEqual(bundle.read(verifier.BUNDLE_ATTESTATION), proof)
+            self.args.attestation_bundle.unlink()
+            self.args.attestation_bundle = None
+            self.assertEqual(verifier.verify_release_bundle(self.args), expected)
+            self.assertEqual(verify_proof.call_count, 2)
+
+            self.args.bundle_input = directory / "altered.zip"
+            with ZipFile(self.args.bundle_output) as original:
+                for replacement, error in (
+                    (None, "no embedded attestation"),
+                    (b'{"altered":"proof"}\n', "Invalid signature"),
+                ):
+                    with self.subTest(replacement=replacement):
+                        with ZipFile(self.args.bundle_input, "w") as altered:
+                            for name in original.namelist():
+                                if name != verifier.BUNDLE_ATTESTATION:
+                                    altered.writestr(name, original.read(name))
+                            if replacement is not None:
+                                altered.writestr(verifier.BUNDLE_ATTESTATION, replacement)
+                        with self.assertRaisesRegex(ValueError, error):
+                            verifier.verify_release_bundle(self.args)
+
+    def test_release_bundle_attestation_requires_external_trust(self):
+        self.write_fixture()
+        directory = self.args.archive.parent
+        self.args.bundle_output = directory / "release.zip"
+        self.args.bundle_input = self.args.bundle_output
+        self.args.require_attestation = True
+        self.args.attestation_bundle = directory / "downloaded.jsonl"
+        self.args.attestation_bundle.write_bytes(b'{"signed":"proof"}\n')
+        self.args.attestation_root = directory / "trusted_root.jsonl"
+        with patch.object(verifier, "verify_attestation", side_effect=ValueError("Invalid signature")):
+            with self.assertRaisesRegex(ValueError, "Invalid signature"):
+                verifier.write_release_bundle(self.args)
+        self.assertFalse(self.args.bundle_output.exists())
+
+        with self.mock_replay(self.summary), patch.object(verifier, "verify_attestation"):
+            verifier.write_release_bundle(self.args)
+        with self.assertRaisesRegex(ValueError, "requires --require-attestation and --attestation-root only"):
+            verifier.verify_release_bundle(self.args)
+        self.args.attestation_bundle = None
+        self.args.attestation_root = None
+        with self.assertRaisesRegex(ValueError, "requires --require-attestation and --attestation-root only"):
+            verifier.verify_release_bundle(self.args)
+
     def test_rejects_changed_archive_bytes_before_replay(self):
         self.write_fixture()
         with self.args.archive.open("ab") as archive:

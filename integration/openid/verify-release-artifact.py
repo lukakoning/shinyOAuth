@@ -23,6 +23,7 @@ BUNDLE_ORIGINALS = {
 }
 BUNDLE_RECEIPT = "receipt.json"
 BUNDLE_REPORT = "release-report.md"
+BUNDLE_ATTESTATION = "attestation.jsonl"
 MAX_REPORT_BYTES = 64 * 1024**2
 SHA256 = re.compile(r"[a-f0-9]{64}")
 REPORT_PATH = re.compile(
@@ -581,6 +582,15 @@ def write_release_bundle(args):
         replay = bundle_inputs(args, directory)
         for field in BUNDLE_ORIGINALS:
             shutil.copyfile(getattr(args, field), getattr(replay, field))
+        names = [*BUNDLE_ORIGINALS.values(), BUNDLE_REPORT, BUNDLE_RECEIPT]
+        if args.attestation_bundle is not None:
+            with args.attestation_bundle.open("rb") as sidecar:
+                proof = sidecar.read(MAX_REPORT_BYTES + 1)
+            if not 0 < len(proof) <= MAX_REPORT_BYTES:
+                raise ValueError("Expected a nonempty attestation file of at most 64 MiB")
+            replay.attestation_bundle = directory / BUNDLE_ATTESTATION
+            replay.attestation_bundle.write_bytes(proof)
+            names.append(BUNDLE_ATTESTATION)
         report = directory / BUNDLE_REPORT
         receipt = verify(replay, report_path=report)
         receipt_bytes = (json.dumps(receipt, indent=2) + "\n").encode("utf-8")
@@ -589,7 +599,7 @@ def write_release_bundle(args):
         output = args.bundle_output.open("xb")
         try:
             with output, ZipFile(output, "w") as bundle:
-                for name in (*BUNDLE_ORIGINALS.values(), BUNDLE_REPORT, BUNDLE_RECEIPT):
+                for name in names:
                     path = directory / name
                     entry = ZipInfo(name)
                     entry.create_system = 3
@@ -606,15 +616,26 @@ def verify_release_bundle(args):
     expected = {*BUNDLE_ORIGINALS.values(), BUNDLE_RECEIPT, BUNDLE_REPORT}
     with ZipFile(args.bundle_input) as bundle, tempfile.TemporaryDirectory() as tmp:
         members = bundle.infolist()
+        names = {member.filename for member in members}
+        embedded_attestation = BUNDLE_ATTESTATION in names
+        if embedded_attestation:
+            expected.add(BUNDLE_ATTESTATION)
         if (
             len(members) != len(expected)
-            or {member.filename for member in members} != expected
+            or names != expected
             or any(member.compress_type != ZIP_STORED or member.flag_bits & 1 for member in members)
         ):
-            raise ValueError("Expected the five original and derived files in a stored release bundle")
+            raise ValueError("Expected the five original and derived files and at most one stored attestation")
 
         directory = Path(tmp)
         replay = bundle_inputs(args, directory)
+        if embedded_attestation:
+            if not args.require_attestation or args.attestation_root is None or args.attestation_bundle is not None:
+                raise ValueError("Embedded attestation replay requires --require-attestation and --attestation-root only")
+            replay.attestation_bundle = directory / BUNDLE_ATTESTATION
+            replay.attestation_bundle.write_bytes(read_member(bundle, bundle.getinfo(BUNDLE_ATTESTATION)))
+        elif args.attestation_root is not None and args.attestation_bundle is None:
+            raise ValueError("Release bundle has no embedded attestation. Supply --attestation-bundle for a separate proof.")
         for field, name in BUNDLE_ORIGINALS.items():
             target = getattr(replay, field)
             if field == "archive":
@@ -713,7 +734,9 @@ def main():
     parser.add_argument(
         "--require-attestation", action="store_true", help="Require signed provenance for the original GitHub ZIP"
     )
-    parser.add_argument("--attestation-bundle", type=Path, help="Saved GitHub Sigstore bundle")
+    parser.add_argument(
+        "--attestation-bundle", type=Path, help="Saved GitHub Sigstore bundle to verify and embed with --bundle-output"
+    )
     parser.add_argument("--attestation-root", type=Path, help="Trusted Sigstore roots for offline verification")
     outputs = parser.add_mutually_exclusive_group()
     outputs.add_argument(
@@ -738,9 +761,12 @@ def main():
         parser.error("--run-id and --attempt must be positive")
     if args.require_attestation and (args.failed_attempt or args.downloaded_reports is not None):
         parser.error("--require-attestation needs the ZIP of a passing attempt")
-    if args.attestation_bundle is not None or args.attestation_root is not None:
-        if not args.require_attestation or args.attestation_bundle is None or args.attestation_root is None:
-            parser.error("Offline attestation verification requires --require-attestation, --attestation-bundle and --attestation-root")
+    if args.attestation_bundle is not None and args.attestation_root is None:
+        parser.error("--attestation-bundle requires --attestation-root")
+    if args.attestation_root is not None and (
+        not args.require_attestation or (args.attestation_bundle is None and args.bundle_input is None)
+    ):
+        parser.error("--attestation-root requires --require-attestation and either --attestation-bundle or --bundle-input")
     if (args.report_output is not None or args.bundle_output is not None) and (
         args.failed_attempt or args.retain is not None or args.downloaded_reports is not None
         or args.bundle_input is not None
