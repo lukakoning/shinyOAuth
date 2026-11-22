@@ -29,7 +29,7 @@ interop_sanitized <- function(value) {
   TRUE
 }
 
-interop_provider_matches <- function(provider, row, lock) {
+interop_provider_matches <- function(provider, row, lock, selection) {
   if (
     !identical(provider[["run_id"]], row[["case_id"]]) ||
       !identical(provider[["provider_version"]], lock[["provider_version"]]) ||
@@ -94,6 +94,31 @@ interop_provider_matches <- function(provider, row, lock) {
       !required(events[[5L]], "code_issued")
   ) {
     return(FALSE)
+  }
+  max_age <- selection[["max_age"]]
+  if (!is.null(max_age)) {
+    observed <- events[[6L]][["auth_time"]]
+    validated <- row[["before_refresh"]][["validated_auth_time"]]
+    login_started <- events[[2L]][["login_started_at"]]
+    code_issued <- events[[5L]][["code_issued_at"]]
+    if (
+      !identical(
+        as.character(events[[4L]][["max_age"]]),
+        as.character(max_age)
+      ) ||
+        !all(vapply(
+          list(observed, validated, login_started, code_issued),
+          function(value) {
+            is.numeric(value) && length(value) == 1L && is.finite(value)
+          },
+          logical(1)
+        )) ||
+        observed != validated ||
+        observed < login_started ||
+        observed > code_issued
+    ) {
+      return(FALSE)
+    }
   }
   for (i in c(6L, 8L)) {
     event <- events[[i]]
@@ -231,7 +256,12 @@ interop_report_matches <- function(report, context, lock, cases) {
             !isTRUE(row[["callback_cleaned"]]) ||
             !isTRUE(row[["pkce_control_passed"]]) ||
             !openid_string(row[["browser_version"]]) ||
-            !interop_provider_matches(row[["provider"]], row, lock) ||
+            !interop_provider_matches(
+              row[["provider"]],
+              row,
+              lock,
+              selection
+            ) ||
             !openid_refresh_matches(
               row,
               list(outcome = "refreshed", action = "refresh"),

@@ -86,6 +86,7 @@ interop_run_case <- function(
   .stop_before_login = FALSE
 ) {
   run_id <- paste(format(openssl::rand_bytes(16)), collapse = "")
+  max_age <- selection[["max_age"]]
   config <- list(
     run_id = run_id,
     issuer = NULL,
@@ -100,7 +101,11 @@ interop_run_case <- function(
     response_mode = selection[["response_mode"]],
     redirect_uri = paste0(transport[["origin"]], "/"),
     scopes = c("openid", "profile", "email", "offline_access"),
-    extra_auth_params = list(prompt = "consent"),
+    extra_auth_params = c(
+      list(prompt = "consent"),
+      if (!is.null(max_age)) list(max_age = max_age)
+    ),
+    observe_authentication_time = !is.null(max_age),
     transport = context[["transport"]]
   )
   stack <- interop_start(environment, config)

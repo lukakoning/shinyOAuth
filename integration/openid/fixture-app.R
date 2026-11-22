@@ -309,6 +309,15 @@ openid_fixture_app <- function(config) {
         callback_rejections = observed[["callbacks"]],
         id_token_validated = !is.null(token) &&
           isTRUE(token@id_token_validated),
+        validated_auth_time = if (
+          isTRUE(config[["observe_authentication_time"]]) &&
+            !is.null(token) &&
+            isTRUE(token@id_token_validated)
+        ) {
+          token@id_token_claims[["auth_time"]]
+        } else {
+          NULL
+        },
         userinfo_present = !is.null(token) && length(token@userinfo) > 0L,
         userinfo_claims = if (is.null(token)) {
           list()

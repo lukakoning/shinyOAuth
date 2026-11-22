@@ -53,6 +53,8 @@ export function fixture(config) {
   });
   const events = [];
   const record = (type, fields = {}) => events.push({ sequence: events.length + 1, type, ...fields });
+  const observeAuthenticationTime = config.observe_authentication_time === true;
+  const epochSeconds = () => Math.floor(Date.now() / 1000);
   let challenge;
   let codeDigest;
   const issued = new Set();
@@ -78,16 +80,25 @@ export function fixture(config) {
       pkce_s256: params.code_challenge_method === 'S256' && /^[A-Za-z0-9_-]{43}$/.test(challenge),
       state_present: typeof params.state === 'string' && params.state.length >= 22,
       nonce_present: typeof params.nonce === 'string' && params.nonce.length >= 16,
+      ...(observeAuthenticationTime ? { max_age: params.max_age ?? null } : {}),
       ...(resources ? resourceFacts(ctx, config) : {}),
     });
   });
   provider.on('authorization.success', (_ctx, response) => {
     codeDigest = typeof response?.code === 'string' ? digest(response.code) : undefined;
-    record('authorization.success', { code_issued: !!codeDigest });
+    record('authorization.success', {
+      code_issued: !!codeDigest,
+      ...(observeAuthenticationTime ? { code_issued_at: epochSeconds() } : {}),
+    });
   });
   provider.on('grant.success', ctx => {
     const params = ctx.oidc.params;
     const body = ctx.body;
+    // Observe the claim in the provider's own issued token, without changing the response.
+    const authenticationTime = observeAuthenticationTime && params.grant_type === 'authorization_code' &&
+      typeof body.id_token === 'string'
+      ? JSON.parse(Buffer.from(body.id_token.split('.')[1], 'base64url').toString('utf8')).auth_time
+      : undefined;
     if (typeof body.access_token === 'string') issued.add(body.access_token);
     currentAccess = body.access_token;
     state.currentAccess = currentAccess;
@@ -109,6 +120,8 @@ export function fixture(config) {
         ? typeof params.code === 'string' && digest(params.code) === codeDigest : null,
       access_token_present: typeof body.access_token === 'string',
       id_token_present: typeof body.id_token === 'string',
+      ...(observeAuthenticationTime && params.grant_type === 'authorization_code'
+        ? { auth_time: authenticationTime ?? null } : {}),
       refresh_token_present: typeof body.refresh_token === 'string',
       refresh_token_rotated: params.grant_type === 'refresh_token'
         ? params.refresh_token === previousRefresh && body.refresh_token !== previousRefresh : null,
@@ -167,7 +180,10 @@ export function fixture(config) {
         return;
       }
       if (req.method !== 'POST' || req.headers.origin !== config.issuer) { res.writeHead(400).end(); return; }
-      record('interaction', { prompt });
+      record('interaction', {
+        prompt,
+        ...(observeAuthenticationTime && prompt === 'login' ? { login_started_at: epochSeconds() } : {}),
+      });
       if (prompt === 'login') {
         await provider.interactionFinished(req, res, { login: { accountId: 'local-test-account' } }, { mergeWithLastSubmission: false });
       } else {
