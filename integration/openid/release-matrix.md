@@ -83,6 +83,18 @@ name conflicts. Retry the complete workflow with **Re-run all jobs** or start
 a fresh dispatch. A partial rerun has an incomplete current-attempt report set
 and cannot fill its missing rows with an earlier attempt's reports.
 
+Every full run first tests the artifact verifier and reads the selection list
+from the committed matrix policy. The tests run the same companion-verification
+command used in the aggregate. A valid synthetic report set must exit zero. Changing
+the API probe's cancellation result must produce exit code 1.
+
+To run only these preparation checks on GitHub, use the same workflow with
+`report_checks_only` enabled.
+
+```sh
+gh workflow run openid-release-matrix.yml --ref BRANCH_OR_TAG -f report_checks_only=true
+```
+
 The aggregate upload includes only the original sanitized `evidence.json`
 files and the summary, with a requested retention of 90 days. Repository and
 organization artifact policies still apply. Durable release storage and

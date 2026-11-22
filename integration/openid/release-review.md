@@ -664,3 +664,17 @@ archive with all 39 client reports missing. Default offline verification
 also passed a separate synthetic archive with all 39 client and 78 companion
 reports. Offline replay of ZIP `14715958089` reproduced the retained JSON
 receipt. [Diagnostic retention instructions](release-matrix.md#replay-and-retain-a-failed-client-aggregate).
+
+## Release report checks in CI, 2026-11-22
+
+`0a28d7b09c0ee809e14585e78d3941237f516071` adds the verifier tests to the
+matrix preparation job. The new CLI test commits a synthetic policy in a
+temporary Git repository and runs the same companion verification command
+as the aggregate. The valid reports exit zero. Changing only the recorded
+API probe cancellation result produces exit code 1 with the expected plan
+inventory error.
+
+All 16 tests passed on Windows and on the hosted Ubuntu runner at that
+revision. The hosted `report_checks_only` dispatch also validated the
+committed matrix policy. GitHub skipped the selection and aggregate jobs
+for that dispatch. [Hosted report checks](https://github.com/lukakoning/shinyOAuth/actions/runs/45018858473).
