@@ -2,24 +2,23 @@
 
 **shinyOAuth protocol quality: implementation plan**
 
-**Execution priorities (2026-11-21).** The matrix at `681992ad` exposed
-a Chrome debugging-port timeout in `fapi-dpop-full/sync` and a runner
-validation error in all three `refresh` transports. The Chrome retry
-passed a targeted GitHub run. The refresh correction at `98362fc` passed
-all three refresh transports on Windows and `refresh/sync` on GitHub.
-The matrix at `4447159` predates the refresh correction. [Earlier
-matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/44907547397),
-[matrix with Chrome
-retry](https://github.com/lukakoning/shinyOAuth/actions/runs/44915531642),
-[refresh validation
-record](https://lukakoning.github.io/integration/openid/release-review.html#refresh-module-validation-2026-11-21).
+**Execution priorities (2026-11-22).** The 39-selection attempt at
+`98362fc` passed 37 selections, including all refresh transports. Both
+`config` jobs failed the application snapshot comparison for signing-key
+rotation. `92bedf1d` normalizes login snapshots and retains the FAPI
+pre-click state in its dedicated observation. Both configuration
+selections passed on Windows and GitHub. The FAPI pre-click test passed
+on Windows. [Matrix with refresh
+correction](https://github.com/lukakoning/shinyOAuth/actions/runs/44916619030),
+[configuration validation
+record](https://lukakoning.github.io/integration/openid/release-review.html#configuration-rotation-snapshots-2026-11-22).
 
 1.  Track the 39-selection matrix at
-    `98362fcd703ecdfc98ea38d16eee5301612d01a2`. Record each failed job’s
+    `92bedf1d7c6dc87996232289acd39b89b9c554ae`. Record each failed job’s
     stage and source revision. Failed aggregates retain a diagnostic row
     and available input hashes per declared selection (`6a893c0`).
-    [Matrix with refresh
-    correction](https://github.com/lukakoning/shinyOAuth/actions/runs/44916619030).
+    [Matrix with configuration
+    correction](https://github.com/lukakoning/shinyOAuth/actions/runs/45017983714).
 2.  Use the [retention
     command](https://lukakoning.github.io/integration/openid/release-matrix.html#verify-and-retain-a-completed-attempt)
     to collect the first successful matrix. It checks the ZIP digest,
@@ -110,7 +109,7 @@ review](https://lukakoning.github.io/integration/openid/release-review.md).
 | C11-C12 | Four full mTLS selections and the 29-module Message Signing selection | mTLS simulated-server enforcement/registration limits and exact signing/callback configurations remain explicit. |
 | C13-C14 | Pinned second-provider public/confidential code/refresh/browser flows and the declared advanced-flow/lifecycle selections | These are interoperability evidence, not additional OIDF certification profiles. |
 | C15 | Rejected-callback URL cleanup, selected HTTPS cross-site success/denial, provider request counts before the FAPI login click and requirement-selected regressions | Production consent and initiation controls, other proxy/browser/cookie-policy cases and named cryptography gaps stay open. |
-| C16 / SA08 | CI smoke, manual larger selections, acquisition/source checks, a declared OIDF aggregate gate, manual matrix orchestration and verified artifact retention command | The corrected hosted matrix is running at `98362fc`. Its aggregate receipt, other provider/platform evidence and permanent release storage remain open. |
+| C16 / SA08 | CI smoke, manual larger selections, acquisition/source checks, a declared OIDF aggregate gate, manual matrix orchestration and verified artifact retention command | Both hosted configuration selections passed at `92bedf1d` and a full matrix is running at that revision. A passing aggregate, other provider/platform evidence and permanent release storage remain open. |
 
 Use the implemented commands in the [environment
 README](https://lukakoning.github.io/integration/openid/README.md).
@@ -3423,6 +3422,15 @@ offline replay. The completed attempt at `681992ad` was retained for
 diagnosis. Independent replay confirmed 35 passing and four
 reported-failure rows. [Release
 review](https://lukakoning.github.io/integration/openid/release-review.html#matrix-retention-and-failed-aggregate-2026-11-21).
+
+SA08 configuration follow-up (2026-11-22). `92bedf1d` keeps the
+pre-login FAPI observation out of ordinary snapshots. The terminal state
+for each configuration rotation case matches its last login step. Both
+configuration selections and the targeted FAPI selection passed local
+browser execution and independent evidence replay. Both hosted
+configuration selections produced verified artifacts. The full matrix
+was dispatched at the same revision. [Release
+review](https://lukakoning.github.io/integration/openid/release-review.html#configuration-rotation-snapshots-2026-11-22).
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
