@@ -76,6 +76,34 @@ interop_pkce_control <- function(stack, config) {
     !"code" %in% names(query)
 }
 
+interop_complete_login <- function(app, browser, tab, previous_session) {
+  openid_browser_value(tab, "document.querySelector('#login').click()")
+  for (prompt in c("login", "consent")) {
+    selector <- paste0("#fixture-", prompt)
+    openid_wait(
+      function() {
+        isTRUE(openid_browser_value(
+          tab,
+          paste0("!!document.querySelector('", selector, "')")
+        ))
+      },
+      paste("Provider", prompt, "interaction"),
+      30
+    )
+    openid_browser_value(
+      tab,
+      paste0("document.querySelector('", selector, "').click()")
+    )
+  }
+  openid_wait_app(
+    app,
+    browser,
+    tab,
+    terminal = TRUE,
+    after_session = previous_session
+  )
+}
+
 interop_run_case <- function(
   root,
   environment,
@@ -152,30 +180,11 @@ interop_run_case <- function(
   } else {
     NULL
   }
-  openid_browser_value(tab, "document.querySelector('#login').click()")
-  for (prompt in c("login", "consent")) {
-    selector <- paste0("#fixture-", prompt)
-    openid_wait(
-      function() {
-        isTRUE(openid_browser_value(
-          tab,
-          paste0("!!document.querySelector('", selector, "')")
-        ))
-      },
-      paste("Provider", prompt, "interaction"),
-      30
-    )
-    openid_browser_value(
-      tab,
-      paste0("document.querySelector('", selector, "').click()")
-    )
-  }
-  before <- openid_wait_app(
+  before <- interop_complete_login(
     app,
     browser,
     tab,
-    terminal = TRUE,
-    after_session = initial[["session_number"]]
+    initial[["session_number"]]
   )
   if (
     !openid_app_matches(
@@ -197,6 +206,37 @@ interop_run_case <- function(
     "Provider public connection refresh",
     30
   )
+  callback_cleaned <- identical(
+    openid_browser_value(tab, "location.search"),
+    ""
+  )
+  reauthentication <- NULL
+  if (isTRUE(selection[["reauthenticate"]])) {
+    openid_browser_value(tab, "document.querySelector('#logout').click()")
+    logged_out <- openid_wait(
+      function() {
+        value <- openid_wait_app(app, browser, tab)
+        if (identical(value[["error_code"]], "logged_out")) value else NULL
+      },
+      "Provider case local logout",
+      15
+    )
+    # Give the next provider authentication its own NumericDate second.
+    Sys.sleep(1.1)
+    reauthentication <- list(
+      logged_out = logged_out,
+      app = interop_complete_login(
+        app,
+        browser,
+        tab,
+        logged_out[["session_number"]]
+      ),
+      callback_cleaned = identical(
+        openid_browser_value(tab, "location.search"),
+        ""
+      )
+    )
+  }
   row <- list(
     id = selection[["id"]],
     case_id = run_id,
@@ -215,12 +255,12 @@ interop_run_case <- function(
     action = "refresh",
     pkce_control_passed = pkce_control,
     provider = interop_request(stack, "/fixture/evidence", TRUE),
-    callback_cleaned = identical(
-      openid_browser_value(tab, "location.search"),
-      ""
-    ),
+    callback_cleaned = callback_cleaned,
     browser_version = tab[["Browser"]][["getVersion"]]()[["product"]]
   )
+  if (!is.null(reauthentication)) {
+    row[["reauthentication"]] <- reauthentication
+  }
   if (form_post) {
     row[["form_post"]] <- c(
       as.list(navigation),

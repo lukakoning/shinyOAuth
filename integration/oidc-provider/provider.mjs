@@ -30,6 +30,7 @@ export function fixture(config) {
   };
   if (config.client_auth_type === 'client_secret_basic') client.client_secret = config.client_secret;
   const features = { devInteractions: { enabled: false }, userinfo: { enabled: true } };
+  const accountId = 'local-test-account';
   const advanced = advancedOptions(config);
   const resources = resourceOptions(config);
   if (resources) Object.assign(features, resources);
@@ -80,6 +81,7 @@ export function fixture(config) {
     pushedAgeRequest = {
       max_age: typeof form.max_age === 'string' ? form.max_age : null,
       client_matches: client.clientId === config.client_id,
+      login_prompt_sent: typeof form.prompt === 'string' && form.prompt.split(' ').includes('login'),
     };
   });
   provider.on('authorization.accepted', ctx => {
@@ -194,12 +196,20 @@ export function fixture(config) {
         return;
       }
       if (req.method !== 'POST' || req.headers.origin !== config.issuer) { res.writeHead(400).end(); return; }
+      const observeLogin = observeAuthenticationTime && prompt === 'login';
+      const session = observeLogin && details.session?.uid
+        ? await provider.Session.findByUid(details.session.uid)
+        : undefined;
       record('interaction', {
         prompt,
-        ...(observeAuthenticationTime && prompt === 'login' ? { login_started_at: epochSeconds() } : {}),
+        ...(observeLogin ? {
+          login_started_at: epochSeconds(),
+          login_prompt_requested: details.prompt.reasons.includes('login_prompt'),
+          prior_session_auth_time: session?.accountId === accountId ? session.authTime() : null,
+        } : {}),
       });
       if (prompt === 'login') {
-        await provider.interactionFinished(req, res, { login: { accountId: 'local-test-account' } }, { mergeWithLastSubmission: false });
+        await provider.interactionFinished(req, res, { login: { accountId } }, { mergeWithLastSubmission: false });
       } else {
         const grant = details.grantId ? await provider.Grant.find(details.grantId)
           : new provider.Grant({ accountId: details.session.accountId, clientId: details.params.client_id });

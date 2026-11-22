@@ -29,6 +29,79 @@ interop_sanitized <- function(value) {
   TRUE
 }
 
+interop_event_flags <- function(event, fields) {
+  all(vapply(fields, function(name) isTRUE(event[[name]]), logical(1)))
+}
+
+interop_userinfo_matches <- function(event) {
+  identical(event[["status"]], 200L) &&
+    interop_event_flags(
+      event,
+      c("issued_token_used", "current_token_used", "subject_present")
+    )
+}
+
+interop_login_events_match <- function(events, app, response_mode, max_age) {
+  login <- events[[1L]]
+  consent <- events[[2L]]
+  accepted <- events[[3L]]
+  code <- events[[4L]]
+  grant <- events[[5L]]
+  if (
+    !identical(login[["prompt"]], "login") ||
+      !identical(consent[["prompt"]], "consent") ||
+      !identical(accepted[["response_mode"]], response_mode) ||
+      !interop_event_flags(
+        accepted,
+        c(
+          "client_matches",
+          "code_flow",
+          "pkce_s256",
+          "state_present",
+          "nonce_present"
+        )
+      ) ||
+      !isTRUE(code[["code_issued"]]) ||
+      !identical(grant[["grant_type"]], "authorization_code") ||
+      !interop_event_flags(
+        grant,
+        c(
+          "client_matches",
+          "authentication_valid",
+          "access_token_present",
+          "id_token_present",
+          "refresh_token_present",
+          "pkce_verified",
+          "code_matches"
+        )
+      ) ||
+      !is.null(grant[["refresh_token_rotated"]]) ||
+      !interop_userinfo_matches(events[[6L]])
+  ) {
+    return(FALSE)
+  }
+  if (is.null(max_age)) {
+    return(TRUE)
+  }
+  request <- accepted[["pushed_age_request"]]
+  observed <- grant[["auth_time"]]
+  validated <- app[["validated_auth_time"]]
+  login_started <- login[["login_started_at"]]
+  code_issued <- code[["code_issued_at"]]
+  identical(request[["max_age"]], as.character(max_age)) &&
+    interop_event_flags(request, c("client_matches", "challenge_matches")) &&
+    all(vapply(
+      list(observed, validated, login_started, code_issued),
+      function(value) {
+        is.numeric(value) && length(value) == 1L && is.finite(value)
+      },
+      logical(1)
+    )) &&
+    observed == validated &&
+    login_started <= observed &&
+    observed <= code_issued
+}
+
 interop_provider_matches <- function(provider, row, lock, selection) {
   if (
     !identical(provider[["run_id"]], row[["case_id"]]) ||
@@ -48,16 +121,21 @@ interop_provider_matches <- function(provider, row, lock, selection) {
     return(FALSE)
   }
   events <- provider[["events"]]
-  types <- c(
-    "authorization.error",
+  login_types <- c(
     "interaction",
     "interaction",
     "authorization.accepted",
     "authorization.success",
     "grant.success",
-    "userinfo",
-    "grant.success",
     "userinfo"
+  )
+  reauthenticate <- isTRUE(selection[["reauthenticate"]])
+  types <- c(
+    "authorization.error",
+    login_types,
+    "grant.success",
+    "userinfo",
+    if (reauthenticate) login_types
   )
   if (
     length(events) != length(types) ||
@@ -72,100 +150,85 @@ interop_provider_matches <- function(provider, row, lock, selection) {
   ) {
     return(FALSE)
   }
-  required <- function(event, fields) {
-    all(vapply(fields, function(name) isTRUE(event[[name]]), logical(1)))
-  }
+  response_mode <- row[["response_mode"]]
+  max_age <- selection[["max_age"]]
+  refresh <- events[[8L]]
   if (
     !identical(events[[1L]][["error"]], "invalid_request") ||
-      !required(events[[1L]], c("client_matches", "pkce_missing")) ||
-      !identical(events[[2L]][["prompt"]], "login") ||
-      !identical(events[[3L]][["prompt"]], "consent") ||
-      !identical(events[[4L]][["response_mode"]], row[["response_mode"]]) ||
-      !required(
-        events[[4L]],
+      !interop_event_flags(events[[1L]], c("client_matches", "pkce_missing")) ||
+      !interop_login_events_match(
+        events[2:7],
+        row[["before_refresh"]],
+        response_mode,
+        max_age
+      ) ||
+      !identical(refresh[["grant_type"]], "refresh_token") ||
+      !interop_event_flags(
+        refresh,
         c(
           "client_matches",
-          "code_flow",
-          "pkce_s256",
-          "state_present",
-          "nonce_present"
+          "authentication_valid",
+          "access_token_present",
+          "id_token_present",
+          "refresh_token_present",
+          "refresh_token_rotated"
         )
       ) ||
-      !required(events[[5L]], "code_issued")
+      !is.null(refresh[["pkce_verified"]]) ||
+      !is.null(refresh[["code_matches"]]) ||
+      !interop_userinfo_matches(events[[9L]])
   ) {
     return(FALSE)
   }
-  max_age <- selection[["max_age"]]
-  if (!is.null(max_age)) {
-    request <- events[[4L]][["pushed_age_request"]]
-    observed <- events[[6L]][["auth_time"]]
-    validated <- row[["before_refresh"]][["validated_auth_time"]]
-    login_started <- events[[2L]][["login_started_at"]]
-    code_issued <- events[[5L]][["code_issued_at"]]
-    if (
-      !identical(request[["max_age"]], as.character(max_age)) ||
-        !required(request, c("client_matches", "challenge_matches")) ||
-        !all(vapply(
-          list(observed, validated, login_started, code_issued),
-          function(value) {
-            is.numeric(value) && length(value) == 1L && is.finite(value)
-          },
-          logical(1)
-        )) ||
-        observed != validated ||
-        observed < login_started ||
-        observed > code_issued
-    ) {
-      return(FALSE)
-    }
+  if (!reauthenticate) {
+    return(TRUE)
   }
-  for (i in c(6L, 8L)) {
-    event <- events[[i]]
-    if (
-      !identical(
-        event[["grant_type"]],
-        if (i == 6L) "authorization_code" else "refresh_token"
-      ) ||
-        !required(
-          event,
-          c(
-            "client_matches",
-            "authentication_valid",
-            "access_token_present",
-            "id_token_present",
-            "refresh_token_present"
-          )
-        )
-    ) {
-      return(FALSE)
-    }
-    if (
-      i == 6L &&
-        (!required(event, c("pkce_verified", "code_matches")) ||
-          !is.null(event[["refresh_token_rotated"]]))
-    ) {
-      return(FALSE)
-    }
-    if (
-      i == 8L &&
-        (!isTRUE(event[["refresh_token_rotated"]]) ||
-          !is.null(event[["pkce_verified"]]) ||
-          !is.null(event[["code_matches"]]))
-    ) {
-      return(FALSE)
-    }
-  }
-  all(vapply(
-    events[c(7L, 9L)],
-    function(event) {
-      identical(event[["status"]], 200L) &&
-        required(
-          event,
-          c("issued_token_used", "current_token_used", "subject_present")
-        )
-    },
-    logical(1)
-  ))
+  old_time <- events[[6L]][["auth_time"]]
+  interop_login_events_match(
+    events[10:15],
+    row[["reauthentication"]][["app"]],
+    response_mode,
+    max_age
+  ) &&
+    is.null(events[[2L]][["prior_session_auth_time"]]) &&
+    identical(events[[10L]][["prior_session_auth_time"]], old_time) &&
+    isTRUE(events[[10L]][["login_prompt_requested"]]) &&
+    identical(
+      events[[12L]][["pushed_age_request"]][["login_prompt_sent"]],
+      FALSE
+    ) &&
+    events[[14L]][["auth_time"]] > old_time
+}
+
+interop_reauthentication_matches <- function(row, context) {
+  evidence <- row[["reauthentication"]]
+  logged_out <- evidence[["logged_out"]]
+  after <- evidence[["app"]]
+  before <- row[["app"]]
+  expectation <- list(outcome = "authenticated")
+  identical(logged_out[["authenticated"]], FALSE) &&
+    identical(logged_out[["has_token"]], FALSE) &&
+    identical(logged_out[["error_code"]], "logged_out") &&
+    identical(logged_out[["session_number"]], before[["session_number"]]) &&
+    identical(after[["session_number"]], before[["session_number"]] + 1L) &&
+    identical(logged_out[["app_instance"]], before[["app_instance"]]) &&
+    identical(after[["app_instance"]], before[["app_instance"]]) &&
+    isTRUE(evidence[["callback_cleaned"]]) &&
+    openid_app_matches(
+      after,
+      expectation,
+      row[["case_id"]],
+      context[["package_version"]]
+    ) &&
+    openid_transport_matches(
+      list(
+        app = after,
+        initial = row[["initial"]],
+        worker_cleanup_verified = row[["worker_cleanup_verified"]]
+      ),
+      expectation,
+      context
+    )
 }
 
 interop_report_source_matches <- function(report, context) {
@@ -272,6 +335,12 @@ interop_report_matches <- function(report, context, lock, cases) {
               list(outcome = "refreshed", action = "refresh"),
               context
             )
+        ) {
+          return(FALSE)
+        }
+        if (
+          isTRUE(selection[["reauthenticate"]]) &&
+            !interop_reauthentication_matches(row, context)
         ) {
           return(FALSE)
         }

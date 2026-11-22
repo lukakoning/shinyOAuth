@@ -3,7 +3,7 @@
   "cases": [
     { "id": "public-query", "client_auth_type": "none", "response_mode": "query" },
     { "id": "public-form-post", "client_auth_type": "none", "response_mode": "form_post" },
-    { "id": "confidential-query", "client_auth_type": "client_secret_basic", "response_mode": "query", "max_age": 0 },
+    { "id": "confidential-query", "client_auth_type": "client_secret_basic", "response_mode": "query", "max_age": 0, "reauthenticate": true },
     { "id": "confidential-form-post", "client_auth_type": "client_secret_basic", "response_mode": "form_post" }
   ]
 }
