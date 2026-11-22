@@ -25,7 +25,9 @@ record](https://lukakoning.github.io/integration/openid/release-review.html#conf
     command](https://lukakoning.github.io/integration/openid/release-matrix.html#verify-and-retain-a-completed-attempt)
     to collect the first successful matrix. It checks the ZIP digest,
     replays the aggregate and verifies all preflight and API inventories
-    before saving the bundle. Individual job artifacts request seven
+    before saving the bundle. New matrix dispatches run the artifact
+    verifier’s tests in preparation, including a real CLI rejection for
+    an altered API inventory. Individual job artifacts request seven
     days and the aggregate requests 90. A permanent storage location and
     a verified hosted bundle remain open.
 3.  The selected FAPI manual-initiation case samples the app queue and
@@ -3440,6 +3442,14 @@ revision. The two recent failed hosted aggregates reproduced all 39
 selection diagnostics and were retained with `gate_passed = false`.
 [Release
 review](https://lukakoning.github.io/integration/openid/release-review.html#failed-client-aggregate-retention-2026-11-22).
+
+SA08 verifier CI checks (2026-11-22). `0a28d7b` runs the artifact
+verifier tests during matrix preparation. The new test uses the real
+aggregate CLI and committed synthetic policy. It requires exit code zero
+for valid evidence and exit code 1 after changing the API cancellation
+result. The `report_checks_only` dispatch passed on GitHub at that
+revision. [Release
+review](https://lukakoning.github.io/integration/openid/release-review.html#release-report-checks-in-ci-2026-11-22).
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
