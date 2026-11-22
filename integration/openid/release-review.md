@@ -969,3 +969,33 @@ artifact tests, six link recorder tests and 14 provider matrix tests. The
 report-only dispatch exercised both verifiers and skipped the matrix and
 signing jobs.
 [Hosted report checks](https://github.com/lukakoning/shinyOAuth/actions/runs/45034973871).
+
+## Paired evidence retention, 2026-11-22
+
+`e8fd590edbfc1c8359d9f04f0b0828ad44013987` adds `--retain-paired`. It
+collects the original GitHub attempt and link ZIP, checks the saved Sigstore
+proof and uses the signed IDs to collect both aggregate ZIPs. The destination
+holds the original ZIPs, GitHub responses, link proof and replay outputs.
+The whole directory is published after verification passes.
+[Collection instructions](release-matrix.md#retain-a-completed-paired-attempt).
+
+A public GitHub CLI release exercised the production proof download and
+verification using GitHub CLI's trusted roots. Live retention controls
+rejected the still-running paired attempt and the earlier standalone OIDF
+run, leaving both destinations absent. The full positive collection test
+uses synthetic run metadata, ZIPs and verification responses.
+[GitHub CLI signature fixture](https://github.com/cli/cli/releases/tag/v2.100.0).
+
+All 52 tests passed on Windows and hosted Ubuntu. The report-only dispatch
+ran the three test suites and skipped the matrices and signing.
+[Hosted report checks](https://github.com/lukakoning/shinyOAuth/actions/runs/45035704529).
+
+The provider component of paired run `45033763653` passed all eight
+selections and its aggregate at `a65cdaea`. Artifact `14759821153` matched
+GitHub SHA-256
+`1d3acb729cd6d866b66df34e060764585c98a351d85215360d0e30355dedfc65`.
+Independent ZIP replay verified eight reports with 34 cases. The ZIP and
+metadata are retained in
+`integration/oidc-provider/.artifacts/verified-paired-provider-45033763653-1/`.
+The OIDF aggregate and signed link are pending.
+[Paired matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/45033763653).

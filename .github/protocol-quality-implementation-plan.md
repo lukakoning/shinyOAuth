@@ -11,9 +11,10 @@ published table records the exact revision and each selection's limits.
 1. Preserve the verified bundle in shared release storage with its original
    ZIP, GitHub metadata and receipt. An independently verified single-archive
    copy and the committed Markdown table are available. The archive tool can
-   also preserve the verified Sigstore proof for signed attempts. Shared
-   publication awaits a storage destination or a matching release tag. The
-   original GitHub aggregate expires on 2027-02-20.
+   also preserve the verified Sigstore proof for signed attempts. The paired
+   collector retains the three original ZIPs, metadata and verified link
+   proof together. Shared publication awaits a storage destination or a
+   matching release tag. The original GitHub aggregate expires on 2027-02-20.
    [Release archive instructions](../integration/openid/release-matrix.md#package-a-verified-attempt-for-release-storage).
 2. Bind any future release claim to its chosen commit and selected evidence.
    The verified OIDF matrix applies to `92bedf1d`. Signing and verification
@@ -3139,6 +3140,14 @@ checks both original aggregate digests and replays their evidence in one
 command. The first verification with a signed link from shinyOAuth awaits
 the full paired run.
 [Release review](../integration/openid/release-review.md#paired-evidence-replay-2026-11-22).
+
+SA08 paired evidence retention (2026-11-22). `e8fd590e` collects the exact
+successful attempt, verifies the saved proof and retrieves both original
+aggregate ZIPs by their signed artifact IDs. The destination is published
+after both replays succeed. The provider component of the first paired run
+passed independent ZIP replay at `a65cdaea`. Collection of the complete
+paired evidence awaits the OIDF aggregate and signed link.
+[Release review](../integration/openid/release-review.md#paired-evidence-retention-2026-11-22).
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second

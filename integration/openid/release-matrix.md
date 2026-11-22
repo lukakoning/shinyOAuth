@@ -241,6 +241,28 @@ For offline verification, save the Sigstore bundle for the link ZIP and
 independently trusted roots as described above. Pass them with
 `--attestation-bundle` and `--attestation-root` to the paired verifier.
 
+### Retain a completed paired attempt
+
+Run the collector from a checkout that contains the selected commit. Supply
+a new destination directory on the storage where you want to keep the evidence.
+
+```sh
+python integration/openid/verify-release-artifact.py --repository OWNER/REPO --revision FULL_COMMIT_SHA --run-id RUN_ID --attempt ATTEMPT_NUMBER --retain-paired "PATH_TO_NEW_DIRECTORY"
+```
+
+The collector fetches the exact successful workflow attempt and verifies the
+downloaded Sigstore proof for the link ZIP with GitHub CLI's trusted roots.
+It fetches the two aggregate ZIPs by the artifact IDs in that signed link.
+After replay succeeds, it publishes the evidence directory with the original
+`link.zip`, `artifact.zip` and `provider.zip`, their GitHub metadata, the
+workflow attempt JSON, `attestation.jsonl`, `receipt.json` and the OIDF
+Markdown summary.
+[GitHub artifact API](https://docs.github.com/en/rest/actions/artifacts#get-an-artifact).
+
+For offline replay, use the paired verifier with these original files and
+the retained `attestation.jsonl`. Supply your independently trusted root file
+with `--attestation-root`.
+
 ## Package a verified attempt for release storage
 
 From the repository root, pack the three original files of a passing attempt
