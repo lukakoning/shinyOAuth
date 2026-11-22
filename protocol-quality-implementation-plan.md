@@ -114,7 +114,7 @@ review](https://lukakoning.github.io/integration/openid/release-review.md).
 | C09 | Sync/mirai core profiles, future smoke/refresh parity, confidential authentication pairs and shared-pool isolation; C13 supplies public/S256 interoperability | The pinned OIDF public variant cannot complete because its metadata omits `none`; no public-client OIDF verdict is claimed. |
 | C10 | All 23 OIDC DPoP modules and all 11 OAuth DPoP modules with encrypted/reference state | The encrypted-state advisory and FAPI configuration/requirement limits remain distinct from module execution. |
 | C11-C12 | Four full mTLS selections and the 29-module Message Signing selection | mTLS simulated-server enforcement/registration limits and exact signing/callback configurations remain explicit. |
-| C13-C14 | Pinned second-provider public/confidential code/refresh/browser flows and the declared advanced-flow/lifecycle selections | The baseline now records verified source and private installation identity. Other provider selections keep their own provenance and interoperability scope. |
+| C13-C14 | Pinned second-provider public/confidential code/refresh/browser flows and the declared advanced-flow/lifecycle selections | All four browser selections record verified source and private installation identity. Provider interoperability evidence remains scoped to each tested revision. |
 | C15 | Rejected-callback URL cleanup, selected HTTPS cross-site success/denial, provider request counts before the FAPI login click and requirement-selected regressions | Production consent and initiation controls, other proxy/browser/cookie-policy cases and named cryptography gaps stay open. |
 | C16 / SA08 | CI smoke, manual larger selections, acquisition/source checks, a declared OIDF aggregate gate, manual matrix orchestration and verified artifact retention command | Both hosted configuration selections passed at `92bedf1d` and a full matrix is running at that revision. A passing aggregate, other provider/platform evidence and permanent release storage remain open. |
 
@@ -3469,6 +3469,14 @@ evidence controls on Windows and hosted Ubuntu. The four reports share
 the canonical source archive hash. The separate OIDF matrix retains its
 own evidence inputs. [Release
 review](https://lukakoning.github.io/integration/openid/release-review.html#second-provider-baseline-source-identity-2026-11-22).
+
+SA08 broader second-provider source checks (2026-11-22). `2729a34` adds
+shared source and installation checks to `advanced`, `resources` and
+`retention`. `6b68e92` records the verified callback cleanup for the
+advanced rejection cases. Both transports passed for all three
+selections on Windows and hosted Ubuntu. Each report was rechecked
+against its own revision. [Release
+review](https://lukakoning.github.io/integration/openid/release-review.html#advanced-and-lifecycle-provider-source-identity-2026-11-22).
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
