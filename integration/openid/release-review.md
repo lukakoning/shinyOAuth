@@ -839,3 +839,20 @@ its 39-selection receipt.
 The first full matrix with signing enabled is in progress at
 `30774baa707846aa8c5cd54596b1dc5999404625`. Verification of its signed
 aggregate is pending. [Signing-enabled matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/45030528151).
+
+## Portable signed OIDF archives, 2026-11-22
+
+`a6e0bf58f1d1dcf225b6399f9233ee88ff384561` can include a verified Sigstore
+bundle in a portable release ZIP. The packer checks a staged copy of the
+proof and stores those exact bytes. Replay checks the embedded proof with
+the operator's separately obtained trusted roots.
+[Packaging instructions](release-matrix.md#include-the-attestation-in-the-release-archive).
+
+All 24 Python tests passed on Windows and hosted Ubuntu. The prior archive
+for run `45017983714` reproduced its 39-selection receipt and failed when
+asked to verify an embedded attestation. A public GitHub CLI release fixture
+produced identical archives on two runs. The real GitHub verifier accepted
+its packaged proof offline and rejected a modified signature. The first
+packaging check with a signed shinyOAuth aggregate awaits the full matrix.
+[Hosted report checks](https://github.com/lukakoning/shinyOAuth/actions/runs/45030937388),
+[GitHub CLI signature fixture](https://github.com/cli/cli/releases/tag/v2.100.0).

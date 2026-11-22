@@ -100,8 +100,9 @@ gh workflow run openid-release-matrix.yml --ref BRANCH_OR_TAG -f report_checks_o
 
 The aggregate upload includes only the original sanitized `evidence.json`
 files and the summary, with a requested retention of 90 days. Repository and
-organization artifact policies still apply. Durable release storage and
-authenticated artifact provenance require separate release evidence.
+organization artifact policies still apply. The signing job attests the
+original ZIP of a successful attempt. Retain a verified archive for storage
+beyond the artifact's expiration.
 
 To recheck the preflight and API evidence from downloaded selection directories,
 use the same command as the aggregate job. Keep the selection artifact names
@@ -192,8 +193,9 @@ gh attestation download "PATH_TO_BUNDLE/artifact.zip" --repo OWNER/REPO --predic
 python -c "import pathlib, subprocess; pathlib.Path('trusted_root.jsonl').write_bytes(subprocess.check_output(['gh', 'attestation', 'trusted-root']))"
 ```
 
-Replay the verified release archive with the downloaded Sigstore JSONL and the
-locally trusted root file.
+For a release archive with a separate Sigstore JSONL, pass the downloaded
+proof and your trusted root file explicitly. The packaging section below
+shows how to carry the proof inside the archive.
 
 ```sh
 python integration/openid/verify-release-artifact.py --repository OWNER/REPO --revision FULL_COMMIT_SHA --run-id RUN_ID --attempt ATTEMPT_NUMBER --bundle-input "PATH_TO_RELEASE.zip" --require-attestation --attestation-bundle "PATH_TO_ATTESTATION.jsonl" --attestation-root "PATH_TO_TRUSTED_ROOT.jsonl"
@@ -225,6 +227,25 @@ the stored receipt and summary.
 
 ```sh
 python integration/openid/verify-release-artifact.py --repository OWNER/REPO --revision FULL_COMMIT_SHA --run-id RUN_ID --attempt ATTEMPT_NUMBER --bundle-input "PATH_TO_RELEASE.zip"
+```
+
+### Include the attestation in the release archive
+
+Use the downloaded Sigstore JSONL and your trusted roots when packaging a
+signed attempt. The packer verifies the exact JSONL bytes it will save as
+`attestation.jsonl` inside the ZIP. Keep your trusted root file separately.
+[GitHub offline verification instructions](https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/verify-attestations-offline).
+
+```sh
+python integration/openid/verify-release-artifact.py --repository OWNER/REPO --revision FULL_COMMIT_SHA --run-id RUN_ID --attempt ATTEMPT_NUMBER --bundle-output "PATH_TO_NEW_RELEASE.zip" --require-attestation --attestation-bundle "PATH_TO_ATTESTATION.jsonl" --attestation-root "PATH_TO_TRUSTED_ROOT.jsonl" "PATH_TO_BUNDLE/run.json" "PATH_TO_BUNDLE/artifact.json" "PATH_TO_BUNDLE/artifact.zip"
+```
+
+Replay an archive with embedded provenance using only your independently
+trusted root file. The verifier checks the stored signature before replaying
+the original reports and comparing the receipt and summary.
+
+```sh
+python integration/openid/verify-release-artifact.py --repository OWNER/REPO --revision FULL_COMMIT_SHA --run-id RUN_ID --attempt ATTEMPT_NUMBER --bundle-input "PATH_TO_RELEASE.zip" --require-attestation --attestation-root "PATH_TO_TRUSTED_ROOT.jsonl"
 ```
 
 For a GitHub release asset, resolve the release tag to its commit with
