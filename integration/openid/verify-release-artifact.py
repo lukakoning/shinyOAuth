@@ -503,7 +503,14 @@ def verify(args, report_path=None):
     else:
         receipt["companion_reports"] = companions
         if report_path is not None:
-            report_path.write_text(release_report(read_object(replay), lock, receipt), encoding="utf-8")
+            markdown = release_report(read_object(replay), lock, receipt)
+            report_file = report_path.open("x", encoding="utf-8", newline="\n")
+            try:
+                with report_file:
+                    report_file.write(markdown)
+            except OSError:
+                report_path.unlink(missing_ok=True)
+                raise
     return receipt
 
 
@@ -589,6 +596,9 @@ def main():
         "--failed-attempt", action="store_true", help="Replay a failed client aggregate and its diagnostics"
     )
     parser.add_argument(
+        "--report-output", type=Path, help="Write verified Markdown to a new file during offline replay"
+    )
+    parser.add_argument(
         "run_metadata", type=Path, nargs="?", help="GitHub workflow run attempt JSON"
     )
     parser.add_argument(
@@ -602,6 +612,10 @@ def main():
         parser.error("--revision requires a full lowercase Git commit SHA")
     if args.attempt <= 0 or (args.run_id is not None and args.run_id <= 0):
         parser.error("--run-id and --attempt must be positive")
+    if args.report_output is not None and (
+        args.failed_attempt or args.retain is not None or args.downloaded_reports is not None
+    ):
+        parser.error("--report-output requires offline replay of a passing ZIP")
     files = (args.run_metadata, args.artifact_metadata, args.archive)
     if args.downloaded_reports is not None:
         if args.failed_attempt or any(
@@ -630,7 +644,7 @@ def main():
             else:
                 print(f"Retained {receipt['client_report_count']} verified OpenID selections in {args.retain}.")
         else:
-            print(json.dumps(verify(args), indent=2))
+            print(json.dumps(verify(args, report_path=args.report_output), indent=2))
     except (BadZipFile, OSError, ValueError) as error:
         parser.exit(1, f"{error}\n")
 

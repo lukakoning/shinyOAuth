@@ -215,6 +215,24 @@ class ReleaseArtifactTest(unittest.TestCase):
         with self.mock_replay(replay), self.assertRaisesRegex(ValueError, "summary differs"):
             verifier.verify(self.args)
 
+    def test_offline_replay_writes_lf_markdown_only_after_verification(self):
+        self.write_fixture()
+        report = self.args.archive.parent / "release-report.md"
+        replay = {**self.summary, "matrix_complete": False}
+        with self.mock_replay(replay), self.assertRaisesRegex(ValueError, "summary differs"):
+            verifier.verify(self.args, report_path=report)
+        self.assertFalse(report.exists())
+
+        with self.mock_replay(self.summary):
+            verifier.verify(self.args, report_path=report)
+        original = report.read_bytes()
+        self.assertTrue(original.startswith(b"# OpenID client release evidence\n"))
+        self.assertNotIn(b"\r\n", original)
+
+        with self.mock_replay(self.summary), self.assertRaises(FileExistsError):
+            verifier.verify(self.args, report_path=report)
+        self.assertEqual(report.read_bytes(), original)
+
     def test_rejects_changed_archive_bytes_before_replay(self):
         self.write_fixture()
         with self.args.archive.open("ab") as archive:
