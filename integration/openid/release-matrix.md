@@ -5,6 +5,9 @@ This is the OIDF client-evidence part of SA08. Provider interoperability,
 platform coverage, artifact authentication and durable publication need their
 own release decisions and evidence.
 
+The [first verified hosted report](release-evidence/45017983714-attempt-1.md)
+records all 39 selections at `92bedf1d` and the scope limits for that revision.
+
 | Profiles | Required transports | Entries |
 | --- | --- | ---: |
 | `smoke`, `basic`, `config`, `form-post`, `form-post-cross-site`, `refresh` | sync and mirai | 12 |
@@ -141,6 +144,10 @@ saved bundle offline, supply those files and the same run identifiers.
 ```sh
 python integration/openid/verify-release-artifact.py --repository OWNER/REPO --revision FULL_COMMIT_SHA --run-id RUN_ID --attempt ATTEMPT_NUMBER "PATH_TO_BUNDLE/run.json" "PATH_TO_BUNDLE/artifact.json" "PATH_TO_BUNDLE/artifact.zip"
 ```
+
+Add `--report-output "PATH_TO_NEW_REPORT.md"` to regenerate the Markdown from
+the local bundle. The verifier writes the file after a successful replay, uses
+LF line endings and requires a new output path.
 
 The verifier checks the repository, successful workflow attempt, revision and
 artifact identity against the saved API responses. It compares the ZIP's

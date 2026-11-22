@@ -766,3 +766,33 @@ The Windows `sync` resource and retention runs use the `20261122-120236`
 prefix. The other Windows runs use `20261122-120815`. Hosted bundles use the
 workflow run ID, selection and transport. These results contribute companion
 interoperability evidence at the stated revisions.
+
+## First verified hosted OIDF matrix, 2026-11-22
+
+The hosted matrix at `92bedf1d7c6dc87996232289acd39b89b9c554ae` passed all 39
+declared selections and the aggregate. The workflow took 1 hour 52 minutes
+35 seconds. The aggregate verified the selected revision, all preflights and
+all API plan inventories. [GitHub matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/45017983714).
+
+Independent replay verified the 39 original client reports, all 78 companion
+reports and the stored aggregate summary. Artifact `14755943578` matched
+GitHub's SHA-256 `8cdfdbfe1a4b87c1d2f72cc6ad1f49c7d6c1ba62aae8034d240280f8c097203a`.
+The summary SHA-256 is
+`5857da5e3af77ce72a42da12ac6e947c627bcf94f8429a7fa3be4393d64b3885`.
+The original ZIP, metadata and receipt stay under
+`.artifacts/verified-matrix-45017983714-1/`. The original GitHub aggregate
+expires on 2027-02-20. Shared release storage and signed provenance remain
+open.
+
+The suite recorded 372 `PASSED`, six accepted `WARNING` and six accepted
+`SKIPPED` verdicts across 384 module runs. Twenty-five selections exercised
+their full upstream module list. Thirteen met the local coverage-complete
+criteria. The remaining rows retain their scoped limits and exact exceptions.
+[Published evidence table](release-evidence/45017983714-attempt-1.md).
+
+At `73890ce`, offline `--report-output` and a fresh retention of the hosted
+artifact produced the same JSON receipt and byte-identical Markdown. The
+published Markdown SHA-256 is
+`1ce7b5aa4efce430f6604f2247d76e88ee4826fd48fc13f1a785282590cefa66`.
+The existing-file control preserved its bytes. All 17 Python tests passed on
+Windows and hosted Ubuntu. [Hosted report checks](https://github.com/lukakoning/shinyOAuth/actions/runs/45028936163).

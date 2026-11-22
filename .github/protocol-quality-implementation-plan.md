@@ -1,27 +1,21 @@
 **shinyOAuth protocol quality: implementation plan**
 
-**Execution priorities (2026-11-22).** The 39-selection attempt at `98362fc`
-passed 37 selections, including all refresh transports. Both `config` jobs
-failed the application snapshot comparison for signing-key rotation.
-`92bedf1d` normalizes login snapshots and retains the FAPI pre-click state
-in its dedicated observation. Both configuration selections passed on Windows
-and GitHub. The FAPI pre-click test passed on Windows.
-[Matrix with refresh correction](https://github.com/lukakoning/shinyOAuth/actions/runs/44916619030),
-[configuration validation record](../integration/openid/release-review.md#configuration-rotation-snapshots-2026-11-22).
+**Execution priorities (2026-11-22).** The first complete hosted OIDF matrix
+passed all 39 declared selections and the aggregate at
+`92bedf1d7c6dc87996232289acd39b89b9c554ae`. The retained bundle passed
+independent replay of 39 client, 39 preflight and 39 API reports. The
+published table records the exact revision and each selection's limits.
+[GitHub matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/45017983714),
+[release evidence table](../integration/openid/release-evidence/45017983714-attempt-1.md).
 
-1. Track the 39-selection matrix at `92bedf1d7c6dc87996232289acd39b89b9c554ae`.
-   Record each failed job's stage and source revision. Use `--failed-attempt`
-   to retain and replay a failed client aggregate with selection diagnostics.
-   [Matrix with configuration correction](https://github.com/lukakoning/shinyOAuth/actions/runs/45017983714),
-   [diagnostic retention](../integration/openid/release-matrix.md#replay-and-retain-a-failed-client-aggregate).
-2. Use the [retention command](../integration/openid/release-matrix.md#verify-and-retain-a-completed-attempt)
-   to collect the first successful matrix. It checks the ZIP digest, replays
-   the aggregate and verifies all preflight and API inventories before saving
-   the bundle. New matrix dispatches run the artifact verifier's tests in
-   preparation, including a real CLI rejection for an altered API inventory.
-   Successful retention also writes the [release evidence table](../integration/openid/release-matrix.md#verify-and-retain-a-completed-attempt).
-   Individual job artifacts request seven days and the aggregate requests 90.
-   A permanent storage location and a verified hosted bundle remain open.
+1. Preserve the verified bundle in shared release storage with its original
+   ZIP, GitHub metadata and receipt. A local copy and the committed Markdown
+   table are available. The original GitHub aggregate expires on 2027-02-20.
+   [Retention instructions](../integration/openid/release-matrix.md#verify-and-retain-a-completed-attempt).
+2. Bind any future release claim to its chosen commit and selected evidence.
+   The verified OIDF matrix applies to `92bedf1d`. Later provider and platform
+   validations keep their own revision and scope. Signed artifact provenance
+   and a wider release evidence set remain open.
 3. The selected FAPI manual-initiation case samples the app queue and state
    store before a trusted Chrome click with transient activation. The
    [FAPI requirement map](../integration/openid/requirements.md) tracks the
@@ -82,9 +76,9 @@ now distinguishes completed public/S256 interoperability from the OIDF public
 variant limit. C06 retains the original OIDF/Keycloak header limits and no
 shared-worker-cache claim. SA07 implements rejected-callback URL cleanup and
 selected HTTPS cross-site Form Post success/denial with versioned browser
-evidence; broader deployment/browser policies remain open. SA08 implements a
-declared OIDF selection gate and a manual workflow for all declared pairs.
-Full matrix execution and durable retention remain open. SA03 remains
+evidence; broader deployment/browser policies remain open. SA08 has a passing
+hosted matrix and independently verified bundle for all declared OIDF pairs at
+`92bedf1d`. Shared retention and wider release evidence remain open. SA03 remains
 conditional. See the
 [release review](../integration/openid/release-review.md).
 
@@ -97,7 +91,7 @@ conditional. See the
 | C11-C12 | Four full mTLS selections and the 29-module Message Signing selection | mTLS simulated-server enforcement/registration limits and exact signing/callback configurations remain explicit. |
 | C13-C14 | Pinned second-provider public/confidential code/refresh/browser flows and the declared advanced-flow/lifecycle selections | All four browser selections record verified source and private installation identity. Provider interoperability evidence remains scoped to each tested revision. |
 | C15 | Rejected-callback URL cleanup, selected HTTPS cross-site success/denial, provider request counts before the FAPI login click and requirement-selected regressions | Production consent and initiation controls, other proxy/browser/cookie-policy cases and named cryptography gaps stay open. |
-| C16 / SA08 | CI smoke, manual larger selections, acquisition/source checks, a declared OIDF aggregate gate, manual matrix orchestration and verified artifact retention command | Both hosted configuration selections passed at `92bedf1d` and a full matrix is running at that revision. A passing aggregate, other provider/platform evidence and permanent release storage remain open. |
+| C16 / SA08 | CI smoke, manual larger selections, acquisition/source checks, and a verified hosted matrix and published table for all 39 OIDF selections at `92bedf1d` | Shared release storage, signed artifact provenance and matching companion evidence for the chosen release revision remain open. |
 
 Use the implemented commands in the [environment README](../integration/openid/README.md).
 `core`, `extended` and `fapi-signing` below are historical planning aliases,
@@ -3078,6 +3072,13 @@ source and installation checks to `advanced`, `resources` and `retention`.
 cases. Both transports passed for all three selections on Windows and hosted
 Ubuntu. Each report was rechecked against its own revision.
 [Release review](../integration/openid/release-review.md#advanced-and-lifecycle-provider-source-identity-2026-11-22).
+
+SA08 first verified hosted matrix (2026-11-22). The run at `92bedf1d`
+completed all 39 selections and the aggregate. Offline verification replayed
+the 39 client and 78 companion reports. `73890ce` regenerates the publication
+table from a retained bundle, and both retention and offline replay produced
+the same table bytes for the hosted run.
+[Release review](../integration/openid/release-review.md#first-verified-hosted-oidf-matrix-2026-11-22).
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second
