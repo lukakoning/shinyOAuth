@@ -591,3 +591,53 @@ companion reports. Live probes against a running GitHub attempt and the
 completed failed attempt both exited unsuccessfully and left no bundle. A
 verified successful hosted bundle and permanent storage remain open.
 [Retention instructions](release-matrix.md#verify-and-retain-a-completed-attempt).
+
+## Configuration rotation snapshots, 2026-11-22
+
+The matrix at `98362fcd703ecdfc98ea38d16eee5301612d01a2` completed with 37
+passing selections, including all three refresh transports and both full
+FAPI DPoP selections. `config/sync` and `config/mirai` reached their expected
+suite verdicts and failed the final app snapshot check during **Run real
+browser client selection**. The release checker independently reproduced all
+39 diagnostic rows from digest-verified aggregate ZIP `14715958089`. It and
+the replay receipt stay under `.artifacts/hosted-44916619030-aggregate/`.
+[Failed aggregate](https://github.com/lukakoning/shinyOAuth/actions/runs/44916619030/job/136915595212).
+
+The earlier matrix at `4447159` reported the same two Configuration failures
+alongside the three refresh runner failures. Its aggregate ZIP `14715443641`
+matched the GitHub digest and stays under
+`.artifacts/hosted-44915531642-aggregate/`.
+[Earlier matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/44915531642).
+
+In both rotation cases, the final login snapshot and the last step differed
+only by a null `pre_login_state` field. The browser snapshot reader now
+returns that field only for the explicit pre-click FAPI observation. The
+rotation gate still compares the whole terminal snapshot with the last
+login step and requires the same app and cache objects, distinct signing
+keys and the expected session and exchange counts.
+
+Clean Windows runs at `92bedf1d7c6dc87996232289acd39b89b9c554ae` passed the
+Configuration selection on `sync` and `mirai`. Both rotation modules passed
+on each transport. The unsigned-token module retained the expected suite
+`SKIPPED` verdict with app-side rejection evidence. The suite's JWKS
+`no-store` response still leaves cached-key refresh coverage incomplete.
+The selected `fapi-dpop/sync` profile passed all three modules and preserved
+its separate pre-click state and trusted-activation proof. All three reports
+passed independent protocol and release-source checks. The originals stay
+under `.artifacts/config-20261122-122428-84c3aba3a26d/` (`sync`),
+`.artifacts/config-20261122-122428-3b23ab40770a/` (`mirai`) and
+`.artifacts/fapi-dpop-20261122-122428-b3b8c9f0003f/`.
+
+The targeted GitHub selections passed on the same revision. ZIPs
+`14751813421` (`sync`) and `14752297251` (`mirai`) matched their GitHub
+digests. The preflight and 16 API inventories in each ZIP also passed
+verification. Independent client report checks confirmed both rotations and
+the scoped Configuration verdicts. The originals and metadata stay under
+`.artifacts/hosted-45017231485/` and `.artifacts/hosted-45017233716/`.
+[Sync run](https://github.com/lukakoning/shinyOAuth/actions/runs/45017231485),
+[mirai run](https://github.com/lukakoning/shinyOAuth/actions/runs/45017233716).
+
+A new 39-selection matrix was dispatched at `92bedf1d7c6dc87996232289acd39b89b9c554ae`.
+Release qualification awaits the selection verdicts, companion checks and
+aggregate replay for this revision.
+[Matrix with configuration correction](https://github.com/lukakoning/shinyOAuth/actions/runs/45017983714).
