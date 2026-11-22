@@ -102,10 +102,11 @@ interop_provider_matches <- function(provider, row, lock, selection) {
     login_started <- events[[2L]][["login_started_at"]]
     code_issued <- events[[5L]][["code_issued_at"]]
     if (
-      !identical(
-        events[[4L]][["max_age_values"]],
-        list(as.character(max_age))
-      ) ||
+      !isTRUE(row[["authorization_age"]][["method"]] %in% c("GET", "POST")) ||
+        !identical(
+          row[["authorization_age"]][["max_age_values"]],
+          list(as.character(max_age))
+        ) ||
         !all(vapply(
           list(observed, validated, login_started, code_issued),
           function(value) {

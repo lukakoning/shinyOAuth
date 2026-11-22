@@ -152,6 +152,33 @@ interop_run_case <- function(
   } else {
     NULL
   }
+  authorization_age <- new.env(parent = emptyenv())
+  if (!is.null(max_age)) {
+    endpoint <- discovery[["authorization_endpoint"]]
+    tab[["Network"]][["enable"]](maxPostDataSize = 65536L)
+    tab[["Network"]][["requestWillBeSent"]](function(params) {
+      request <- params[["request"]]
+      url <- request[["url"]]
+      if (
+        !openid_string(url) ||
+          !identical(sub("[?#].*$", "", url), endpoint)
+      ) {
+        return(invisible(NULL))
+      }
+      method <- request[["method"]]
+      encoded <- if (identical(method, "POST")) {
+        paste0(endpoint, "?", request[["postData"]])
+      } else {
+        url
+      }
+      fields <- httr2::url_parse(encoded)[["query"]]
+      authorization_age[["method"]] <- method
+      authorization_age[["max_age_values"]] <- unname(fields[
+        names(fields) == "max_age"
+      ])
+      invisible(NULL)
+    })
+  }
   openid_browser_value(tab, "document.querySelector('#login').click()")
   for (prompt in c("login", "consent")) {
     selector <- paste0("#fixture-", prompt)
@@ -221,6 +248,9 @@ interop_run_case <- function(
     ),
     browser_version = tab[["Browser"]][["getVersion"]]()[["product"]]
   )
+  if (!is.null(max_age)) {
+    row[["authorization_age"]] <- as.list(authorization_age)
+  }
   if (form_post) {
     row[["form_post"]] <- c(
       as.list(navigation),
