@@ -20,6 +20,9 @@ published table records the exact revision and each selection's limits.
    are implemented at `30774baa`. The first full matrix with signing is in
    progress. Later provider and platform validations keep their own revision
    and scope until companion evidence is available for the chosen release.
+   The four `oidc-provider` browser profiles now have an independent
+   same-revision verifier in CI.
+   [Provider evidence instructions](../integration/oidc-provider/README.md).
    [Signing-enabled matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/45030528151).
 3. The selected FAPI manual-initiation case samples the app queue and state
    store before a trusted Chrome click with transient activation. The
@@ -3103,6 +3106,13 @@ Sigstore proof with the original reports. Offline replay checks the embedded
 proof with independently trusted roots. The earlier archive replayed all 39
 selections, and the hosted report checks passed.
 [Release review](../integration/openid/release-review.md#portable-signed-oidf-archives-2026-11-22).
+
+SA08 provider report replay (2026-11-22). `9b87bad4` adds a CLI and CI gate
+for the four browser profiles. The gate reads the lock and cases from the
+expected commit and checks the source inventory, fixture hashes, installation
+archive and scenario evidence. Provider results stay scoped to the tested
+revision and selection.
+[Release review](../integration/openid/release-review.md#provider-report-replay-2026-11-22).
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second

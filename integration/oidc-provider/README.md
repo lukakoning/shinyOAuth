@@ -71,6 +71,24 @@ Git archive. The runners use the [OpenID source identity helpers](../openid/sour
 and require the source and installation evidence to match the run context.
 Historical schema-1 reports retain their existing interoperability checks.
 
+From the repository root, recheck a saved browser report against a locally
+available Git commit. This command needs R with `jsonlite`, `openssl` and
+`processx`.
+
+```sh
+Rscript integration/oidc-provider/run-release-check.R --revision FULL_COMMIT_SHA --profile basic --transport sync path/to/evidence.json
+```
+
+Choose `basic`, `advanced`, `resources` or `retention` and the transport
+used by the run. The checker reads the committed case list and provider lock,
+compares the Git tree, file paths and canonical installation archive digest,
+and matches the recorded fixture hashes to the committed fixture bytes. It
+then checks the scenario evidence and replays the recorded rejection controls.
+GitHub runs the same check after each successful browser selection. The report
+qualifies that selection for its own revision. Artifact authentication, the
+headless JWKS rotation selection and OIDF results have separate evidence.
+[Provider workflow](../../.github/workflows/oidc-provider.yml).
+
 Evidence is written to `.artifacts/basic-*/evidence.json`. Only these JSON files
 are eligible for workflow upload. They contain comparisons, counts and event
 categories, excluding tokens, codes, nonces, credentials and raw error text.

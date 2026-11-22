@@ -856,3 +856,43 @@ its packaged proof offline and rejected a modified signature. The first
 packaging check with a signed shinyOAuth aggregate awaits the full matrix.
 [Hosted report checks](https://github.com/lukakoning/shinyOAuth/actions/runs/45030937388),
 [GitHub CLI signature fixture](https://github.com/cli/cli/releases/tag/v2.100.0).
+
+## Provider report replay, 2026-11-22
+
+`9b87bad452f43551880284d1054c8afd1d120d56` adds an independent replay command
+and applies it after successful `oidc-provider` browser selections in GitHub
+Actions. The verifier requires a passing schema-2 report and checks the
+selected revision, profile and transport. It reads the committed provider
+lock and profile manifest and replays the scenario and rejection controls.
+[Provider report instructions](../oidc-provider/README.md).
+
+The replay regenerates the canonical Git archive digest and checks the
+checkout's path inventory. It verifies the nine fixture hashes against
+the commit, including the CRLF variant used in Windows checkouts. The full
+raw checkout and installed-library inventories are checked through their
+recorded fingerprints and before/after records. The check qualifies the
+reported scenario for its source revision. The original GitHub metadata
+and artifact digest identify the downloaded archive.
+
+Both hosted `basic` selections passed the new gate at `9b87bad4`. Independent
+replay of their downloaded ZIPs verified four cases and 68 controls per
+transport. The workflow replay steps took 14 seconds for `sync` and 13
+seconds for `mirai`. The original ZIPs and API metadata are retained locally under
+`integration/oidc-provider/.artifacts/hosted-45031800118-basic-sync/` and
+`integration/oidc-provider/.artifacts/hosted-45031803019-basic-mirai/`.
+
+| Transport | Artifact ID | Original ZIP SHA-256 | Workflow run |
+| --- | ---: | --- | --- |
+| `sync` | 14758236715 | `936584e93c0ef1b9f9561602b8be5e9e573fdbee094fdf24a96299f37c64dc09` | [45031800118](https://github.com/lukakoning/shinyOAuth/actions/runs/45031800118) |
+| `mirai` | 14758396187 | `77bdf9c11a4e49f14f78c6bfc2dad1ecf3a8d55482fc9a6f6817caf14043ccf4` | [45031803019](https://github.com/lukakoning/shinyOAuth/actions/runs/45031803019) |
+
+The eight earlier hosted reports for the four profiles passed replay against
+their respective commits. They cover 34 cases and 3,262 rejection controls.
+A saved Windows `basic/sync` report also passed with its original CRLF fixture
+hashes.
+
+The verifier rejected reports with a different revision, profile or transport,
+duplicate JSON keys, schema 1, a failed gate, missing controls, an altered final
+installation or an incorrect archive digest. It also rejected a substituted
+fixture digest and a missing checkout path after recalculating their recorded
+fingerprints.
