@@ -147,8 +147,10 @@ interop_provider_matches <- function(provider, row, lock) {
 interop_report_matches <- function(report, context, lock, cases) {
   tryCatch(
     {
+      version <- report[["schema_version"]]
       if (
-        !identical(report[["schema_version"]], 1L) ||
+        !(identical(version, 1L) || identical(version, 2L)) ||
+          !identical(version, context[["schema_version"]]) ||
           !identical(report[["scope"]], "oidc_provider_interoperability") ||
           !identical(report[["coverage_complete"]], FALSE) ||
           !isTRUE(report[["driver_failure_control_passed"]]) ||
@@ -156,6 +158,14 @@ interop_report_matches <- function(report, context, lock, cases) {
           !interop_sanitized(report)
       ) {
         return(FALSE)
+      }
+      if (identical(version, 2L)) {
+        if (
+          !identical(report[["checkout_dirty"]], context[["checkout_dirty"]])
+        ) {
+          return(FALSE)
+        }
+        openid_check_source(report, context)
       }
       for (name in c(
         "run_id",
@@ -294,6 +304,20 @@ interop_report_matches <- function(report, context, lock, cases) {
   )
 }
 
+interop_report_rejection_overrides <- function(report) {
+  c(
+    list(cleanup_verified = FALSE, driver_failure_control_passed = FALSE),
+    if (identical(report[["schema_version"]], 2L)) {
+      list(
+        schema_version = 1L,
+        source_verified = FALSE,
+        checkout_source_after = FALSE,
+        installation_after = FALSE
+      )
+    }
+  )
+}
+
 interop_rejection_controls <- function(report, context, lock, cases) {
   matches <- function(value) interop_report_matches(value, context, lock, cases)
   if (!matches(report)) {
@@ -347,9 +371,10 @@ interop_rejection_controls <- function(report, context, lock, cases) {
       controls[[paste0(i, "_missing_post_bridge")]] <- !matches(control)
     }
   }
-  for (name in c("cleanup_verified", "driver_failure_control_passed")) {
+  overrides <- interop_report_rejection_overrides(report)
+  for (name in names(overrides)) {
     control <- report
-    control[[name]] <- FALSE
+    control[[name]] <- overrides[[name]]
     controls[[name]] <- !matches(control)
   }
   if (!all(vapply(controls, isTRUE, logical(1)))) {
@@ -395,8 +420,7 @@ interop_check_report <- function(report, context, lock, cases) {
         }
       )
     })),
-    "cleanup_verified",
-    "driver_failure_control_passed"
+    names(interop_report_rejection_overrides(report))
   )
   interop_report_matches(report, context, lock, cases) &&
     is.list(controls) &&
