@@ -8,11 +8,13 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 from zipfile import BadZipFile, ZIP_STORED, ZipFile, ZipInfo
 
 
 WORKFLOW = ".github/workflows/openid-release-matrix.yml"
+PROVENANCE = "https://slsa.dev/provenance/v1"
 SUMMARY = "release-summary.json"
 BUNDLE_ORIGINALS = {
     "run_metadata": "run.json",
@@ -463,13 +465,59 @@ def release_report(summary, lock, receipt):
     return "\n".join(lines) + "\n"
 
 
+def verify_attestation(args, repository_id, name, digest):
+    command = [
+        "gh", "attestation", "verify", str(args.archive), "--hostname", "github.com",
+        "--repo", args.repository, "--signer-workflow", f"{args.repository}/{WORKFLOW}",
+        "--source-digest", args.revision, "--signer-digest", args.revision,
+        "--deny-self-hosted-runners", "--predicate-type", PROVENANCE, "--format", "json",
+    ]
+    if args.attestation_bundle is not None:
+        command.extend((
+            "--bundle", str(args.attestation_bundle),
+            "--custom-trusted-root", str(args.attestation_root),
+        ))
+    result = subprocess.run(command, capture_output=True)
+    if result.returncode != 0:
+        detail = result.stderr.decode("utf-8", errors="replace").strip()
+        raise ValueError(f"GitHub attestation verification failed: {detail}")
+
+    attestations = json.loads(result.stdout, object_pairs_hook=unique_object)
+    if not isinstance(attestations, list):
+        raise ValueError("Expected verified GitHub attestations")
+
+    invocation = f"https://github.com/{args.repository}/actions/runs/{args.run_id}/attempts/{args.attempt}"
+    subject = {"name": name, "digest": {"sha256": digest}}
+    for attestation in attestations:
+        try:
+            verified = attestation["verificationResult"]
+            certificate = verified["signature"]["certificate"]
+            statement = verified["statement"]
+            run_uri = certificate["runInvocationURI"]
+            if (
+                isinstance(run_uri, str)
+                and run_uri.lower() == invocation.lower()
+                and certificate["sourceRepositoryIdentifier"] == str(repository_id)
+                and certificate["buildTrigger"] == "workflow_dispatch"
+                and statement["predicateType"] == PROVENANCE
+                and subject in statement["subject"]
+            ):
+                return
+        except (KeyError, TypeError):
+            continue
+    raise ValueError("No verified attestation identifies the expected run attempt and aggregate ZIP")
+
+
 def verify(args, report_path=None):
     run = read_object(args.run_metadata.read_bytes())
     artifact = read_object(args.artifact_metadata.read_bytes())
-    digest = check_artifact_metadata(args, check_run_metadata(args, run), artifact)
+    repository_id = check_run_metadata(args, run)
+    digest = check_artifact_metadata(args, repository_id, artifact)
     with args.archive.open("rb") as file, tempfile.TemporaryDirectory() as tmp:
         if hashlib.file_digest(file, "sha256").hexdigest() != digest:
             raise ValueError("Release artifact ZIP differs from the GitHub SHA-256 digest")
+        if args.require_attestation:
+            verify_attestation(args, repository_id, f"{artifact['name']}.zip", digest)
         directory = Path(tmp)
         with ZipFile(file) as archive:
             if args.failed_attempt:
@@ -662,6 +710,11 @@ def main():
     parser.add_argument(
         "--failed-attempt", action="store_true", help="Replay a failed client aggregate and its diagnostics"
     )
+    parser.add_argument(
+        "--require-attestation", action="store_true", help="Require signed provenance for the original GitHub ZIP"
+    )
+    parser.add_argument("--attestation-bundle", type=Path, help="Saved GitHub Sigstore bundle")
+    parser.add_argument("--attestation-root", type=Path, help="Trusted Sigstore roots for offline verification")
     outputs = parser.add_mutually_exclusive_group()
     outputs.add_argument(
         "--report-output", type=Path, help="Write verified Markdown to a new file during offline replay"
@@ -683,6 +736,11 @@ def main():
         parser.error("--revision requires a full lowercase Git commit SHA")
     if args.attempt <= 0 or (args.run_id is not None and args.run_id <= 0):
         parser.error("--run-id and --attempt must be positive")
+    if args.require_attestation and (args.failed_attempt or args.downloaded_reports is not None):
+        parser.error("--require-attestation needs the ZIP of a passing attempt")
+    if args.attestation_bundle is not None or args.attestation_root is not None:
+        if not args.require_attestation or args.attestation_bundle is None or args.attestation_root is None:
+            parser.error("Offline attestation verification requires --require-attestation, --attestation-bundle and --attestation-root")
     if (args.report_output is not None or args.bundle_output is not None) and (
         args.failed_attempt or args.retain is not None or args.downloaded_reports is not None
         or args.bundle_input is not None
@@ -726,6 +784,8 @@ def main():
             print(json.dumps(write_release_bundle(args), indent=2))
         else:
             print(json.dumps(verify(args, report_path=args.report_output), indent=2))
+        if args.require_attestation:
+            print("Verified the GitHub attestation for the original aggregate ZIP.", file=sys.stderr)
     except (BadZipFile, OSError, ValueError) as error:
         parser.exit(1, f"{error}\n")
 

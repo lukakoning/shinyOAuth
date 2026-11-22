@@ -27,6 +27,9 @@ class ReleaseArtifactTest(unittest.TestCase):
             run_id=10,
             attempt=2,
             failed_attempt=False,
+            require_attestation=False,
+            attestation_bundle=None,
+            attestation_root=None,
             run_metadata=directory / "run.json",
             artifact_metadata=directory / "artifact.json",
             archive=directory / "artifact.zip",
@@ -285,6 +288,66 @@ class ReleaseArtifactTest(unittest.TestCase):
             archive.write(b"extra bytes")
         with self.assertRaisesRegex(ValueError, "SHA-256 digest"):
             verifier.verify(self.args)
+
+    def verified_attestation(self):
+        return {"verificationResult": {
+            "signature": {"certificate": {
+                "runInvocationURI": f"https://github.com/{self.args.repository}/actions/runs/10/attempts/2",
+                "sourceRepositoryIdentifier": "11",
+                "buildTrigger": "workflow_dispatch",
+            }},
+            "statement": {
+                "predicateType": verifier.PROVENANCE,
+                "subject": [{"name": f"{self.artifact['name']}.zip", "digest": {"sha256": "a" * 64}}],
+            },
+        }}
+
+    def test_attestation_uses_the_selected_workflow_and_both_source_digests(self):
+        self.args.attestation_bundle = self.args.archive.parent / "attestation.jsonl"
+        self.args.attestation_root = self.args.archive.parent / "trusted_root.jsonl"
+        proof = json.dumps([self.verified_attestation()]).encode()
+        result = SimpleNamespace(returncode=0, stdout=proof)
+        with patch.object(verifier.subprocess, "run", return_value=result) as command:
+            verifier.verify_attestation(self.args, 11, f"{self.artifact['name']}.zip", "a" * 64)
+        command.assert_called_once_with([
+            "gh", "attestation", "verify", str(self.args.archive), "--hostname", "github.com",
+            "--repo", self.args.repository,
+            "--signer-workflow", f"{self.args.repository}/{verifier.WORKFLOW}",
+            "--source-digest", self.args.revision, "--signer-digest", self.args.revision,
+            "--deny-self-hosted-runners", "--predicate-type", verifier.PROVENANCE, "--format", "json",
+            "--bundle", str(self.args.attestation_bundle),
+            "--custom-trusted-root", str(self.args.attestation_root),
+        ], capture_output=True)
+
+    def test_attestation_requires_the_signed_run_attempt_and_aggregate_subject(self):
+        for field, value in (
+            ("runInvocationURI", f"https://github.com/{self.args.repository}/actions/runs/10/attempts/1"),
+            ("sourceRepositoryIdentifier", "99"),
+            ("buildTrigger", "pull_request"),
+            ("name", "unrelated.zip"),
+            ("digest", {"sha256": "b" * 64}),
+        ):
+            with self.subTest(field=field):
+                proof = self.verified_attestation()
+                result = proof["verificationResult"]
+                target = result["signature"]["certificate"]
+                if field in ("name", "digest"):
+                    target = result["statement"]["subject"][0]
+                target[field] = value
+                verified = SimpleNamespace(returncode=0, stdout=json.dumps([proof]).encode())
+                with patch.object(verifier.subprocess, "run", return_value=verified):
+                    with self.assertRaisesRegex(ValueError, "expected run attempt and aggregate ZIP"):
+                        verifier.verify_attestation(self.args, 11, f"{self.artifact['name']}.zip", "a" * 64)
+
+    def test_required_attestation_rejects_an_unsigned_archive_before_replay(self):
+        self.write_fixture()
+        self.args.require_attestation = True
+        missing = SimpleNamespace(returncode=1, stderr=b"no attestations found")
+        with patch.object(verifier.subprocess, "run", return_value=missing) as command:
+            with self.assertRaisesRegex(ValueError, "no attestations found"):
+                verifier.verify(self.args)
+        self.assertEqual(command.call_args.args[0][:3], ["gh", "attestation", "verify"])
+        self.assertEqual(command.call_count, 1)
 
     def test_rejects_failed_run_and_wrong_artifact_name(self):
         self.run["conclusion"] = "failure"

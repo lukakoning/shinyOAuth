@@ -66,6 +66,9 @@ jobs:
     needs: [prepare, selections]
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    outputs:
+      evidence_digest: ${{ steps.evidence.outputs.artifact-digest }}
+      evidence_attempt: ${{ steps.identity.outputs.attempt }}
     steps:
       - name: Checkout selected revision
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -122,6 +125,7 @@ jobs:
 
       - name: Retain original sanitized reports and aggregate summary
         if: always()
+        id: evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: openid-declared-matrix-evidence-attempt-${{ github.run_attempt }}
@@ -131,3 +135,33 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 90
+
+      - name: Record the verified evidence attempt
+        id: identity
+        run: echo "attempt=$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
+
+  attest:
+    needs: aggregate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Require evidence from this attempt
+        env:
+          EVIDENCE_ATTEMPT: ${{ needs.aggregate.outputs.evidence_attempt }}
+          EVIDENCE_DIGEST: ${{ needs.aggregate.outputs.evidence_digest }}
+        run: |
+          if [[ "$EVIDENCE_ATTEMPT" != "$GITHUB_RUN_ATTEMPT" || ! "$EVIDENCE_DIGEST" =~ ^[0-9a-f]{64}$ ]]; then
+            echo "A verified aggregate from this attempt is required. Re-run all jobs."
+            exit 1
+          fi
+
+      - name: Attest the original aggregate ZIP
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: openid-declared-matrix-evidence-attempt-${{ github.run_attempt }}.zip
+          subject-digest: sha256:${{ needs.aggregate.outputs.evidence_digest }}
+          create-storage-record: false
