@@ -2,10 +2,13 @@ import hashlib
 from importlib.util import module_from_spec, spec_from_file_location
 import json
 from pathlib import Path
+import stat
 import subprocess
 import sys
 from tempfile import TemporaryDirectory
 import unittest
+import warnings
+import zipfile
 
 
 SCRIPT = Path(__file__).with_name("release-matrix.py")
@@ -19,6 +22,7 @@ class ProviderReleaseMatrixTest(unittest.TestCase):
         self.root = Path(self.enterContext(TemporaryDirectory()))
         self.reports = self.root / "reports"
         self.reports.mkdir()
+        self.archive = self.root / "artifact.zip"
         self.revision = "a" * 40
         self.run_id = 402
         self.attempt = 2
@@ -48,6 +52,20 @@ class ProviderReleaseMatrixTest(unittest.TestCase):
 
     def summarize(self):
         return matrix.summarize(self.reports, self.revision, self.run_id, self.attempt)
+
+    def archive_members(self):
+        return [
+            (f"release-inputs/{path.relative_to(self.reports).as_posix()}", path.read_bytes())
+            for path in self.paths.values()
+        ] + [("release-summary.json", matrix.summary_bytes(self.summarize()))]
+
+    def write_archive(self, members):
+        with zipfile.ZipFile(self.archive, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            for name, data in members:
+                archive.writestr(name, data)
+
+    def replay_archive(self):
+        return matrix.replay_archive(self.archive, self.revision, self.run_id, self.attempt)
 
     def test_matrix_declares_and_summarizes_each_report(self):
         summary = self.summarize()
@@ -141,6 +159,87 @@ class ProviderReleaseMatrixTest(unittest.TestCase):
         rejected = subprocess.run(replay, capture_output=True)
         self.assertNotEqual(rejected.returncode, 0)
         self.assertIn(b"Release summary differs", rejected.stderr)
+
+    def test_archive_cli_replays_original_summary(self):
+        members = self.archive_members()
+        self.write_archive(reversed(members))
+        command = [
+            sys.executable, str(SCRIPT), "evidence", "--archive", str(self.archive),
+            "--revision", self.revision, "--run-id", str(self.run_id), "--attempt", str(self.attempt),
+        ]
+        verified = subprocess.run(command, capture_output=True)
+        self.assertEqual(verified.returncode, 0, verified.stderr)
+        self.assertEqual(verified.stdout, members[-1][1])
+        for option, path in (("--reports", self.reports), ("--verify-summary", self.archive)):
+            with self.subTest(option=option):
+                ambiguous = subprocess.run(command + [option, str(path)], capture_output=True)
+                self.assertEqual(ambiguous.returncode, 2, ambiguous.stderr)
+
+    def test_archive_rejects_changed_report_bytes_or_summary(self):
+        members = self.archive_members()
+        for index in (0, -1):
+            with self.subTest(index=index):
+                changed = list(members)
+                name, data = changed[index]
+                changed[index] = (name, data + b"\n")
+                self.write_archive(changed)
+                with self.assertRaisesRegex(ValueError, "Release summary differs"):
+                    self.replay_archive()
+
+    def test_archive_requires_each_member_and_rejects_old_attempts(self):
+        members = self.archive_members()
+        self.write_archive(members[1:])
+        with self.assertRaisesRegex(ValueError, "Expected all 8 provider reports"):
+            self.replay_archive()
+        self.write_archive(members[:-1])
+        with self.assertRaisesRegex(ValueError, "Missing release summary"):
+            self.replay_archive()
+        name, data = members[0]
+        self.write_archive([(name.replace("attempt-2", "attempt-1"), data)] + members[1:])
+        with self.assertRaisesRegex(ValueError, "Unexpected member"):
+            self.replay_archive()
+
+    def test_archive_rejects_duplicate_members_and_reports(self):
+        members = self.archive_members()
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message="Duplicate name:", category=UserWarning)
+            self.write_archive(members + [members[0]])
+        with self.assertRaisesRegex(ValueError, "Duplicate member"):
+            self.replay_archive()
+        name, data = members[0]
+        self.write_archive(members + [(name.replace("13e974208bea", "a" * 12), data)])
+        with self.assertRaisesRegex(ValueError, "Expected one original report"):
+            self.replay_archive()
+
+    def test_archive_rejects_unexpected_payload_and_special_members(self):
+        members = self.archive_members()
+        for name in ("extra.json", "release-inputs/../extra.json", "release-inputs/"):
+            with self.subTest(name=name):
+                self.write_archive(members + [(name, b"{}")])
+                with self.assertRaisesRegex(ValueError, "(?:Unexpected|Invalid) member"):
+                    self.replay_archive()
+        name, data = members[0]
+        noncanonical = zipfile.ZipInfo(name)
+        noncanonical.filename = name.replace("/", "\\")
+        self.write_archive([(noncanonical, data)] + members[1:])
+        with self.assertRaisesRegex(ValueError, "(?:Unexpected|Invalid) member"):
+            self.replay_archive()
+        shortcut = zipfile.ZipInfo("release-summary.json")
+        shortcut.create_system = 3
+        shortcut.external_attr = (stat.S_IFLNK | 0o777) << 16
+        self.write_archive(members[:-1] + [(shortcut, b"target.json")])
+        with self.assertRaisesRegex(ValueError, "Invalid member"):
+            self.replay_archive()
+
+    def test_archive_rejects_encrypted_members_before_reading(self):
+        self.write_archive(self.archive_members())
+        data = bytearray(self.archive.read_bytes())
+        last_directory_header = data.rindex(b"PK\x01\x02")
+        # General-purpose ZIP flags start eight bytes into a central directory record.
+        data[last_directory_header + 8] |= 1
+        self.archive.write_bytes(data)
+        with self.assertRaisesRegex(ValueError, "Encrypted member"):
+            self.replay_archive()
 
 
 if __name__ == "__main__":
