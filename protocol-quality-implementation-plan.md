@@ -11,10 +11,12 @@ scenarios.
 
 The [OIDC authentication-age browser
 case](https://lukakoning.github.io/integration/oidc-provider/README.html#authentication-age)
-covers `max_age=0` and signed `auth_time` validation on a fresh login.
-The [OIDC requirement
+covers `max_age=0` and signed `auth_time` validation on a fresh login
+and on reauthentication with an active provider session. The [OIDC
+requirement
 map](https://lukakoning.github.io/integration/openid/requirements-oidc.md)
-tracks the remaining case with an existing provider session.
+links these flows to the authorization request and ID-token validation
+requirements.
 
 **Release evidence status (2026-11-22).** The first complete hosted OIDF
 matrix passed all 39 declared selections and the aggregate at
