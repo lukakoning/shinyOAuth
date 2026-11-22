@@ -1,6 +1,8 @@
 name: OpenID declared release matrix
 
 on:
+  schedule:
+    - cron: "23 3 * * 2"
   workflow_dispatch:
     inputs:
       report_checks_only:
@@ -72,7 +74,7 @@ jobs:
       transport: ${{ matrix.transport }}
 
   provider:
-    if: ${{ inputs.provider_companions && !inputs.report_checks_only }}
+    if: ${{ github.event_name == 'schedule' || (inputs.provider_companions && !inputs.report_checks_only) }}
     needs: prepare
     uses: ./.github/workflows/oidc-provider-release-matrix.yml
 
@@ -150,14 +152,14 @@ jobs:
             integration/openid/.artifacts/release-summary.json
           include-hidden-files: true
           if-no-files-found: error
-          retention-days: 90
+          retention-days: ${{ github.event_name == 'schedule' && 7 || 90 }}
 
       - name: Record the verified evidence attempt
         id: identity
         run: echo "attempt=$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
 
   paired_evidence:
-    if: ${{ inputs.provider_companions && !inputs.report_checks_only }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.provider_companions && !inputs.report_checks_only }}
     needs: [aggregate, provider]
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -188,7 +190,7 @@ jobs:
         run: echo "attempt=$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
 
   attest:
-    if: ${{ !cancelled() && needs.aggregate.result == 'success' && (!inputs.provider_companions || needs.paired_evidence.result == 'success') }}
+    if: ${{ !cancelled() && github.event_name == 'workflow_dispatch' && needs.aggregate.result == 'success' && (!inputs.provider_companions || needs.paired_evidence.result == 'success') }}
     needs: [aggregate, paired_evidence]
     runs-on: ubuntu-latest
     timeout-minutes: 5

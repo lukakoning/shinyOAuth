@@ -76,7 +76,7 @@ jobs:
             integration/oidc-provider/.artifacts/release-summary.json
           include-hidden-files: true
           if-no-files-found: error
-          retention-days: 90
+          retention-days: ${{ github.event_name == 'schedule' && 7 || 90 }}
       - name: Record the verified evidence attempt
         id: identity
         run: echo "attempt=$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"

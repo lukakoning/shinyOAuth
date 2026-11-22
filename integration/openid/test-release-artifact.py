@@ -744,15 +744,20 @@ class ReleaseArtifactTest(unittest.TestCase):
             api.assert_not_called()
         self.assertEqual(json.loads(receipt_path.read_bytes()), receipt)
 
-    def test_retention_rejects_in_progress_run_before_artifact_lookup(self):
-        self.run.update(status="in_progress", conclusion=None)
-        responses = self.retention_fixture()
-        run_endpoint = next(iter(responses))
-        with self.mock_github_api({run_endpoint: responses[run_endpoint]}) as api:
-            with self.assertRaisesRegex(ValueError, "successful OpenID matrix workflow attempt"):
-                verifier.retain(self.args)
-            api.assert_called_once_with(run_endpoint)
-        self.assertFalse(self.args.retain.exists())
+    def test_retention_requires_a_completed_manual_attempt_before_artifact_lookup(self):
+        for updates in (
+            {"event": "workflow_dispatch", "status": "in_progress", "conclusion": None},
+            {"event": "schedule", "status": "completed", "conclusion": "success"},
+        ):
+            with self.subTest(event=updates["event"]):
+                self.run.update(updates)
+                responses = self.retention_fixture()
+                run_endpoint = next(iter(responses))
+                with self.mock_github_api({run_endpoint: responses[run_endpoint]}) as api:
+                    with self.assertRaisesRegex(ValueError, "successful OpenID matrix workflow attempt"):
+                        verifier.retain(self.args)
+                    api.assert_called_once_with(run_endpoint)
+                self.assertFalse(self.args.retain.exists())
 
     def test_retention_cleans_up_after_archive_verification_fails(self):
         responses = self.retention_fixture()
