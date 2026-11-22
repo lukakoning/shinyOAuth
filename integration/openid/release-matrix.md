@@ -223,20 +223,23 @@ gh workflow run openid-release-matrix.yml --ref BRANCH_OR_TAG -f provider_compan
 
 For a passing run, retain the original ZIP for
 `openid-provider-release-link-attempt-ATTEMPT_NUMBER` and the two matrix ZIPs.
-Verify the link ZIP using the expected repository, workflow and commit.
-[GitHub CLI verification](https://cli.github.com/manual/gh_attestation_verify).
+Keep the workflow attempt and OIDF aggregate metadata JSON as you would for
+standalone OIDF replay. Run the paired verifier with the expected repository,
+revision, run and attempt. [GitHub CLI verification](https://cli.github.com/manual/gh_attestation_verify).
 
 ```sh
-gh attestation verify "PATH_TO_LINK.zip" --repo OWNER/REPO --signer-workflow OWNER/REPO/.github/workflows/openid-release-matrix.yml --source-digest FULL_COMMIT_SHA --signer-digest FULL_COMMIT_SHA --deny-self-hosted-runners --predicate-type https://slsa.dev/provenance/v1 --format json
+python integration/openid/verify-release-artifact.py --repository OWNER/REPO --revision FULL_COMMIT_SHA --run-id RUN_ID --attempt ATTEMPT_NUMBER --paired-link "PATH_TO_LINK.zip" --provider-archive "PATH_TO_PROVIDER.zip" "PATH_TO_RUN.json" "PATH_TO_OIDF_ARTIFACT.json" "PATH_TO_OIDF.zip"
 ```
 
-Match the verified certificate's `runInvocationURI` to the intended run
-and attempt, and the subject to
-`openid-provider-release-link-attempt-ATTEMPT_NUMBER.zip`. Check the
-repository, revision, run and attempt inside `paired-release-evidence.json`.
-Compare the SHA-256 of each original matrix ZIP with its digest in the
-verified link before replaying the OIDF and provider evidence.
-[Fulcio certificate fields](https://github.com/sigstore/fulcio/blob/main/docs/oid-info.md#13614157264121--run-invocation-uri).
+The verifier authenticates the link ZIP against the exact signer and
+invocation, matches both original ZIP digests to the signed manifest, and
+replays the OIDF evidence and provider summary. The JSON receipt includes the
+link digest, both aggregate references and the provider report count.
+[Provider scenario replay](../oidc-provider/README.md#run-the-provider-release-matrix).
+
+For offline verification, save the Sigstore bundle for the link ZIP and
+independently trusted roots as described above. Pass them with
+`--attestation-bundle` and `--attestation-root` to the paired verifier.
 
 ## Package a verified attempt for release storage
 

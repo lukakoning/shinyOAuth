@@ -23,7 +23,8 @@ published table records the exact revision and each selection's limits.
    The four `oidc-provider` browser profiles have a source verifier in CI.
    All eight provider selections passed at `8d5f112`, and the retained
    aggregate passed replay. The optional paired workflow runs both matrices
-   on one revision and signs a link to their original aggregate ZIPs. Its first
+   on one revision and signs a link to their original aggregate ZIPs. The
+   paired verifier authenticates the link and replays both archives. The first
    full run is in progress at `a65cdaea`.
    [Paired matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/45033763653),
    [Provider matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/45032877223),
@@ -3131,6 +3132,13 @@ aggregate digests to the current run and attempt and signs the link after
 both matrices pass. Hosted report checks passed. The first full paired run
 is in progress.
 [Release review](../integration/openid/release-review.md#paired-oidf-and-provider-evidence-2026-11-22).
+
+SA08 paired evidence replay (2026-11-22). `adbed781` replays the original
+provider aggregate ZIP directly. `48dc2942` verifies the link signature,
+checks both original aggregate digests and replays their evidence in one
+command. The first verification with a signed link from shinyOAuth awaits
+the full paired run.
+[Release review](../integration/openid/release-review.md#paired-evidence-replay-2026-11-22).
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second

@@ -234,9 +234,16 @@ needs **Re-run all jobs** to supply a complete current set.
 The aggregate artifact is named
 `oidc-provider-release-evidence-attempt-ATTEMPT_NUMBER`. GitHub retains it
 for up to 90 days, subject to repository policy. Keep its original ZIP and
-GitHub metadata when archiving it. After extracting the aggregate, recheck
-the report hashes and summary from the repository root with Python 3.11 or
-later.
+GitHub metadata when archiving it. Replay the original ZIP from the repository
+root with Python 3.11 or later to verify the report hashes and reproduce the
+JSON summary.
+
+```sh
+python integration/oidc-provider/release-matrix.py evidence --revision FULL_COMMIT_SHA --run-id RUN_ID --attempt ATTEMPT_NUMBER --archive "PATH_TO_PROVIDER.zip"
+```
+
+For an already extracted archive, point the verifier to the reports and
+stored summary.
 
 ```sh
 python integration/oidc-provider/release-matrix.py evidence --revision FULL_COMMIT_SHA --run-id RUN_ID --attempt ATTEMPT_NUMBER --reports "PATH_TO_EXTRACTED_ARCHIVE/release-inputs" --verify-summary "PATH_TO_EXTRACTED_ARCHIVE/release-summary.json"

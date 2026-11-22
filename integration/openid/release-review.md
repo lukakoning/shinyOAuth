@@ -945,3 +945,27 @@ standalone, current and stale evidence. The first full paired run has
 started at `a65cdaea`. Verification of its signed link is pending.
 [Hosted report checks](https://github.com/lukakoning/shinyOAuth/actions/runs/45033630403),
 [first paired matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/45033763653).
+
+## Paired evidence replay, 2026-11-22
+
+`adbed781` replays a provider aggregate directly from the original ZIP. It
+requires the declared report members and reproduces the summary with the
+original report digests. `48dc2942` authenticates the link ZIP for the exact
+repository, workflow, revision, run and attempt. It validates both original
+aggregate references, replays the OIDF gate and provider summary, and emits
+one JSON receipt. Saved Sigstore proof and trusted roots support offline replay.
+[Paired verifier instructions](release-matrix.md#run-oidf-and-provider-companions-at-one-revision).
+
+The original provider archive for run `45032877223` reproduced the summary
+bytes for eight reports. The paired CLI rejected the original unsigned ZIP
+from OIDF run `45017983714` when supplied as a signed link. Standalone OIDF
+replay reproduced that run's 39-selection receipt. A synthetic paired fixture
+exercised the CLI and actual provider ZIP checker with mocked signature and
+OIDF R replay steps. Verification of the first signed paired link is pending.
+[First paired matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/45033763653).
+
+All 49 tests passed locally and on hosted Ubuntu. This includes 29 OIDF
+artifact tests, six link recorder tests and 14 provider matrix tests. The
+report-only dispatch exercised both verifiers and skipped the matrix and
+signing jobs.
+[Hosted report checks](https://github.com/lukakoning/shinyOAuth/actions/runs/45034973871).
