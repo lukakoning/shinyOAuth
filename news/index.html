@@ -46,7 +46,8 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
-<ul><li><p>OAuth and OIDC discovery now match advertised client authentication and PKCE methods case-sensitively. Incorrectly cased identifiers no longer count as supported methods; caller option spelling remains unchanged.</p></li>
+<ul><li><p>Added a declared OpenID client conformance matrix and release evidence workflow. Verified bundles include a per-profile summary of suite verdicts and coverage limits.</p></li>
+<li><p>OAuth and OIDC discovery now match advertised client authentication and PKCE methods case-sensitively. Incorrectly cased identifiers no longer count as supported methods; caller option spelling remains unchanged.</p></li>
 <li><p>Advertised response modes now retain their exact case and whitespace through discovery, provider configuration and login-state binding. A capability such as <code>FORM_POST</code> no longer authorizes <code>form_post</code>; caller <code>response_mode</code> options keep their existing normalization.</p></li>
 </ul></div>
     <div class="section level2">
