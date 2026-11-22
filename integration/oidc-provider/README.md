@@ -64,10 +64,11 @@ refresh checks, missing worker evidence, a missing Form Post bridge, incomplete
 cleanup and source or installation mismatches. The missing-PKCE request is a
 separate live provider rejection.
 
-Schema-2 baseline reports record the source snapshot and private installed
+The baseline, advanced, resource-indicator and retention browser selections
+use schema 2. Their reports record the source snapshot and private installed
 package before and after the browser cases. Clean runs install from a canonical
-Git archive. The runner uses the [OpenID source identity helpers](../openid/source-identity.md)
-and requires the source and installation evidence to match the run context.
+Git archive. The runners use the [OpenID source identity helpers](../openid/source-identity.md)
+and require the source and installation evidence to match the run context.
 Historical schema-1 reports retain their existing interoperability checks.
 
 Evidence is written to `.artifacts/basic-*/evidence.json`. Only these JSON files

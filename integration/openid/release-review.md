@@ -729,3 +729,40 @@ were 19.73 and 26.47 seconds. The originals stay under
 `integration/oidc-provider/.artifacts/hosted-45019734184-baseline/`.
 [Hosted sync](https://github.com/lukakoning/shinyOAuth/actions/runs/45019732087),
 [hosted mirai](https://github.com/lukakoning/shinyOAuth/actions/runs/45019734184).
+
+## Advanced and lifecycle provider source identity, 2026-11-22
+
+`2729a34fed9a2acb571eeb979b7bab5f6d41da0b` extends the schema-2 checks to
+`advanced`, `resources` and `retention`. All four browser selections share the
+source validator and the controls for older schema substitution, unverified
+source, and incorrect final checkout or installation evidence. The retained
+schema-1 reports for both transports still passed their original gates.
+
+The first advanced runs confirmed the shared browser cleanup checks and failed
+when the provider driver recorded a conflicting URL outcome. The original
+failed GitHub ZIPs `14753491590` and `14752994731` matched their digests and
+remain under `.artifacts/hosted-45020282794-advanced-failure/` and
+`.artifacts/hosted-45020285280-advanced-failure/` in `integration/oidc-provider`.
+`6b68e9242f6cee786da835f6920f0220a2ec6915` records the final URL proof from the
+shared browser observation. The advanced schema-2 gate requires that evidence
+for each rejected callback.
+
+| Selection | Cases per transport | Rejection controls | Hosted sync | Hosted mirai |
+| --- | ---: | ---: | --- | --- |
+| `advanced` | 8 | 994 | [45020757856](https://github.com/lukakoning/shinyOAuth/actions/runs/45020757856) | [45020760335](https://github.com/lukakoning/shinyOAuth/actions/runs/45020760335) |
+| `resources` | 3 | 241 | [45020288083](https://github.com/lukakoning/shinyOAuth/actions/runs/45020288083) | [45020290535](https://github.com/lukakoning/shinyOAuth/actions/runs/45020290535) |
+| `retention` | 2 | 328 | [45020293331](https://github.com/lukakoning/shinyOAuth/actions/runs/45020293331) | [45020296004](https://github.com/lukakoning/shinyOAuth/actions/runs/45020296004) |
+
+Each hosted ZIP matched its GitHub digest. Independent replay used the
+committed provider and profile policy, reconstructed the canonical Git
+archive, and checked the original source and installation digests. The
+Windows reports passed the same checks and an on-disk installation check.
+The advanced reports on both platforms use `6b68e92`. The resource and
+retention hosted runs and Windows `sync` runs use `2729a34`. Their Windows
+`mirai` runs use `6b68e92`.
+
+The verified reports stay under `integration/oidc-provider/.artifacts/`.
+The Windows `sync` resource and retention runs use the `20261122-120236`
+prefix. The other Windows runs use `20261122-120815`. Hosted bundles use the
+workflow run ID, selection and transport. These results contribute companion
+interoperability evidence at the stated revisions.
