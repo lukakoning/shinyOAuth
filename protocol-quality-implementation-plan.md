@@ -15,9 +15,10 @@ table](https://lukakoning.github.io/integration/openid/release-evidence/45017983
 1.  Preserve the verified bundle in shared release storage with its
     original ZIP, GitHub metadata and receipt. An independently verified
     single-archive copy and the committed Markdown table are available.
-    Shared publication awaits a storage destination or a matching
-    release tag. The original GitHub aggregate expires on 2027-02-20.
-    [Release archive
+    The archive tool can also preserve the verified Sigstore proof for
+    signed attempts. Shared publication awaits a storage destination or
+    a matching release tag. The original GitHub aggregate expires on
+    2027-02-20. [Release archive
     instructions](https://lukakoning.github.io/integration/openid/release-matrix.html#package-a-verified-attempt-for-release-storage).
 2.  Bind any future release claim to its chosen commit and selected
     evidence. The verified OIDF matrix applies to `92bedf1d`. Signing
@@ -3492,6 +3493,13 @@ verification for the original aggregate ZIP. Hosted report checks passed
 and a public GitHub attestation exercised the verifier. Run
 `45030528151` is the first full matrix with signing enabled. [Release
 review](https://lukakoning.github.io/integration/openid/release-review.html#signed-oidf-aggregate-provenance-2026-11-22).
+
+SA08 portable signed archives (2026-11-22). `a6e0bf58` packages the
+verified Sigstore proof with the original reports. Offline replay checks
+the embedded proof with independently trusted roots. The earlier archive
+replayed all 39 selections, and the hosted report checks passed.
+[Release
+review](https://lukakoning.github.io/integration/openid/release-review.html#portable-signed-oidf-archives-2026-11-22).
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
