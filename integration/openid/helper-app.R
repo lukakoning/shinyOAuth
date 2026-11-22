@@ -332,13 +332,16 @@ openid_browser_value <- function(tab, js) {
   result[["result"]][["value"]]
 }
 
-openid_app_snapshot <- function(tab, run_id) {
+openid_app_snapshot <- function(tab, run_id, include_pre_login_state = FALSE) {
   value <- openid_browser_value(
     tab,
     "(() => { const e = document.querySelector('#snapshot'); try { return e && JSON.parse(e.textContent); } catch { return null; } })()"
   )
   if (!is.list(value) || !identical(value[["run_id"]], run_id)) {
     return(NULL)
+  }
+  if (!include_pre_login_state) {
+    value[["pre_login_state"]] <- NULL
   }
   value
 }

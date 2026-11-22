@@ -31,7 +31,8 @@ openid_wait_app <- function(
   tab,
   terminal = FALSE,
   timeout = 30,
-  after_session = NULL
+  after_session = NULL,
+  include_pre_login_state = FALSE
 ) {
   openid_wait(
     function() {
@@ -42,7 +43,11 @@ openid_wait_app <- function(
         stop("OpenID fixture browser stopped")
       }
       value <- tryCatch(
-        openid_app_snapshot(tab, app[["config"]][["run_id"]]),
+        openid_app_snapshot(
+          tab,
+          app[["config"]][["run_id"]],
+          include_pre_login_state = include_pre_login_state
+        ),
         error = function(...) NULL
       )
       if (is.null(value)) {
@@ -400,7 +405,12 @@ openid_run_case <- function(
         before_login <- between[[length(between)]]
       }
       if (i == 1L && isTRUE(expectation[["pre_login_state"]])) {
-        pre_click <- openid_wait_app(app, browser, tab)
+        pre_click <- openid_wait_app(
+          app,
+          browser,
+          tab,
+          include_pre_login_state = TRUE
+        )
         initiation[["pre_login_state"]] <- pre_click[["pre_login_state"]]
         if (
           !identical(
@@ -529,7 +539,6 @@ openid_run_case <- function(
   } else {
     "suite_exception"
   }
-  snapshot[["pre_login_state"]] <- NULL
   row[["app"]] <- snapshot
   if (!is.null(initiation)) {
     row[["authorization_initiation"]] <- initiation

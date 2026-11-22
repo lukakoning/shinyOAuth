@@ -1424,3 +1424,29 @@ source("helper-release.R", local = TRUE)
 source("test-release-matrix.R", local = TRUE, keep.source = TRUE)
 source("test-release-cli.R", local = TRUE, keep.source = TRUE)
 source("test-signing-order.R", local = TRUE, keep.source = TRUE)
+
+testthat::test_that("login snapshots include pre-login state only on request", {
+  value <- list(run_id = "run", authenticated = TRUE, pre_login_state = NULL)
+  tab <- list(
+    Runtime = list(evaluate = function(...) {
+      list(
+        result = list(value = value)
+      )
+    })
+  )
+  terminal <- list(run_id = "run", authenticated = TRUE)
+  testthat::expect_identical(openid_app_snapshot(tab, "run"), terminal)
+
+  state <- list(
+    login_pending = FALSE,
+    callback_pending = FALSE,
+    state_records = 0L
+  )
+  value[["pre_login_state"]] <- state
+  testthat::expect_identical(openid_app_snapshot(tab, "run"), terminal)
+  sampled <- openid_app_snapshot(tab, "run", include_pre_login_state = TRUE)
+  testthat::expect_identical(sampled[["pre_login_state"]], state)
+  testthat::expect_true(openid_pre_login_state_clear(sampled[[
+    "pre_login_state"
+  ]]))
+})
