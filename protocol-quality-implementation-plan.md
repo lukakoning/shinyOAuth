@@ -26,9 +26,14 @@ table](https://lukakoning.github.io/integration/openid/release-evidence/45017983
     matrix with signing is in progress. Later provider and platform
     validations keep their own revision and scope until companion
     evidence is available for the chosen release. The four
-    `oidc-provider` browser profiles have a source verifier in CI. The
-    first run covering all eight provider selections has started at
-    `8d5f112`. [Provider
+    `oidc-provider` browser profiles have a source verifier in CI. All
+    eight provider selections passed at `8d5f112`, and the retained
+    aggregate passed replay. The optional paired workflow runs both
+    matrices on one revision and signs a link to their original
+    aggregate ZIPs. Its first full run is in progress at `a65cdaea`.
+    [Paired
+    matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/45033763653),
+    [Provider
     matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/45032877223),
     [signing-enabled OIDF
     matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/45030528151).
@@ -3517,8 +3522,16 @@ SA08 provider release matrix (2026-11-22). `8d5f112` runs the eight
 browser selections at one commit and checks their current-attempt
 reports before publishing a summary with original report hashes. The
 checker rejected a set assembled from three source revisions. The first
-hosted matrix is in progress. [Release
+hosted matrix passed, and the original aggregate ZIP passed independent
+summary replay. [Release
 review](https://lukakoning.github.io/integration/openid/release-review.html#declared-provider-release-matrix-2026-11-22).
+
+SA08 paired OIDF and provider evidence (2026-11-22). `a65cdaea`
+optionally runs both declared matrices at the same commit. It links the
+two original aggregate digests to the current run and attempt and signs
+the link after both matrices pass. Hosted report checks passed. The
+first full paired run is in progress. [Release
+review](https://lukakoning.github.io/integration/openid/release-review.html#paired-oidf-and-provider-evidence-2026-11-22).
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
