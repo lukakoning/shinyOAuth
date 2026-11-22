@@ -53,13 +53,31 @@ class ReleaseArtifactTest(unittest.TestCase):
             },
         }
         self.summary = {
-            "input_sha256": ["b" * 64, "a" * 64], "matrix_complete": True,
-            "entries": [{"profile": "smoke"}, {"profile": "basic"}],
+            "input_sha256": ["b" * 64, "a" * 64],
+            "matrix_complete": True, "selection_count": 1,
+            "package_version": "1.2.3", "checkout_revision": self.args.revision,
+            "matrix_id": "oidf-client-selections-v1", "callback_rejection_policy": "opaque_error_v1",
+            "certification_status": "not_assessed",
+            "entries": [{
+                "profile": "smoke", "transport": "sync", "coverage_complete": False,
+                "assessment": {
+                    "module_counts": {"finished": 1, "available": 2},
+                    "suite_verdict_counts": {"PASSED": 0, "WARNING": 0, "SKIPPED": 1},
+                    "limitations": {"selection_scope": ["upstream_module_selection_only"]},
+                    "accepted_non_passed_results": [{
+                        "module": "oidcc-client-test", "suite_result": "SKIPPED",
+                        "policy": "optional_test", "suite_id": "private-instance",
+                    }],
+                },
+            }],
         }
         self.lock = {
             "source_revision": "b" * 40,
             "source_description": "release-v5.3.4",
-            "provenance": {"release_tag": "release-v5.3.4"},
+            "provenance": {
+                "release_tag": "release-v5.3.4", "upstream_verification_modified": False,
+                "proxy_configuration": "Temporary certificate and loopback ports.",
+            },
             "images": {"server": "pinned-server"},
         }
         spec = {
@@ -193,7 +211,7 @@ class ReleaseArtifactTest(unittest.TestCase):
 
     def test_rejects_changed_summary(self):
         self.write_fixture()
-        replay = {**self.summary, "entries": list(reversed(self.summary["entries"]))}
+        replay = {**self.summary, "entries": [{"profile": "basic"}]}
         with self.mock_replay(replay), self.assertRaisesRegex(ValueError, "summary differs"):
             verifier.verify(self.args)
 
@@ -399,6 +417,15 @@ class ReleaseArtifactTest(unittest.TestCase):
             )
         receipt_path = self.args.retain / "receipt.json"
         self.assertEqual(json.loads(receipt_path.read_bytes()), receipt)
+        report = (self.args.retain / "release-report.md").read_text(encoding="utf-8")
+        self.assertIn(f"shinyOAuth `1.2.3` at `{self.args.revision}`", report)
+        self.assertIn("OIDF suite `release-v5.3.4`", report)
+        self.assertIn("upstream_verification_modified = false", report)
+        self.assertIn("Temporary certificate and loopback ports.", report)
+        self.assertIn("| `smoke` | `sync` | 1 / 2 | 0 | 0 | 1 | Limited |", report)
+        self.assertIn("`upstream_module_selection_only`", report)
+        self.assertIn("| `smoke/sync` | `oidcc-client-test` | `SKIPPED` | `optional_test` |", report)
+        self.assertNotIn("private-instance", report)
         with patch.object(verifier, "github_api") as api:
             with self.assertRaisesRegex(ValueError, "destination already exists"):
                 verifier.retain(self.args)

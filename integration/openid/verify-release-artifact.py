@@ -2,6 +2,7 @@
 
 import argparse
 import hashlib
+from html import escape
 import json
 from pathlib import Path
 import re
@@ -384,7 +385,77 @@ def summary_for_comparison(data):
     return json.dumps(summary, sort_keys=True)
 
 
-def verify(args):
+def release_report(summary, lock, receipt):
+    provenance = lock.get("provenance", {})
+    changed = provenance.get("upstream_verification_modified")
+    changed = json.dumps(changed) if type(changed) is bool else "unrecorded"
+    run_url = f"https://github.com/{receipt['repository']}/actions/runs/{receipt['run_id']}"
+    lines = [
+        "# OpenID client release evidence",
+        "",
+        f"Verified {summary['selection_count']} declared profile and transport selections.",
+        "",
+        f"- shinyOAuth `{summary['package_version']}` at `{summary['checkout_revision']}`.",
+        f"- OIDF suite `{lock['source_description']}` at `{lock['source_revision']}`.",
+        f"- Matrix `{summary['matrix_id']}` and callback policy `{summary['callback_rejection_policy']}`.",
+        f"- [GitHub run {receipt['run_id']}]({run_url}), "
+        f"attempt `{receipt['attempt']}`, artifact `{receipt['artifact_id']}`.",
+        f"- Original artifact SHA-256 `{receipt['artifact_sha256']}`.",
+        f"- Certification status `{summary['certification_status']}`.",
+        "",
+        "## Suite fixture",
+        "",
+        f"The suite lock records `upstream_verification_modified = {changed}`.",
+    ]
+    proxy = provenance.get("proxy_configuration")
+    if isinstance(proxy, str) and proxy:
+        lines.append(escape(proxy))
+    lines.extend((
+        "",
+        "| Image | Locked reference |",
+        "| --- | --- |",
+    ))
+    for name, image in sorted(lock["images"].items()):
+        lines.append(f"| {name} | `{image}` |")
+    lines.extend((
+        "",
+        "## Declared selections",
+        "",
+        "| Profile | Transport | Finished / available | Passed | Warnings | Skipped | Coverage | Recorded limits |",
+        "| --- | --- | ---: | ---: | ---: | ---: | --- | --- |",
+    ))
+    exceptions = []
+    for entry in summary["entries"]:
+        profile, transport = entry["profile"], entry["transport"]
+        assessment = entry["assessment"]
+        modules = assessment["module_counts"]
+        verdicts = assessment["suite_verdict_counts"]
+        limits = sorted({code for codes in assessment["limitations"].values() for code in codes})
+        recorded = ", ".join(f"`{code}`" for code in limits) or "None recorded"
+        coverage = "Complete" if entry["coverage_complete"] else "Limited"
+        lines.append(
+            f"| `{profile}` | `{transport}` | {modules['finished']} / {modules['available']} "
+            f"| {verdicts['PASSED']} | {verdicts['WARNING']} | {verdicts['SKIPPED']} "
+            f"| {coverage} | {recorded} |"
+        )
+        for result in assessment["accepted_non_passed_results"]:
+            exceptions.append(
+                f"| `{profile}/{transport}` | `{result['module']}` "
+                f"| `{result['suite_result']}` | `{result['policy']}` |"
+            )
+    if exceptions:
+        lines.extend((
+            "",
+            "## Accepted suite warnings and skips",
+            "",
+            "| Selection | Module | Suite verdict | Verified policy |",
+            "| --- | --- | --- | --- |",
+            *exceptions,
+        ))
+    return "\n".join(lines) + "\n"
+
+
+def verify(args, report_path=None):
     run = read_object(args.run_metadata.read_bytes())
     artifact = read_object(args.artifact_metadata.read_bytes())
     digest = check_artifact_metadata(args, check_run_metadata(args, run), artifact)
@@ -412,7 +483,8 @@ def verify(args):
         expected_exit = 1 if args.failed_attempt else 0
         if result.returncode != expected_exit or not replay_path.is_file():
             raise ValueError(f"Release checker replay failed: {result.stderr.strip()}")
-        if summary_for_comparison(summary) != summary_for_comparison(replay_path.read_bytes()):
+        replay = replay_path.read_bytes()
+        if summary_for_comparison(summary) != summary_for_comparison(replay):
             raise ValueError("Stored release summary differs from the independent replay")
 
     receipt = {
@@ -430,6 +502,8 @@ def verify(args):
         receipt.update(gate_passed=False, matrix_complete=False, selection_diagnostics=diagnostics)
     else:
         receipt["companion_reports"] = companions
+        if report_path is not None:
+            report_path.write_text(release_report(read_object(replay), lock, receipt), encoding="utf-8")
     return receipt
 
 
@@ -489,7 +563,7 @@ def retain(args):
         replay.artifact_metadata.write_bytes(artifact_data)
         with replay.archive.open("wb") as archive:
             github_api(f"{artifact_api}/zip", stdout=archive)
-        receipt = verify(replay)
+        receipt = verify(replay, report_path=stage / "release-report.md")
         (stage / "receipt.json").write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
         # A collector publishes the whole bundle at once. A concurrent successful
         # collector leaves a nonempty destination that rename will refuse to replace.
