@@ -554,7 +554,7 @@ interop_advanced_matches <- function(report, context, lock, cases) {
   tryCatch(
     {
       if (
-        !identical(report[["schema_version"]], 1L) ||
+        !interop_report_source_matches(report, context) ||
           !identical(
             report[["scope"]],
             "oidc_provider_advanced_interoperability"
@@ -812,6 +812,7 @@ interop_advanced_rejections <- function(report, context, lock, cases) {
       mutation[["value"]]
     ))
   })
+  controls <- c(controls, interop_source_rejections(report, matches))
   failed <- names(controls)[!vapply(controls, isTRUE, logical(1))]
   if (length(failed)) {
     stop(
@@ -827,6 +828,12 @@ interop_advanced_check_report <- function(report, context, lock, cases) {
   interop_advanced_matches(report, context, lock, cases) &&
     is.list(controls) &&
     !anyDuplicated(names(controls)) &&
-    setequal(names(controls), names(interop_advanced_mutations(report))) &&
+    setequal(
+      names(controls),
+      c(
+        names(interop_advanced_mutations(report)),
+        names(interop_source_rejection_overrides(report))
+      )
+    ) &&
     all(vapply(controls, isTRUE, logical(1)))
 }

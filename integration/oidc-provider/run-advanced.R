@@ -13,6 +13,7 @@ run_advanced_provider_tests <- function(args = commandArgs(TRUE)) {
   for (name in c(
     "environment",
     "suite",
+    "source",
     "evidence",
     "auth",
     "fapi",
@@ -36,8 +37,9 @@ run_advanced_provider_tests <- function(args = commandArgs(TRUE)) {
     )
   }
   output <- interop_output(profile = "advanced")
+  checkout <- openid_source_identity(".")
   report <- list(
-    schema_version = 1L,
+    schema_version = 2L,
     scope = "oidc_provider_advanced_interoperability",
     status = "failed",
     gate_passed = FALSE,
@@ -45,13 +47,10 @@ run_advanced_provider_tests <- function(args = commandArgs(TRUE)) {
     coverage_limitations = interop_advanced_limitations(),
     run_id = paste(format(openssl::rand_bytes(16)), collapse = ""),
     transport = args[[2L]],
-    checkout_revision = trimws(processx::run("git", c("rev-parse", "HEAD"))[[
-      "stdout"
-    ]]),
-    checkout_dirty = nzchar(trimws(processx::run(
-      "git",
-      c("status", "--porcelain")
-    )[["stdout"]])),
+    checkout_revision = checkout[["revision"]],
+    checkout_dirty = checkout[["dirty"]],
+    checkout_source = checkout,
+    source_verified = FALSE,
     package_version = read.dcf("DESCRIPTION")[[1L, "Version"]],
     r_version = as.character(getRversion()),
     results = list(),
@@ -83,8 +82,9 @@ run_advanced_provider_tests <- function(args = commandArgs(TRUE)) {
     function(name) as.character(utils::packageVersion(name)),
     character(1)
   ))
+  library <- openid_install(".", output, checkout)
+  report[["installation"]] <- openid_use_installation(library, checkout)
   context <- report
-  library <- openid_install(".", output)
   transport <- openid_app_transport(".", environment, httpuv::randomPort())
   basic <- jsonlite::read_json("integration/oidc-provider/profiles.json")[[
     "cases"
@@ -161,6 +161,7 @@ run_advanced_provider_tests <- function(args = commandArgs(TRUE)) {
   )
   openid_stop_app(transport)
   report[["cleanup_verified"]] <- TRUE
+  report <- interop_verify_source(report, library)
   report[["rejection_controls"]] <- interop_advanced_rejections(
     report,
     context,

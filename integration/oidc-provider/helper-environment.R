@@ -46,6 +46,18 @@ interop_output <- function(root = ".", profile = "basic") {
   normalizePath(path, winslash = "/")
 }
 
+interop_verify_source <- function(report, library) {
+  checkout <- report[["checkout_source"]]
+  report[["checkout_source_after"]] <- openid_assert_source(".", checkout)
+  report[["installation_after"]] <- openid_use_installation(
+    library,
+    checkout,
+    report[["installation"]]
+  )
+  report[["source_verified"]] <- TRUE
+  report
+}
+
 interop_prepare <- function(root, output) {
   lock <- interop_lock(root)
   executable <- Sys.getenv("SHINYOAUTH_OPENSSL", unset = Sys.which("openssl"))

@@ -433,7 +433,7 @@ interop_resource_matches <- function(report, context, lock, cases) {
   tryCatch(
     {
       if (
-        !identical(report[["schema_version"]], 1L) ||
+        !interop_report_source_matches(report, context) ||
           !identical(report[["scope"]], "oidc_provider_resource_indicators") ||
           !identical(report[["coverage_complete"]], FALSE) ||
           !identical(
@@ -561,17 +561,16 @@ interop_resource_mutations <- function(report) {
 }
 
 interop_resource_rejections <- function(report, context, lock, cases) {
-  if (!interop_resource_matches(report, context, lock, cases)) {
+  matches <- function(value) {
+    interop_resource_matches(value, context, lock, cases)
+  }
+  if (!matches(report)) {
     stop("Actual resource report failed before rejection controls")
   }
   controls <- lapply(interop_resource_mutations(report), function(path) {
-    !interop_resource_matches(
-      replace_nested(report, path, NULL),
-      context,
-      lock,
-      cases
-    )
+    !matches(replace_nested(report, path, NULL))
   })
+  controls <- c(controls, interop_source_rejections(report, matches))
   failed <- names(controls)[!vapply(controls, isTRUE, logical(1))]
   if (length(failed)) {
     stop(
@@ -587,6 +586,12 @@ interop_resource_check_report <- function(report, context, lock, cases) {
   interop_resource_matches(report, context, lock, cases) &&
     is.list(controls) &&
     !anyDuplicated(names(controls)) &&
-    setequal(names(controls), names(interop_resource_mutations(report))) &&
+    setequal(
+      names(controls),
+      c(
+        names(interop_resource_mutations(report)),
+        names(interop_source_rejection_overrides(report))
+      )
+    ) &&
     all(vapply(controls, isTRUE, logical(1)))
 }

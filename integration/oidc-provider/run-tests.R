@@ -129,13 +129,7 @@ run_oidc_provider_tests <- function(args = commandArgs(TRUE)) {
   )
   openid_stop_app(transport)
   report[["cleanup_verified"]] <- TRUE
-  report[["checkout_source_after"]] <- openid_assert_source(".", checkout)
-  report[["installation_after"]] <- openid_use_installation(
-    library,
-    checkout,
-    context[["installation"]]
-  )
-  report[["source_verified"]] <- TRUE
+  report <- interop_verify_source(report, library)
   report[["rejection_controls"]] <- interop_rejection_controls(
     report,
     context,

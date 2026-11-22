@@ -10,7 +10,14 @@ run_retention_provider_tests <- function(args = commandArgs(TRUE)) {
   }
   Sys.setenv(CURL_SSL_BACKEND = "openssl", NOT_CRAN = "true")
   withr::local_options(warn = 2)
-  for (name in c("environment", "suite", "evidence", "app", "driver")) {
+  for (name in c(
+    "environment",
+    "suite",
+    "source",
+    "evidence",
+    "app",
+    "driver"
+  )) {
     source(paste0("integration/openid/helper-", name, ".R"), local = TRUE)
   }
   for (name in c(
@@ -42,8 +49,9 @@ run_retention_provider_tests <- function(args = commandArgs(TRUE)) {
     openid_require(c("mirai", "promises", "later"))
   }
   output <- interop_output(profile = "retention")
+  checkout <- openid_source_identity(".")
   report <- list(
-    schema_version = 1L,
+    schema_version = 2L,
     scope = "oidc_provider_browser_retention",
     status = "failed",
     gate_passed = FALSE,
@@ -51,13 +59,10 @@ run_retention_provider_tests <- function(args = commandArgs(TRUE)) {
     coverage_limitations = interop_retention_limits(),
     run_id = paste(format(openssl::rand_bytes(16)), collapse = ""),
     transport = args[[2L]],
-    checkout_revision = trimws(processx::run("git", c("rev-parse", "HEAD"))[[
-      "stdout"
-    ]]),
-    checkout_dirty = nzchar(trimws(processx::run(
-      "git",
-      c("status", "--porcelain")
-    )[["stdout"]])),
+    checkout_revision = checkout[["revision"]],
+    checkout_dirty = checkout[["dirty"]],
+    checkout_source = checkout,
+    source_verified = FALSE,
     package_version = read.dcf("DESCRIPTION")[[1L, "Version"]],
     r_version = as.character(getRversion()),
     results = list(),
@@ -86,8 +91,9 @@ run_retention_provider_tests <- function(args = commandArgs(TRUE)) {
     function(name) as.character(utils::packageVersion(name)),
     character(1)
   ))
+  library <- openid_install(".", output, checkout)
+  report[["installation"]] <- openid_use_installation(library, checkout)
   context <- report
-  library <- openid_install(".", output)
   transport <- openid_app_transport(".", environment, httpuv::randomPort())
   failure <- tryCatch(
     interop_run_retention(
@@ -139,6 +145,7 @@ run_retention_provider_tests <- function(args = commandArgs(TRUE)) {
   )
   openid_stop_app(transport)
   report[["cleanup_verified"]] <- TRUE
+  report <- interop_verify_source(report, library)
   report[["rejection_controls"]] <- interop_retention_rejections(
     report,
     context,
