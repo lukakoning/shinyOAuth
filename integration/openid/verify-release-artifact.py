@@ -6,13 +6,21 @@ from html import escape
 import json
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import tempfile
-from zipfile import BadZipFile, ZipFile
+from zipfile import BadZipFile, ZIP_STORED, ZipFile, ZipInfo
 
 
 WORKFLOW = ".github/workflows/openid-release-matrix.yml"
 SUMMARY = "release-summary.json"
+BUNDLE_ORIGINALS = {
+    "run_metadata": "run.json",
+    "artifact_metadata": "artifact.json",
+    "archive": "artifact.zip",
+}
+BUNDLE_RECEIPT = "receipt.json"
+BUNDLE_REPORT = "release-report.md"
 MAX_REPORT_BYTES = 64 * 1024**2
 SHA256 = re.compile(r"[a-f0-9]{64}")
 REPORT_PATH = re.compile(
@@ -514,6 +522,67 @@ def verify(args, report_path=None):
     return receipt
 
 
+def bundle_inputs(args, directory):
+    inputs = {field: directory / name for field, name in BUNDLE_ORIGINALS.items()}
+    return argparse.Namespace(**(vars(args) | inputs))
+
+
+def write_release_bundle(args):
+    with tempfile.TemporaryDirectory() as tmp:
+        directory = Path(tmp)
+        replay = bundle_inputs(args, directory)
+        for field in BUNDLE_ORIGINALS:
+            shutil.copyfile(getattr(args, field), getattr(replay, field))
+        report = directory / BUNDLE_REPORT
+        receipt = verify(replay, report_path=report)
+        receipt_bytes = (json.dumps(receipt, indent=2) + "\n").encode("utf-8")
+        (directory / BUNDLE_RECEIPT).write_bytes(receipt_bytes)
+
+        output = args.bundle_output.open("xb")
+        try:
+            with output, ZipFile(output, "w") as bundle:
+                for name in (*BUNDLE_ORIGINALS.values(), BUNDLE_REPORT, BUNDLE_RECEIPT):
+                    path = directory / name
+                    entry = ZipInfo(name)
+                    entry.create_system = 3
+                    entry.file_size = path.stat().st_size
+                    with path.open("rb") as source, bundle.open(entry, "w") as member:
+                        shutil.copyfileobj(source, member)
+        except (OSError, RuntimeError):
+            args.bundle_output.unlink(missing_ok=True)
+            raise
+    return receipt
+
+
+def verify_release_bundle(args):
+    expected = {*BUNDLE_ORIGINALS.values(), BUNDLE_RECEIPT, BUNDLE_REPORT}
+    with ZipFile(args.bundle_input) as bundle, tempfile.TemporaryDirectory() as tmp:
+        members = bundle.infolist()
+        if (
+            len(members) != len(expected)
+            or {member.filename for member in members} != expected
+            or any(member.compress_type != ZIP_STORED or member.flag_bits & 1 for member in members)
+        ):
+            raise ValueError("Expected the five original and derived files in a stored release bundle")
+
+        directory = Path(tmp)
+        replay = bundle_inputs(args, directory)
+        for field, name in BUNDLE_ORIGINALS.items():
+            target = getattr(replay, field)
+            if field == "archive":
+                with bundle.open(name) as source, target.open("wb") as copied:
+                    shutil.copyfileobj(source, copied)
+            else:
+                target.write_bytes(read_member(bundle, bundle.getinfo(name)))
+        receipt = read_object(read_member(bundle, bundle.getinfo(BUNDLE_RECEIPT)))
+        report = read_member(bundle, bundle.getinfo(BUNDLE_REPORT))
+        regenerated = directory / BUNDLE_REPORT
+        replayed = verify(replay, report_path=regenerated)
+        if receipt != replayed or report != regenerated.read_bytes():
+            raise ValueError("Release bundle receipt or Markdown differs from the independent replay")
+        return replayed
+
+
 def github_api(endpoint, stdout=subprocess.PIPE):
     try:
         return subprocess.run(
@@ -559,19 +628,13 @@ def retain(args):
     with tempfile.TemporaryDirectory(prefix=".openid-matrix-", dir=destination.parent) as tmp:
         stage = Path(tmp) / "bundle"
         stage.mkdir()
-        replay = argparse.Namespace(
-            repository=args.repository, revision=args.revision,
-            run_id=args.run_id, attempt=args.attempt,
-            failed_attempt=args.failed_attempt,
-            run_metadata=stage / "run.json", artifact_metadata=stage / "artifact.json",
-            archive=stage / "artifact.zip",
-        )
+        replay = bundle_inputs(args, stage)
         replay.run_metadata.write_bytes(run_data)
         replay.artifact_metadata.write_bytes(artifact_data)
         with replay.archive.open("wb") as archive:
             github_api(f"{artifact_api}/zip", stdout=archive)
-        receipt = verify(replay, report_path=stage / "release-report.md")
-        (stage / "receipt.json").write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
+        receipt = verify(replay, report_path=stage / BUNDLE_REPORT)
+        (stage / BUNDLE_RECEIPT).write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
         # A collector publishes the whole bundle at once. A concurrent successful
         # collector leaves a nonempty destination that rename will refuse to replace.
         if destination.exists() or destination.is_symlink():
@@ -586,17 +649,25 @@ def main():
     parser.add_argument("--revision", required=True, help="Full expected Git commit SHA")
     parser.add_argument("--run-id", type=int, help="GitHub run ID for ZIP replay or retention")
     parser.add_argument("--attempt", required=True, type=int)
-    parser.add_argument(
+    inputs = parser.add_mutually_exclusive_group()
+    inputs.add_argument(
         "--downloaded-reports", type=Path, help="Check the downloaded job artifact directories in CI"
     )
-    parser.add_argument(
+    inputs.add_argument(
         "--retain", type=Path, help="Fetch and verify a GitHub attempt into a new directory"
+    )
+    inputs.add_argument(
+        "--bundle-input", type=Path, help="Replay a saved release bundle offline"
     )
     parser.add_argument(
         "--failed-attempt", action="store_true", help="Replay a failed client aggregate and its diagnostics"
     )
-    parser.add_argument(
+    outputs = parser.add_mutually_exclusive_group()
+    outputs.add_argument(
         "--report-output", type=Path, help="Write verified Markdown to a new file during offline replay"
+    )
+    outputs.add_argument(
+        "--bundle-output", type=Path, help="Pack a verified offline replay into a new release ZIP"
     )
     parser.add_argument(
         "run_metadata", type=Path, nargs="?", help="GitHub workflow run attempt JSON"
@@ -612,10 +683,11 @@ def main():
         parser.error("--revision requires a full lowercase Git commit SHA")
     if args.attempt <= 0 or (args.run_id is not None and args.run_id <= 0):
         parser.error("--run-id and --attempt must be positive")
-    if args.report_output is not None and (
+    if (args.report_output is not None or args.bundle_output is not None) and (
         args.failed_attempt or args.retain is not None or args.downloaded_reports is not None
+        or args.bundle_input is not None
     ):
-        parser.error("--report-output requires offline replay of a passing ZIP")
+        parser.error("Report and bundle output require the three original files of a passing attempt")
     files = (args.run_metadata, args.artifact_metadata, args.archive)
     if args.downloaded_reports is not None:
         if args.failed_attempt or any(
@@ -629,6 +701,11 @@ def main():
             parser.error("--retain requires --repository OWNER/REPO and --run-id")
         if any(value is not None for value in files):
             parser.error("--retain downloads its own input files")
+    elif args.bundle_input is not None:
+        if args.repository is None or args.run_id is None:
+            parser.error("--bundle-input requires --repository and --run-id")
+        if args.failed_attempt or any(value is not None for value in files):
+            parser.error("--bundle-input replays a passing attempt from the files in the bundle")
     elif any(value is None for value in (args.repository, args.run_id, *files)):
         parser.error("ZIP replay requires --repository, --run-id and all three input files")
     try:
@@ -643,6 +720,10 @@ def main():
                 print(f"Retained and replayed failed OpenID matrix diagnostics in {args.retain}.")
             else:
                 print(f"Retained {receipt['client_report_count']} verified OpenID selections in {args.retain}.")
+        elif args.bundle_input is not None:
+            print(json.dumps(verify_release_bundle(args), indent=2))
+        elif args.bundle_output is not None:
+            print(json.dumps(write_release_bundle(args), indent=2))
         else:
             print(json.dumps(verify(args, report_path=args.report_output), indent=2))
     except (BadZipFile, OSError, ValueError) as error:

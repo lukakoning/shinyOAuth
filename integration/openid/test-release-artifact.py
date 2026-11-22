@@ -233,6 +233,52 @@ class ReleaseArtifactTest(unittest.TestCase):
             verifier.verify(self.args, report_path=report)
         self.assertEqual(report.read_bytes(), original)
 
+    def test_release_bundle_round_trip_preserves_originals_and_is_reproducible(self):
+        self.write_fixture()
+        directory = self.args.archive.parent
+        self.args.bundle_output = directory / "release.zip"
+        self.args.bundle_input = self.args.bundle_output
+        with self.mock_replay(self.summary):
+            expected = verifier.write_release_bundle(self.args)
+        original = self.args.bundle_input.read_bytes()
+        with ZipFile(self.args.bundle_input) as bundle:
+            self.assertTrue(all(entry.create_system == 3 for entry in bundle.infolist()))
+            for field, name in verifier.BUNDLE_ORIGINALS.items():
+                self.assertEqual(bundle.read(name), getattr(self.args, field).read_bytes())
+        with self.mock_replay(self.summary):
+            self.assertEqual(verifier.verify_release_bundle(self.args), expected)
+        with self.mock_replay(self.summary), self.assertRaises(FileExistsError):
+            verifier.write_release_bundle(self.args)
+        self.assertEqual(self.args.bundle_input.read_bytes(), original)
+
+        self.args.bundle_output = directory / "repacked.zip"
+        with self.mock_replay(self.summary):
+            verifier.write_release_bundle(self.args)
+        self.assertEqual(self.args.bundle_output.read_bytes(), original)
+
+    def test_release_bundle_rejects_altered_presentation_or_unexpected_file(self):
+        self.write_fixture()
+        directory = self.args.archive.parent
+        self.args.bundle_output = directory / "release.zip"
+        with self.mock_replay(self.summary):
+            verifier.write_release_bundle(self.args)
+        self.args.bundle_input = directory / "altered.zip"
+
+        with ZipFile(self.args.bundle_output) as original:
+            for name, data, error in (
+                (verifier.BUNDLE_REPORT, b"Changed summary", "Markdown differs"),
+                (verifier.BUNDLE_RECEIPT, b"{}", "receipt or Markdown differs"),
+                ("unexpected.json", b"{}", "five original and derived files"),
+            ):
+                with self.subTest(name=name):
+                    with ZipFile(self.args.bundle_input, "w") as altered:
+                        for member in original.namelist():
+                            if member != name:
+                                altered.writestr(member, original.read(member))
+                        altered.writestr(name, data)
+                    with self.mock_replay(self.summary), self.assertRaisesRegex(ValueError, error):
+                        verifier.verify_release_bundle(self.args)
+
     def test_rejects_changed_archive_bytes_before_replay(self):
         self.write_fixture()
         with self.args.archive.open("ab") as archive:
