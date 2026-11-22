@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Added a declared OpenID client conformance matrix and release evidence
+  workflow. Verified bundles include a per-profile summary of suite verdicts
+  and coverage limits.
+
 * OAuth and OIDC discovery now match advertised client authentication and PKCE
   methods case-sensitively. Incorrectly cased identifiers no longer count as
   supported methods; caller option spelling remains unchanged.

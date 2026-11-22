@@ -678,3 +678,21 @@ All 16 tests passed on Windows and on the hosted Ubuntu runner at that
 revision. The hosted `report_checks_only` dispatch also validated the
 committed matrix policy. GitHub skipped the selection and aggregate jobs
 for that dispatch. [Hosted report checks](https://github.com/lukakoning/shinyOAuth/actions/runs/45018858473).
+
+## Release evidence table, 2026-11-22
+
+`1b070a7aac96c4f7b7469dc8e5f2d180eda66912` adds `release-report.md` to a
+successful retained bundle. The table uses the independently replayed summary
+and committed suite lock. It records each selection's finished and available
+module counts, verdicts, coverage limits and accepted warning or skip policies.
+It includes the package and suite revisions, suite fixture configuration and
+original artifact digest.
+
+An end-to-end Windows check retained a synthetic bundle with 39 client
+reports and 78 companions. It preserved the exact original ZIP and produced
+the same JSON receipt as offline verification. The Markdown recorded all 39
+selections, the allowed unsigned-token skip, the `no-store` coverage limit
+and the encrypted-state length warning. The live failed aggregate at `98362fc`
+continued to produce its diagnostic receipt. All 16 verifier tests passed on
+Windows and GitHub. A release publication awaits a successful hosted matrix.
+[Hosted report checks](https://github.com/lukakoning/shinyOAuth/actions/runs/45019340785).

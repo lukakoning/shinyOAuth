@@ -19,6 +19,7 @@ and GitHub. The FAPI pre-click test passed on Windows.
    the aggregate and verifies all preflight and API inventories before saving
    the bundle. New matrix dispatches run the artifact verifier's tests in
    preparation, including a real CLI rejection for an altered API inventory.
+   Successful retention also writes the [release evidence table](../integration/openid/release-matrix.md#verify-and-retain-a-completed-attempt).
    Individual job artifacts request seven days and the aggregate requests 90.
    A permanent storage location and a verified hosted bundle remain open.
 3. The selected FAPI manual-initiation case samples the app queue and state
@@ -3056,6 +3057,13 @@ and committed synthetic policy. It requires exit code zero for valid evidence
 and exit code 1 after changing the API cancellation result. The
 `report_checks_only` dispatch passed on GitHub at that revision.
 [Release review](../integration/openid/release-review.md#release-report-checks-in-ci-2026-11-22).
+
+SA08 release evidence table (2026-11-22). `1b070a7` writes `release-report.md`
+when retaining a successful matrix. The report includes the verified revisions,
+suite fixture, declared selections, module verdicts and recorded limitations.
+A complete synthetic bundle reproduced all 39 selection rows. Publication at
+an actual release revision awaits a verified hosted matrix.
+[Release review](../integration/openid/release-review.md#release-evidence-table-2026-11-22).
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second

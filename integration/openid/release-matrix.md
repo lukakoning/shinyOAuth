@@ -124,9 +124,16 @@ python integration/openid/verify-release-artifact.py --repository OWNER/REPO --r
 
 The command selects the aggregate artifact by workflow run and attempt, then
 verifies and saves the original `run.json`, `artifact.json` and `artifact.zip`
-with `receipt.json`. It makes the directory available once verification passes
-and refuses an existing destination. The download preserves the original ZIP
-bytes on PowerShell and POSIX shells.
+with `receipt.json` and `release-report.md`. It makes the directory available
+once verification passes and refuses an existing destination. The download
+preserves the original ZIP bytes on PowerShell and POSIX shells.
+
+`release-report.md` is the publication summary for that verified attempt. It
+records the package and suite revisions, locked images, fixture configuration,
+and every profile and transport's finished and available module counts,
+verdicts, and coverage limits. It also lists accepted suite warnings and skips
+with the policy checked by the verifier. Keep the summary with the original
+bundle so the results can be checked against the artifact digest.
 
 The three original input files can also be collected manually. To replay a
 saved bundle offline, supply those files and the same run identifiers.
