@@ -89,8 +89,8 @@ qualifies that selection for its own revision. Artifact authentication, the
 headless JWKS rotation selection and OIDF results have separate evidence.
 [Provider workflow](../../.github/workflows/oidc-provider.yml).
 
-Evidence is written to `.artifacts/basic-*/evidence.json`. Only these JSON files
-are eligible for workflow upload. They contain comparisons, counts and event
+Evidence is written to `.artifacts/basic-*/evidence.json`. Each selection
+artifact holds its original report. Reports contain comparisons, counts and event
 categories, excluding tokens, codes, nonces, credentials and raw error text.
 Private logs, temporary keys, configuration files and package installations stay
 under the ignored artifacts directory. The shared Shiny/browser/worker helpers
@@ -213,3 +213,34 @@ JAR + DPoP + JARM are outside its scope. The
 protocol oracle. The [workflow](../../.github/workflows/oidc-provider.yml) runs
 basic sync on relevant pull requests and offers basic/advanced/resources/retention with sync/mirai
 through manual dispatch.
+
+## Run the provider release matrix
+
+Dispatch the matrix on the branch or tag for the revision you want to test.
+The run records the exact commit. All eight combinations of `basic`,
+`advanced`, `resources`, `retention` and the two transports run the report
+recheck described above. [Provider release workflow](../../.github/workflows/oidc-provider-release-matrix.yml).
+
+```sh
+gh workflow run oidc-provider-release-matrix.yml --ref BRANCH_OR_TAG
+```
+
+The aggregate runs after all selections succeed. It requires the eight
+original reports from the current attempt and checks their profile, transport,
+commit and common installation archive digest. A partially rerun attempt
+needs **Re-run all jobs** to supply a complete current set.
+[GitHub rerun instructions](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/re-run-workflows-and-jobs).
+
+The aggregate artifact is named
+`oidc-provider-release-evidence-attempt-ATTEMPT_NUMBER`. GitHub retains it
+for up to 90 days, subject to repository policy. Keep its original ZIP and
+GitHub metadata when archiving it. After extracting the aggregate, recheck
+the report hashes and summary from the repository root with Python 3.11 or
+later.
+
+```sh
+python integration/oidc-provider/release-matrix.py evidence --revision FULL_COMMIT_SHA --run-id RUN_ID --attempt ATTEMPT_NUMBER --reports "PATH_TO_EXTRACTED_ARCHIVE/release-inputs" --verify-summary "PATH_TO_EXTRACTED_ARCHIVE/release-summary.json"
+```
+
+The summary covers the provider browser matrix at that exact revision. The
+per-report R command can independently replay the scenario and source checks.

@@ -896,3 +896,23 @@ duplicate JSON keys, schema 1, a failed gate, missing controls, an altered final
 installation or an incorrect archive digest. It also rejected a substituted
 fixture digest and a missing checkout path after recalculating their recorded
 fingerprints.
+
+## Declared provider release matrix, 2026-11-22
+
+`8d5f11227278c81c0aecc8acf0d590e8370c0599` declares eight provider browser
+selections and runs the existing scenario and source rechecks at one commit.
+The aggregate requires successful selections and one original report per
+declared profile and transport from the current attempt. It records each
+report's SHA-256 and the common Git tree and installation archive digest. The
+aggregate requests 90 days of CI retention. The evidence covers provider
+interoperability at the selected revision.
+[Matrix and replay instructions](../oidc-provider/README.md#run-the-provider-release-matrix).
+
+All eight checker tests passed locally and during hosted preparation. The
+eight historical provider reports match their individual selection and source
+checks. The aggregate checker rejected the set because its reports identify
+three different commits. The first hosted provider matrix started at
+`8d5f112`. The `basic/sync` artifact `14758049495` used the attempt-1 name
+and matched its GitHub SHA-256. Its original report passed the aggregate
+input check. Verification of the complete aggregate is pending.
+[First provider matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/45032877223).
