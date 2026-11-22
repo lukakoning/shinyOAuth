@@ -58,6 +58,20 @@ interop_verify_source <- function(report, library) {
   report
 }
 
+interop_fixture_files <- function() {
+  c(
+    "Dockerfile",
+    "package.json",
+    "package-lock.json",
+    "provider-lock.json",
+    "provider.mjs",
+    "advanced-provider.mjs",
+    "resource-provider.mjs",
+    "test-provider.mjs",
+    ".dockerignore"
+  )
+}
+
 interop_prepare <- function(root, output) {
   lock <- interop_lock(root)
   executable <- Sys.getenv("SHINYOAUTH_OPENSSL", unset = Sys.which("openssl"))
@@ -117,17 +131,7 @@ interop_prepare <- function(root, output) {
   if (length(id) != 1L || !grepl("^sha256:[a-f0-9]{64}$", id)) {
     stop("Invalid provider build image identity")
   }
-  files <- c(
-    "Dockerfile",
-    "package.json",
-    "package-lock.json",
-    "provider-lock.json",
-    "provider.mjs",
-    "advanced-provider.mjs",
-    "resource-provider.mjs",
-    "test-provider.mjs",
-    ".dockerignore"
-  )
+  files <- interop_fixture_files()
   hashes <- setNames(
     lapply(files, function(name) {
       path <- file.path(root, "integration/oidc-provider", name)

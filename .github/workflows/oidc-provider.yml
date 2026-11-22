@@ -89,6 +89,18 @@ jobs:
           else
             Rscript "integration/oidc-provider/$runner" --transport "$INTEROP_TRANSPORT"
           fi
+      - name: Recheck browser evidence against the selected commit
+        if: ${{ env.INTEROP_PROFILE != 'jwks-rotation' }}
+        shell: bash
+        run: |
+          shopt -s nullglob
+          reports=(integration/oidc-provider/.artifacts/"$INTEROP_PROFILE"-*/evidence.json)
+          if (( ${#reports[@]} != 1 )); then
+            echo "Expected one report for the selected provider profile."
+            exit 1
+          fi
+          Rscript integration/oidc-provider/run-release-check.R --revision "$GITHUB_SHA" \
+            --profile "$INTEROP_PROFILE" --transport "$INTEROP_TRANSPORT" "${reports[0]}"
       - name: Upload sanitized evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
