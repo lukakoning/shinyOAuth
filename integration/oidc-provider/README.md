@@ -244,3 +244,5 @@ python integration/oidc-provider/release-matrix.py evidence --revision FULL_COMM
 
 The summary covers the provider browser matrix at that exact revision. The
 per-report R command can independently replay the scenario and source checks.
+To run this matrix alongside OIDF at the same revision, enable the companion
+option in the OIDF workflow. [Paired release matrix](../openid/release-matrix.md#run-oidf-and-provider-companions-at-one-revision).

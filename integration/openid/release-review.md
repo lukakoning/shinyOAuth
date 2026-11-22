@@ -914,5 +914,34 @@ checks. The aggregate checker rejected the set because its reports identify
 three different commits. The first hosted provider matrix started at
 `8d5f112`. The `basic/sync` artifact `14758049495` used the attempt-1 name
 and matched its GitHub SHA-256. Its original report passed the aggregate
-input check. Verification of the complete aggregate is pending.
+input check.
 [First provider matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/45032877223).
+
+The first provider matrix passed all eight selections and its aggregate.
+Artifact `14758558127` matched GitHub SHA-256
+`bf5cabd241e4aabceaea770c92c26279c093a09ad1fc2909b8ac9d0044cf47c9`.
+Independent replay of the original ZIP reproduced the summary for all
+34 cases and 3,262 rejection controls. The reports share installation
+archive SHA-256
+`1344abe68ab8f5d6f218c7386cbaf63ad38ff1a4d451768600e323209a7b28be`.
+The original ZIP and GitHub metadata are retained in
+`integration/oidc-provider/.artifacts/verified-release-matrix-45032877223-1/`.
+[Completed provider matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/45032877223).
+
+## Paired OIDF and provider evidence, 2026-11-22
+
+`a65cdaea8bbb42233564ff27c062c39965fcb82b` adds the optional
+`provider_companions` input to the OIDF workflow. It runs both matrices at
+the selected revision. After both pass, the link records their original ZIP
+digests, artifact names and IDs for the current attempt. The signing job
+attests the OIDF aggregate and the link ZIP. The link gives reviewers a
+signed digest to check against the original provider aggregate ZIP.
+[Paired workflow and verification](release-matrix.md#run-oidf-and-provider-companions-at-one-revision).
+
+All six new tests and the 24 existing OIDF verifier tests passed on Windows
+and hosted Ubuntu. The hosted report-only dispatch skipped both matrices,
+the link and signing. Local checks exercised the signer's attempt guard with
+standalone, current and stale evidence. The first full paired run has
+started at `a65cdaea`. Verification of its signed link is pending.
+[Hosted report checks](https://github.com/lukakoning/shinyOAuth/actions/runs/45033630403),
+[first paired matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/45033763653).

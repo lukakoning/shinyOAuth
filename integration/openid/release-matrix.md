@@ -207,6 +207,37 @@ The verifier checks the archive's derived receipt and Markdown by replaying
 its original inputs. [Saving a Sigstore bundle](https://cli.github.com/manual/gh_attestation_download),
 [saving trusted roots](https://cli.github.com/manual/gh_attestation_trusted-root).
 
+## Run OIDF and provider companions at one revision
+
+Enable `provider_companions` to run the 39 OIDF selections and the eight
+`oidc-provider` browser selections from the same commit in one workflow.
+The link job requires both aggregate uploads from the current attempt.
+It records their names, IDs and original ZIP SHA-256 digests together with
+the repository, commit, run and attempt. The signing job attests the OIDF
+aggregate ZIP and the link ZIP after both matrices and the link succeed.
+[Provider matrix scope](../oidc-provider/README.md#run-the-provider-release-matrix).
+
+```sh
+gh workflow run openid-release-matrix.yml --ref BRANCH_OR_TAG -f provider_companions=true
+```
+
+For a passing run, retain the original ZIP for
+`openid-provider-release-link-attempt-ATTEMPT_NUMBER` and the two matrix ZIPs.
+Verify the link ZIP using the expected repository, workflow and commit.
+[GitHub CLI verification](https://cli.github.com/manual/gh_attestation_verify).
+
+```sh
+gh attestation verify "PATH_TO_LINK.zip" --repo OWNER/REPO --signer-workflow OWNER/REPO/.github/workflows/openid-release-matrix.yml --source-digest FULL_COMMIT_SHA --signer-digest FULL_COMMIT_SHA --deny-self-hosted-runners --predicate-type https://slsa.dev/provenance/v1 --format json
+```
+
+Match the verified certificate's `runInvocationURI` to the intended run
+and attempt, and the subject to
+`openid-provider-release-link-attempt-ATTEMPT_NUMBER.zip`. Check the
+repository, revision, run and attempt inside `paired-release-evidence.json`.
+Compare the SHA-256 of each original matrix ZIP with its digest in the
+verified link before replaying the OIDF and provider evidence.
+[Fulcio certificate fields](https://github.com/sigstore/fulcio/blob/main/docs/oid-info.md#13614157264121--run-invocation-uri).
+
 ## Package a verified attempt for release storage
 
 From the repository root, pack the three original files of a passing attempt
