@@ -1,0 +1,66 @@
+name: oidc-provider release matrix
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      selections: ${{ steps.matrix.outputs.selections }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - name: Test the release matrix checker
+        run: python3 -B integration/oidc-provider/test-release-matrix.py -v
+      - name: Load the declared selections
+        id: matrix
+        run: |
+          selections=$(python3 integration/oidc-provider/release-matrix.py selections)
+          echo "selections=$selections" >> "$GITHUB_OUTPUT"
+
+  selections:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJSON(needs.prepare.outputs.selections) }}
+    uses: ./.github/workflows/oidc-provider.yml
+    with:
+      profile: ${{ matrix.profile }}
+      transport: ${{ matrix.transport }}
+      release_matrix: true
+
+  aggregate:
+    needs: selections
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - name: Download reports for the current attempt
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: oidc-provider-*-evidence-attempt-${{ github.run_attempt }}
+          path: integration/oidc-provider/.artifacts/release-inputs
+          merge-multiple: false
+          digest-mismatch: error
+      - name: Require all declared reports for the selected source and attempt
+        run: |
+          python3 integration/oidc-provider/release-matrix.py evidence \
+            --revision "$GITHUB_SHA" --run-id "$GITHUB_RUN_ID" --attempt "$GITHUB_RUN_ATTEMPT" \
+            --reports integration/oidc-provider/.artifacts/release-inputs \
+            --write-summary integration/oidc-provider/.artifacts/release-summary.json
+      - name: Retain the verified report set
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: oidc-provider-release-evidence-attempt-${{ github.run_attempt }}
+          path: |
+            integration/oidc-provider/.artifacts/release-inputs/**/evidence.json
+            integration/oidc-provider/.artifacts/release-summary.json
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 90

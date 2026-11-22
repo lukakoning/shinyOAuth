@@ -1,6 +1,17 @@
 name: oidc-provider interoperability
 
 on:
+  workflow_call:
+    inputs:
+      profile:
+        type: string
+        required: true
+      transport:
+        type: string
+        required: true
+      release_matrix:
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       profile:
@@ -105,7 +116,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: oidc-provider-${{ env.INTEROP_PROFILE }}-${{ env.INTEROP_TRANSPORT }}-evidence
+          name: oidc-provider-${{ env.INTEROP_PROFILE }}-${{ env.INTEROP_TRANSPORT }}-evidence${{ inputs.release_matrix && format('-attempt-{0}', github.run_attempt) || '' }}
           path: integration/oidc-provider/.artifacts/${{ env.INTEROP_PROFILE }}-*/evidence.json
           include-hidden-files: true
           if-no-files-found: error
