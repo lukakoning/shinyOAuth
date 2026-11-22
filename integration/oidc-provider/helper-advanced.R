@@ -301,10 +301,11 @@ interop_run_advanced <- function(
     lifecycle = lifecycle,
     callback_http = callback[["http"]],
     tampered = if (tamper) isTRUE(changed[["tampered"]]) else FALSE,
-    callback_cleaned = identical(
-      openid_browser_value(tab, "location.search"),
-      ""
-    ),
+    callback_cleaned = if (tamper) {
+      isTRUE(callback[["http"]][["final_url_verified"]])
+    } else {
+      identical(openid_browser_value(tab, "location.search"), "")
+    },
     provider = interop_request(stack, "/fixture/evidence", TRUE),
     browser_version = tab[["Browser"]][["getVersion"]]()[["product"]]
   )

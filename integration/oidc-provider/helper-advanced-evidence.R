@@ -470,6 +470,8 @@ interop_advanced_row_matches <- function(row, context, selection, lock) {
     return(
       isTRUE(row[["tampered"]]) &&
         isTRUE(mode[["jarm"]]) &&
+        (!identical(context[["schema_version"]], 2L) ||
+          isTRUE(row[["callback_cleaned"]])) &&
         openid_http_callback_matches(row, expected) &&
         openid_app_matches(
           row[["app"]],
@@ -660,7 +662,13 @@ interop_advanced_mutations <- function(report) {
       if (row[["outcome"]] == "authenticated") {
         c("callback_cleaned", "resource", "probes", "lifecycle")
       } else {
-        c("callback_http", "tampered")
+        c(
+          "callback_http",
+          "tampered",
+          if (identical(row[["callback_http"]][["schema_version"]], 2L)) {
+            "callback_cleaned"
+          }
+        )
       }
     )
     for (field in fields) {
