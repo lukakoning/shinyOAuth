@@ -796,3 +796,24 @@ published Markdown SHA-256 is
 `1ce7b5aa4efce430f6604f2247d76e88ee4826fd48fc13f1a785282590cefa66`.
 The existing-file control preserved its bytes. All 17 Python tests passed on
 Windows and hosted Ubuntu. [Hosted report checks](https://github.com/lukakoning/shinyOAuth/actions/runs/45028936163).
+
+## Portable OIDF release archive, 2026-11-22
+
+`17d2e7f0ea062bc01a13205cdc1e86b97176402b` adds `--bundle-output` and
+`--bundle-input` to the offline verifier. The release archive contains the
+unaltered GitHub run metadata, artifact metadata and aggregate ZIP. It also
+contains the reproduced receipt and Markdown table. Verification replays the
+original reports and checks both derived files.
+
+The verified archive for run `45017983714`, attempt `1`, is
+`.artifacts/openid-release-92bedf1d-45017983714-attempt-1.zip`. It is 12,238,906
+bytes with SHA-256
+`872333869229d2e02fd4e89367ecd1afa037680e026e4cc16e5df4a8e2225f7f`.
+Offline replay verified all 39 client and 78 companion reports. The receipt
+matched the retained receipt, and the Markdown matched the Git blob of the
+published table. Repacking the original inputs reproduced the archive bytes.
+
+All 19 Python tests passed on Windows and hosted Ubuntu. The source has no
+matching release tag. Shared publication of the archive and signed provenance
+remain open. [Hosted report checks](https://github.com/lukakoning/shinyOAuth/actions/runs/45029575686),
+[release archive instructions](release-matrix.md#package-a-verified-attempt-for-release-storage).

@@ -9,9 +9,11 @@ published table records the exact revision and each selection's limits.
 [release evidence table](../integration/openid/release-evidence/45017983714-attempt-1.md).
 
 1. Preserve the verified bundle in shared release storage with its original
-   ZIP, GitHub metadata and receipt. A local copy and the committed Markdown
-   table are available. The original GitHub aggregate expires on 2027-02-20.
-   [Retention instructions](../integration/openid/release-matrix.md#verify-and-retain-a-completed-attempt).
+   ZIP, GitHub metadata and receipt. An independently verified single-archive
+   copy and the committed Markdown table are available. Shared publication
+   awaits a storage destination or a matching release tag. The original
+   GitHub aggregate expires on 2027-02-20.
+   [Release archive instructions](../integration/openid/release-matrix.md#package-a-verified-attempt-for-release-storage).
 2. Bind any future release claim to its chosen commit and selected evidence.
    The verified OIDF matrix applies to `92bedf1d`. Later provider and platform
    validations keep their own revision and scope. Signed artifact provenance
@@ -3079,6 +3081,12 @@ the 39 client and 78 companion reports. `73890ce` regenerates the publication
 table from a retained bundle, and both retention and offline replay produced
 the same table bytes for the hosted run.
 [Release review](../integration/openid/release-review.md#first-verified-hosted-oidf-matrix-2026-11-22).
+
+SA08 portable release archive (2026-11-22). `17d2e7f` packages the verified
+metadata, original ZIP, receipt and Markdown into one archive. The offline
+bundle check replayed the hosted run at `92bedf1d` and reproduced its receipt
+and published summary. The local archive is ready for shared retention.
+[Release review](../integration/openid/release-review.md#portable-oidf-release-archive-2026-11-22).
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second

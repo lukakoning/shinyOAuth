@@ -167,6 +167,34 @@ receipt's trust source.
 See the [run-attempt API](https://docs.github.com/en/rest/actions/workflow-runs#get-a-workflow-run-attempt)
 and [artifact API](https://docs.github.com/en/rest/actions/artifacts#get-an-artifact).
 
+## Package a verified attempt for release storage
+
+From the repository root, pack the three original files of a passing attempt
+into a new ZIP. The verifier replays the originals before creating the archive.
+
+```sh
+python integration/openid/verify-release-artifact.py --repository OWNER/REPO --revision FULL_COMMIT_SHA --run-id RUN_ID --attempt ATTEMPT_NUMBER --bundle-output "PATH_TO_NEW_RELEASE.zip" "PATH_TO_BUNDLE/run.json" "PATH_TO_BUNDLE/artifact.json" "PATH_TO_BUNDLE/artifact.zip"
+```
+
+The outer archive holds the unchanged metadata and GitHub ZIP, plus the
+recomputed JSON receipt and Markdown summary. Its entries have fixed metadata
+and the two generated files use LF line endings. Record the outer SHA-256
+when placing it in shared storage.
+
+Verify the archive offline from a checkout that contains the expected commit.
+The check replays the original reports and compares both generated files with
+the stored receipt and summary.
+
+```sh
+python integration/openid/verify-release-artifact.py --repository OWNER/REPO --revision FULL_COMMIT_SHA --run-id RUN_ID --attempt ATTEMPT_NUMBER --bundle-input "PATH_TO_RELEASE.zip"
+```
+
+For a GitHub release asset, resolve the release tag to its commit with
+`git rev-parse "TAG^{commit}"` and check that it equals the verified revision
+before uploading. An asset attached to a release travels with that tag.
+[GitHub releases](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases),
+[release asset upload](https://cli.github.com/manual/gh_release_upload).
+
 ## Replay and retain a failed client aggregate
 
 For a completed failed GitHub attempt whose aggregate contains a failed summary
