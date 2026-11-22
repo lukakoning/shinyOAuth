@@ -1,6 +1,7 @@
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -762,6 +763,115 @@ class ReleaseArtifactTest(unittest.TestCase):
                 verifier.retain(self.args)
         self.assertFalse(self.args.retain.exists())
         self.assertEqual(list(self.args.retain.parent.glob(".openid-matrix-*")), [])
+
+    def paired_retention_fixture(self):
+        manifest = self.write_paired_fixture()
+        self.args.retain_paired = self.args.archive.parent / "retained-pair"
+        actions = f"repos/{self.args.repository}/actions"
+        run = f"{actions}/runs/{self.args.run_id}"
+        link_name = verifier.paired_link_name(self.args.attempt)
+        link_bytes = self.args.paired_link.read_bytes()
+        link_digest = hashlib.sha256(link_bytes).hexdigest()
+        responses = {
+            f"{run}/attempts/{self.args.attempt}": self.args.run_metadata.read_bytes(),
+            f"{run}/artifacts?name={link_name}&per_page=2": json.dumps({
+                "total_count": 1, "artifacts": [{"id": 14, "name": link_name, "expired": False}],
+            }).encode(),
+        }
+        for ref, data in (
+            ({"id": 14, "name": link_name, "sha256": link_digest}, link_bytes),
+            (manifest["artifacts"]["oidf"], self.args.archive.read_bytes()),
+            (manifest["artifacts"]["provider"], self.args.provider_archive.read_bytes()),
+        ):
+            endpoint = f"{actions}/artifacts/{ref['id']}"
+            responses[endpoint] = json.dumps(self.artifact | {
+                "id": ref["id"], "name": ref["name"], "digest": f"sha256:{ref['sha256']}", "expired": False,
+            }).encode()
+            responses[f"{endpoint}/zip"] = data
+        return responses, link_digest
+
+    def mock_pair_retention_replay(self, link_digest, proof=b"saved Sigstore proof\n"):
+        def try_replay(command, **options):
+            if command[:3] == ["gh", "attestation", "download"]:
+                link = Path(command[3])
+                self.assertTrue(link.is_absolute())
+                self.assertEqual(link.read_bytes(), self.args.paired_link.read_bytes())
+                separator = "-" if os.name == "nt" else ":"
+                (options["cwd"] / f"sha256{separator}{link_digest}.jsonl").write_bytes(proof)
+                return SimpleNamespace(returncode=0)
+            if command[:3] == ["gh", "attestation", "verify"]:
+                self.assertNotIn("--custom-trusted-root", command)
+                bundle = Path(command[command.index("--bundle") + 1])
+                self.assertEqual(bundle.read_bytes(), proof)
+                result = self.verified_attestation()
+                result["verificationResult"]["statement"]["subject"] = [{
+                    "name": f"{verifier.paired_link_name(self.args.attempt)}.zip",
+                    "digest": {"sha256": link_digest},
+                }]
+                return SimpleNamespace(returncode=0, stdout=json.dumps([result]).encode())
+            if command[0] == sys.executable:
+                self.assertEqual(Path(command[-1]).read_bytes(), self.args.provider_archive.read_bytes())
+                return SimpleNamespace(returncode=0, stdout=b'{"selections":[{}]}')
+            self.assertEqual(command[0], "Rscript")
+            Path(command[5]).write_bytes(json.dumps(self.summary).encode())
+            return SimpleNamespace(returncode=0, stderr="")
+
+        return patch.object(verifier.subprocess, "run", side_effect=try_replay)
+
+    def test_retains_paired_originals_and_verified_proof_by_signed_artifact_ids(self):
+        responses, digest = self.paired_retention_fixture()
+        with self.mock_github_api(responses) as api, self.mock_pair_retention_replay(digest) as replay:
+            receipt = verifier.retain_paired(self.args)
+        self.assertEqual([call.args[0] for call in api.call_args_list], list(responses))
+        self.assertEqual(replay.call_count, 4)
+        destination = self.args.retain_paired
+        for path in (self.args.run_metadata, self.args.paired_link, self.args.provider_archive, self.args.archive):
+            self.assertEqual((destination / path.name).read_bytes(), path.read_bytes())
+        self.assertEqual((destination / "attestation.jsonl").read_bytes(), b"saved Sigstore proof\n")
+        self.assertEqual(json.loads((destination / "receipt.json").read_bytes()), receipt)
+        self.assertEqual(json.loads((destination / "link-artifact.json").read_bytes())["id"], 14)
+        self.assertEqual(json.loads((destination / "provider-artifact.json").read_bytes())["id"], 13)
+        self.assertTrue((destination / "release-report.md").is_file())
+        self.assertEqual(len(list(destination.iterdir())), 10)
+        with patch.object(verifier, "github_api") as api:
+            with self.assertRaisesRegex(ValueError, "destination already exists"):
+                verifier.retain_paired(self.args)
+        api.assert_not_called()
+
+    def test_paired_retention_rejects_a_changed_link_or_missing_proof_before_aggregates(self):
+        for changed_link in (True, False):
+            responses, digest = self.paired_retention_fixture()
+            link_endpoints = list(responses)[:4]
+            responses = {endpoint: responses[endpoint] for endpoint in link_endpoints}
+            error = "Expected a downloaded Sigstore bundle"
+            if changed_link:
+                responses[link_endpoints[-1]] += b"changed"
+                error = "Paired link ZIP differs from the GitHub SHA-256 digest"
+            with self.subTest(changed_link=changed_link), self.mock_github_api(responses) as api:
+                with self.mock_pair_retention_replay(digest, proof=b"") as replay:
+                    with self.assertRaisesRegex(ValueError, error):
+                        verifier.retain_paired(self.args)
+            self.assertEqual(replay.call_count, 0 if changed_link else 1)
+            self.assertEqual([call.args[0] for call in api.call_args_list], link_endpoints)
+            self.assertFalse(self.args.retain_paired.exists())
+
+    def test_paired_retention_rejects_provider_metadata_or_bytes_that_differ_from_the_link(self):
+        for changed_metadata in (True, False):
+            responses, digest = self.paired_retention_fixture()
+            metadata, archive = list(responses)[-2:]
+            if changed_metadata:
+                responses[metadata] = json.dumps(json.loads(responses[metadata]) | {"digest": "sha256:" + "0" * 64}).encode()
+                del responses[archive]
+            else:
+                responses[archive] += b"changed"
+            with self.subTest(changed_metadata=changed_metadata), self.mock_github_api(responses) as api:
+                with self.mock_pair_retention_replay(digest) as replay:
+                    with self.assertRaisesRegex(ValueError, "Artifact identity, digest|Provider aggregate ZIP differs"):
+                        verifier.retain_paired(self.args)
+            self.assertEqual(replay.call_count, 2)
+            self.assertEqual([call.args[0] for call in api.call_args_list], list(responses))
+            self.assertFalse(self.args.retain_paired.exists())
+            self.assertEqual(list(self.args.retain_paired.parent.glob(".openid-matrix-*")), [])
 
 
 if __name__ == "__main__":
