@@ -26,10 +26,11 @@ table](https://lukakoning.github.io/integration/openid/release-evidence/45017983
     matrix with signing is in progress. Later provider and platform
     validations keep their own revision and scope until companion
     evidence is available for the chosen release. The four
-    `oidc-provider` browser profiles now have an independent
-    same-revision verifier in CI. [Provider evidence
-    instructions](https://lukakoning.github.io/integration/oidc-provider/README.md).
-    [Signing-enabled
+    `oidc-provider` browser profiles have a source verifier in CI. The
+    first run covering all eight provider selections has started at
+    `8d5f112`. [Provider
+    matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/45032877223),
+    [signing-enabled OIDF
     matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/45030528151).
 3.  The selected FAPI manual-initiation case samples the app queue and
     state store before a trusted Chrome click with transient activation.
@@ -3511,6 +3512,13 @@ from the expected commit and checks the source inventory, fixture
 hashes, installation archive and scenario evidence. Provider results
 stay scoped to the tested revision and selection. [Release
 review](https://lukakoning.github.io/integration/openid/release-review.html#provider-report-replay-2026-11-22).
+
+SA08 provider release matrix (2026-11-22). `8d5f112` runs the eight
+browser selections at one commit and checks their current-attempt
+reports before publishing a summary with original report hashes. The
+checker rejected a set assembled from three source revisions. The first
+hosted matrix is in progress. [Release
+review](https://lukakoning.github.io/integration/openid/release-review.html#declared-provider-release-matrix-2026-11-22).
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
