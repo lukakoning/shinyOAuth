@@ -1,6 +1,17 @@
 **shinyOAuth protocol quality: implementation plan**
 
-**Execution priorities (2026-11-22).** The first complete hosted OIDF matrix
+**Current execution focus (2026-11-22).** Prioritize direct evidence for
+OAuth and OIDC client requirements that still lack a live test. Exercise the
+package's public API and record the protocol request, provider response and
+application outcome. Use the pinned OIDF plan where it has a matching case
+and the independent provider for focused browser scenarios.
+
+The [OIDC authentication-age browser case](../integration/oidc-provider/README.md#authentication-age)
+covers `max_age=0` and signed `auth_time` validation on a fresh login. The
+[OIDC requirement map](../integration/openid/requirements-oidc.md) tracks the
+remaining case with an existing provider session.
+
+**Release evidence status (2026-11-22).** The first complete hosted OIDF matrix
 passed all 39 declared selections and the aggregate at
 `92bedf1d7c6dc87996232289acd39b89b9c554ae`. The retained bundle passed
 independent replay of 39 client, 39 preflight and 39 API reports. The

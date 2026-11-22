@@ -214,6 +214,24 @@ protocol oracle. The [workflow](../../.github/workflows/oidc-provider.yml) runs
 basic sync on relevant pull requests and offers basic/advanced/resources/retention with sync/mirai
 through manual dispatch.
 
+## Authentication age
+
+The confidential query case uses `max_age=0` on a fresh Chrome profile. The
+provider records the value received by its PAR endpoint and confirms that the
+same PKCE challenge reached authorization. The provider records `auth_time`
+from its signed ID token. The app reports the claim after shinyOAuth validates
+the token. The test requires the two claim values to match and the authentication
+time to fall between the actual login interaction and code issuance.
+Reauthentication with an existing provider session remains open.
+[OIDC Core authorization request](https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest),
+[ID-token validation](https://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation).
+
+All four basic cases passed with both transports at `15d50747`. The reports
+include the received `max_age`, the PKCE match and the validated `auth_time`
+for the confidential query case.
+[Sync run](https://github.com/lukakoning/shinyOAuth/actions/runs/45039067494),
+[mirai run](https://github.com/lukakoning/shinyOAuth/actions/runs/45039067378).
+
 ## Run the provider release matrix
 
 Dispatch the matrix on the branch or tag for the revision you want to test.
