@@ -10,9 +10,10 @@ and GitHub. The FAPI pre-click test passed on Windows.
 [configuration validation record](../integration/openid/release-review.md#configuration-rotation-snapshots-2026-11-22).
 
 1. Track the 39-selection matrix at `92bedf1d7c6dc87996232289acd39b89b9c554ae`.
-   Record each failed job's stage and source revision. Failed aggregates retain
-   a diagnostic row and available input hashes per declared selection
-   (`6a893c0`). [Matrix with configuration correction](https://github.com/lukakoning/shinyOAuth/actions/runs/45017983714).
+   Record each failed job's stage and source revision. Use `--failed-attempt`
+   to retain and replay a failed client aggregate with selection diagnostics.
+   [Matrix with configuration correction](https://github.com/lukakoning/shinyOAuth/actions/runs/45017983714),
+   [diagnostic retention](../integration/openid/release-matrix.md#replay-and-retain-a-failed-client-aggregate).
 2. Use the [retention command](../integration/openid/release-matrix.md#verify-and-retain-a-completed-attempt)
    to collect the first successful matrix. It checks the ZIP digest, replays
    the aggregate and verifies all preflight and API inventories before saving
@@ -3041,6 +3042,12 @@ selections and the targeted FAPI selection passed local browser execution and
 independent evidence replay. Both hosted configuration selections produced
 verified artifacts. The full matrix was dispatched at the same revision.
 [Release review](../integration/openid/release-review.md#configuration-rotation-snapshots-2026-11-22).
+
+SA08 failed-attempt retention (2026-11-22). `6cd5246` replays failed client
+aggregates against their original client inputs and source revision. The
+two recent failed hosted aggregates reproduced all 39 selection diagnostics
+and were retained with `gate_passed = false`.
+[Release review](../integration/openid/release-review.md#failed-client-aggregate-retention-2026-11-22).
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that gate works,
 extend it to FAPI 2.0, then add `oidc-provider` for interoperability with a second

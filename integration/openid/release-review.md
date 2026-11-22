@@ -641,3 +641,26 @@ A new 39-selection matrix was dispatched at `92bedf1d7c6dc87996232289acd39b89b9c
 Release qualification awaits the selection verdicts, companion checks and
 aggregate replay for this revision.
 [Matrix with configuration correction](https://github.com/lukakoning/shinyOAuth/actions/runs/45017983714).
+
+## Failed client aggregate retention, 2026-11-22
+
+`6cd5246` adds `--failed-attempt` to the matrix artifact verifier. It checks
+the original ZIP digest and uses the original input hashes to replay the
+client reports in order. The tool compares the stored failure summary with
+the recomputed result and retains both the original ZIP and a receipt with
+`gate_passed = false` and `matrix_complete = false`.
+
+The retention command reproduced all 39 diagnostic rows for each of two
+hosted attempts. ZIP `14715958089` at `98362fc` had 37 passing rows and two
+reported failures. ZIP `14715443641` at `4447159` had 34 passing rows and five
+reported failures. The retained bundles stay under
+`.artifacts/retained-failed-matrix-44916619030-1/` and
+`.artifacts/retained-failed-matrix-44915531642-1/`.
+[37 passing rows](https://github.com/lukakoning/shinyOAuth/actions/runs/44916619030),
+[34 passing rows](https://github.com/lukakoning/shinyOAuth/actions/runs/44915531642).
+
+All 15 Python tests passed. The real R checker replayed a synthetic failed
+archive with all 39 client reports missing. Default offline verification
+also passed a separate synthetic archive with all 39 client and 78 companion
+reports. Offline replay of ZIP `14715958089` reproduced the retained JSON
+receipt. [Diagnostic retention instructions](release-matrix.md#replay-and-retain-a-failed-client-aggregate).

@@ -141,6 +141,25 @@ receipt's trust source.
 See the [run-attempt API](https://docs.github.com/en/rest/actions/workflow-runs#get-a-workflow-run-attempt)
 and [artifact API](https://docs.github.com/en/rest/actions/artifacts#get-an-artifact).
 
+## Replay and retain a failed client aggregate
+
+For a completed failed GitHub attempt whose aggregate contains a failed summary
+with selection diagnostics, add `--failed-attempt` to the retention command.
+
+```sh
+python integration/openid/verify-release-artifact.py --repository OWNER/REPO --revision FULL_COMMIT_SHA --run-id RUN_ID --attempt ATTEMPT_NUMBER --failed-attempt --retain "PATH_TO_NEW_BUNDLE"
+```
+
+The verifier checks the original ZIP digest, matches the client reports to the
+summary's input hashes, and restores their original order before replaying
+the release checker. The saved receipt must match the replayed diagnostics,
+including missing and duplicate selections. A successful diagnostic replay
+records `gate_passed = false` and `matrix_complete = false`. The original ZIP
+also retains any uploaded companion reports.
+
+To recheck the saved bundle without GitHub access, use the offline replay
+command with `--failed-attempt` and the bundle's three original inputs.
+
 ## Interpret the result
 
 `matrix_complete = true` means all declared OIDF client selections passed their
