@@ -56,6 +56,7 @@ export function fixture(config) {
   const observeAuthenticationTime = config.observe_authentication_time === true;
   const epochSeconds = () => Math.floor(Date.now() / 1000);
   let challenge;
+  let maxAgeValues;
   let codeDigest;
   const issued = new Set();
   let currentAccess;
@@ -80,7 +81,7 @@ export function fixture(config) {
       pkce_s256: params.code_challenge_method === 'S256' && /^[A-Za-z0-9_-]{43}$/.test(challenge),
       state_present: typeof params.state === 'string' && params.state.length >= 22,
       nonce_present: typeof params.nonce === 'string' && params.nonce.length >= 16,
-      ...(observeAuthenticationTime ? { max_age: params.max_age ?? null } : {}),
+      ...(observeAuthenticationTime ? { max_age_values: maxAgeValues ?? [] } : {}),
       ...(resources ? resourceFacts(ctx, config) : {}),
     });
   });
@@ -151,7 +152,12 @@ export function fixture(config) {
   });
   const callback = provider.callback();
   const handler = async (req, res) => {
-    const path = new URL(req.url, config.issuer).pathname;
+    const url = new URL(req.url, config.issuer);
+    const path = url.pathname;
+    if (observeAuthenticationTime && path === '/authorize' && req.method === 'GET' &&
+        url.searchParams.has('code_challenge')) {
+      maxAgeValues = url.searchParams.getAll('max_age');
+    }
     if (path === '/api/server' && req.method === 'GET') {
       res.setHeader('content-type', 'application/json');
       res.end(JSON.stringify({ provider: 'oidc-provider', version, node_version: process.version, ready: true }));

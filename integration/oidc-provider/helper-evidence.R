@@ -103,8 +103,8 @@ interop_provider_matches <- function(provider, row, lock, selection) {
     code_issued <- events[[5L]][["code_issued_at"]]
     if (
       !identical(
-        as.character(events[[4L]][["max_age"]]),
-        as.character(max_age)
+        events[[4L]][["max_age_values"]],
+        list(as.character(max_age))
       ) ||
         !all(vapply(
           list(observed, validated, login_started, code_issued),
