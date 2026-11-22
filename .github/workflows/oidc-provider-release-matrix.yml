@@ -2,6 +2,14 @@ name: oidc-provider release matrix
 
 on:
   workflow_dispatch:
+  workflow_call:
+    outputs:
+      evidence_id:
+        value: ${{ jobs.aggregate.outputs.evidence_id }}
+      evidence_digest:
+        value: ${{ jobs.aggregate.outputs.evidence_digest }}
+      evidence_attempt:
+        value: ${{ jobs.aggregate.outputs.evidence_attempt }}
 
 permissions:
   contents: read
@@ -39,6 +47,10 @@ jobs:
     needs: selections
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    outputs:
+      evidence_id: ${{ steps.evidence.outputs.artifact-id }}
+      evidence_digest: ${{ steps.evidence.outputs.artifact-digest }}
+      evidence_attempt: ${{ steps.identity.outputs.attempt }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - name: Download reports for the current attempt
@@ -55,6 +67,7 @@ jobs:
             --reports integration/oidc-provider/.artifacts/release-inputs \
             --write-summary integration/oidc-provider/.artifacts/release-summary.json
       - name: Retain the verified report set
+        id: evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: oidc-provider-release-evidence-attempt-${{ github.run_attempt }}
@@ -64,3 +77,6 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 90
+      - name: Record the verified evidence attempt
+        id: identity
+        run: echo "attempt=$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"

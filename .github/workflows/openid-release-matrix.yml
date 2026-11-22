@@ -7,6 +7,10 @@ on:
         description: Run report checker and matrix policy tests only
         type: boolean
         default: false
+      provider_companions:
+        description: Run the provider browser matrix at the same commit and attest the linked evidence
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -23,7 +27,9 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Test release report verification
-        run: python3 -B integration/openid/test-release-artifact.py -v
+        run: |
+          python3 -B integration/openid/test-release-artifact.py -v
+          python3 -B integration/openid/test-paired-evidence.py -v
 
       - name: Set up R
         uses: r-lib/actions/setup-r@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
@@ -61,12 +67,18 @@ jobs:
       profile: ${{ matrix.profile }}
       transport: ${{ matrix.transport }}
 
+  provider:
+    if: ${{ inputs.provider_companions && !inputs.report_checks_only }}
+    needs: prepare
+    uses: ./.github/workflows/oidc-provider-release-matrix.yml
+
   aggregate:
     if: ${{ always() && !inputs.report_checks_only && needs.prepare.result == 'success' }}
     needs: [prepare, selections]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     outputs:
+      evidence_id: ${{ steps.evidence.outputs.artifact-id }}
       evidence_digest: ${{ steps.evidence.outputs.artifact-digest }}
       evidence_attempt: ${{ steps.identity.outputs.attempt }}
     steps:
@@ -140,8 +152,40 @@ jobs:
         id: identity
         run: echo "attempt=$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
 
+  paired_evidence:
+    if: ${{ inputs.provider_companions && !inputs.report_checks_only }}
+    needs: [aggregate, provider]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      evidence_digest: ${{ steps.evidence.outputs.artifact-digest }}
+      evidence_attempt: ${{ steps.identity.outputs.attempt }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - name: Bind the verified aggregates from this attempt
+        env:
+          OIDF_ID: ${{ needs.aggregate.outputs.evidence_id }}
+          OIDF_DIGEST: ${{ needs.aggregate.outputs.evidence_digest }}
+          OIDF_ATTEMPT: ${{ needs.aggregate.outputs.evidence_attempt }}
+          PROVIDER_ID: ${{ needs.provider.outputs.evidence_id }}
+          PROVIDER_DIGEST: ${{ needs.provider.outputs.evidence_digest }}
+          PROVIDER_ATTEMPT: ${{ needs.provider.outputs.evidence_attempt }}
+        run: python3 integration/openid/record-paired-evidence.py > paired-release-evidence.json
+      - name: Retain the link between the two aggregates
+        id: evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: openid-provider-release-link-attempt-${{ github.run_attempt }}
+          path: paired-release-evidence.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Record the verified evidence attempt
+        id: identity
+        run: echo "attempt=$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
+
   attest:
-    needs: aggregate
+    if: ${{ !cancelled() && needs.aggregate.result == 'success' && (!inputs.provider_companions || needs.paired_evidence.result == 'success') }}
+    needs: [aggregate, paired_evidence]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -153,9 +197,16 @@ jobs:
         env:
           EVIDENCE_ATTEMPT: ${{ needs.aggregate.outputs.evidence_attempt }}
           EVIDENCE_DIGEST: ${{ needs.aggregate.outputs.evidence_digest }}
+          PAIRED_ENABLED: ${{ inputs.provider_companions }}
+          PAIRED_ATTEMPT: ${{ needs.paired_evidence.outputs.evidence_attempt }}
+          PAIRED_DIGEST: ${{ needs.paired_evidence.outputs.evidence_digest }}
         run: |
           if [[ "$EVIDENCE_ATTEMPT" != "$GITHUB_RUN_ATTEMPT" || ! "$EVIDENCE_DIGEST" =~ ^[0-9a-f]{64}$ ]]; then
             echo "A verified aggregate from this attempt is required. Re-run all jobs."
+            exit 1
+          fi
+          if [[ "$PAIRED_ENABLED" == true ]] && [[ "$PAIRED_ATTEMPT" != "$GITHUB_RUN_ATTEMPT" || ! "$PAIRED_DIGEST" =~ ^[0-9a-f]{64}$ ]]; then
+            echo "A verified paired release link from this attempt is required. Re-run all jobs."
             exit 1
           fi
 
@@ -164,4 +215,12 @@ jobs:
         with:
           subject-name: openid-declared-matrix-evidence-attempt-${{ github.run_attempt }}.zip
           subject-digest: sha256:${{ needs.aggregate.outputs.evidence_digest }}
+          create-storage-record: false
+
+      - name: Attest the paired release link ZIP
+        if: ${{ inputs.provider_companions }}
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: openid-provider-release-link-attempt-${{ github.run_attempt }}.zip
+          subject-digest: sha256:${{ needs.paired_evidence.outputs.evidence_digest }}
           create-storage-record: false
