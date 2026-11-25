@@ -1,30 +1,36 @@
 # shinyOAuth (development version)
 
-* Fixed OIDC refresh failures when restored authorization scope history is
-  decoded as a list.
+* When shinyOAuth rejects a login callback, `oauth_ui()`, `oauth_form_post_ui()`
+  and `oauth_connections_ui()` now redirect the browser before showing the
+  error, clearing sensitive callback data such as authorization codes from the
+  address bar.
 
-* Discovery defers ID token algorithm compatibility and conflicts in optional
-  JARM metadata until client setup. An mTLS alias outside the host allowlist
-  blocks requests that select it. SMART clients require asymmetric signing and
-  identity metadata when they select those features.
+* Fixed an OpenID Connect token refresh failure after restoring a saved
+  authorization with `offline_access` consent.
 
-* OAuth and OIDC discovery now accept providers that advertise JWT client
-  authentication with missing signing algorithms. Operations that need a
-  missing algorithm list fail when the client selects JWT authentication (#27).
+* Apps using HTTP Basic can now discover providers that advertise JWT client
+  authentication without listing its signing algorithms (#27). Discovery also
+  accepts conflicting settings for signed or encrypted authorization responses
+  (JARM) when the app leaves the affected feature unused. Standard OpenID
+  Connect discovery now reports incompatible ID token signing algorithms when
+  you set up a client that validates ID tokens.
 
-* Added a declared OpenID client conformance matrix and release evidence
-  workflow. Verified bundles include a per-profile summary of suite verdicts
-  and coverage limits. Weekly CI runs the full OpenID and provider browser
-  matrices. Manual runs can sign and retain evidence for a selected commit.
+* Discovery can now succeed when a provider advertises an unused mutual TLS
+  (mTLS) endpoint on a host your app hasn't allowed. If your app needs that
+  endpoint, its host must pass the app's host policy.
 
-* OAuth and OIDC discovery now match advertised client authentication and PKCE
-  methods case-sensitively. Incorrectly cased identifiers no longer count as
-  supported methods; caller option spelling remains unchanged.
+* `smart_discover()` now works with SMART on FHIR providers that publish
+  incomplete metadata for optional features. `smart_client()` checks the
+  required metadata when you request OpenID Connect identity or private-key
+  authentication.
 
-* Advertised response modes now retain their exact case and whitespace through
-  discovery, provider configuration and login-state binding. A capability such
-  as `FORM_POST` no longer authorizes `form_post`; caller `response_mode`
-  options keep their existing normalization.
+* OAuth and OpenID Connect discovery now match advertised client authentication
+  and PKCE methods case-sensitively. Advertised response modes also require
+  exact case and spacing. Use the protocol spelling, such as `form_post`, in
+  discovery metadata and when listing supported modes in `oauth_provider()`.
+
+* Discovery now ignores vendor-specific signing and encryption metadata, so
+  providers can use their own conventions in those fields.
 
 # shinyOAuth 0.8.0
 
