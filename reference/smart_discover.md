@@ -52,16 +52,18 @@ endpoint/issuer strings are retained exactly.
 This is separate from
 [`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md).
 OAuth-only SMART metadata need not contain OIDC issuer or signing-key
-information. Advertised `sso-openid-connect` requires both `issuer` and
-`jwks_uri`; their presence does not validate an identity or fetch OIDC
-metadata or keys.
+information.
+[`smart_client()`](https://lukakoning.github.io/shinyOAuth/reference/smart_client.md)
+requires `issuer` and `jwks_uri` when the client selects OpenID Connect
+identity.
 
-Required SMART fields, conditional launch/SSO fields, and advertised
-asymmetric-authentication metadata are checked. S256 must be advertised
-and plain PKCE is rejected. Client-specific capability, scope, key and
-algorithm selection belongs to the application's registration
-configuration. `scopes_supported` is informative, not an exhaustive
-permission allowlist. Its array may be empty. An empty
+Discovery checks required SMART fields, conditional launch fields and
+the format of optional metadata. S256 must be advertised and plain PKCE
+is rejected.
+[`smart_client()`](https://lukakoning.github.io/shinyOAuth/reference/smart_client.md)
+checks metadata required for the selected registration, including
+asymmetric client authentication. `scopes_supported` is informative, not
+an exhaustive permission allowlist. Its array may be empty. An empty
 `token_endpoint_auth_methods_supported` array permits public
 registrations; confidential registrations still require their selected
 method whenever that array is present.

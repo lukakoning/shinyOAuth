@@ -81,7 +81,8 @@ OAuthProvider(
   tls_client_certificate_bound_access_tokens = NULL,
   token_target_mode = "none",
   token_response_scope_format = "space",
-  userinfo_id_selector_policy_id = NA_character_
+  userinfo_id_selector_policy_id = NA_character_,
+  discovery_problems = character(0)
 )
 ```
 
@@ -587,6 +588,13 @@ OAuthProvider(
   character vectors (or `NULL` for omitted metadata). Discovery retains
   these fields and applies the RFC 8414 Basic-auth default for omitted
   revocation methods. Omitted introspection methods have no default.
+  Discovery also records missing algorithm lists for JWT authentication
+  so they can be checked when the client selects that method.
+
+- discovery_problems:
+
+  Named character vector of configuration problems recorded by discovery
+  for features that need additional validation.
 
 - allowed_algs:
 

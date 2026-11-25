@@ -133,7 +133,8 @@ endpoint and validation settings.</p>
 <span>  tls_client_certificate_bound_access_tokens <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  token_target_mode <span class="op">=</span> <span class="st">"none"</span>,</span>
 <span>  token_response_scope_format <span class="op">=</span> <span class="st">"space"</span>,</span>
-<span>  userinfo_id_selector_policy_id <span class="op">=</span> <span class="cn">NA_character_</span></span>
+<span>  userinfo_id_selector_policy_id <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
+<span>  discovery_problems <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -600,7 +601,14 @@ duplicate <code>iss</code> members are rejected. Defaults to <code>FALSE</code>.
 <code>revocation</code> authentication metadata. Each entry has <code>methods</code> and
 <code>signing_algs</code> character vectors (or <code>NULL</code> for omitted metadata).
 Discovery retains these fields and applies the RFC 8414 Basic-auth default
-for omitted revocation methods. Omitted introspection methods have no default.</p></dd>
+for omitted revocation methods. Omitted introspection methods have no default.
+Discovery also records missing algorithm lists for JWT authentication so
+they can be checked when the client selects that method.</p></dd>
+
+
+<dt id="arg-discovery-problems">discovery_problems<a class="anchor" aria-label="anchor" href="#arg-discovery-problems"></a></dt>
+<dd><p>Named character vector of configuration problems
+recorded by discovery for features that need additional validation.</p></dd>
 
 
 <dt id="arg-allowed-algs">allowed_algs<a class="anchor" aria-label="anchor" href="#arg-allowed-algs"></a></dt>

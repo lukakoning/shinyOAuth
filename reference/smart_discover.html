@@ -100,13 +100,13 @@ policy), and <code>allow_http_loopback</code>. Invalid input or endpoint policy 
 slash first. The supplied base and returned endpoint/issuer strings are
 retained exactly.</p>
 <p>This is separate from <code><a href="oauth_provider_oidc_discover.html">oauth_provider_oidc_discover()</a></code>. OAuth-only SMART
-metadata need not contain OIDC issuer or signing-key information. Advertised
-<code>sso-openid-connect</code> requires both <code>issuer</code> and <code>jwks_uri</code>; their presence
-does not validate an identity or fetch OIDC metadata or keys.</p>
-<p>Required SMART fields, conditional launch/SSO fields, and advertised
-asymmetric-authentication metadata are checked. S256 must be advertised and
-plain PKCE is rejected. Client-specific capability, scope, key and algorithm
-selection belongs to the application's registration configuration.
+metadata need not contain OIDC issuer or signing-key information.
+<code><a href="smart_client.html">smart_client()</a></code> requires <code>issuer</code> and <code>jwks_uri</code> when the client selects
+OpenID Connect identity.</p>
+<p>Discovery checks required SMART fields, conditional launch fields and the
+format of optional metadata. S256 must be advertised and plain PKCE is
+rejected. <code><a href="smart_client.html">smart_client()</a></code> checks metadata required for the selected
+registration, including asymmetric client authentication.
 <code>scopes_supported</code> is informative, not an exhaustive permission allowlist.
 Its array may be empty. An empty <code>token_endpoint_auth_methods_supported</code>
 array permits public registrations; confidential registrations still require
