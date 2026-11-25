@@ -136,6 +136,11 @@ run_smart_sandbox <- function(args = commandArgs(trailingOnly = TRUE)) {
     error = identity
   )
   discovery_accepted <- !inherits(discovery_probe, "error")
+  asymmetric_probe <- if (discovery_accepted) {
+    tryCatch(smart_sandbox_asymmetric_client(discovery_probe), error = identity)
+  }
+  asymmetric_accepted <- discovery_accepted &&
+    !inherits(asymmetric_probe, "error")
   fhir <- smart_sandbox_json(paste0(urls[["raw_fhir"]], "/metadata"))
   launcher_version <- jsonlite::fromJSON(
     compose(c("exec", "-T", "launcher", "cat", "package.json"))[["stdout"]]
@@ -148,6 +153,14 @@ run_smart_sandbox <- function(args = commandArgs(trailingOnly = TRUE)) {
     sandbox_discovery_accepted = discovery_accepted,
     discovery_error_class = if (!discovery_accepted) {
       class(discovery_probe)[[1L]]
+    } else {
+      NULL
+    },
+    sandbox_asymmetric_registration_accepted = asymmetric_accepted,
+    asymmetric_registration_error_class = if (
+      inherits(asymmetric_probe, "error")
+    ) {
+      class(asymmetric_probe)[[1L]]
     } else {
       NULL
     },
@@ -193,7 +206,7 @@ run_smart_sandbox <- function(args = commandArgs(trailingOnly = TRUE)) {
   passed <- all(totals[c("failed", "error", "skipped")] == 0) &&
     totals[["passed"]] > 0
   evidence[["status"]] <- if (passed) "passed" else "failed"
-  evidence[["discovery_release_gate"]] <- if (passed && discovery_accepted) {
+  evidence[["discovery_release_gate"]] <- if (passed && asymmetric_accepted) {
     "passed"
   } else {
     "not_met"
@@ -210,13 +223,13 @@ run_smart_sandbox <- function(args = commandArgs(trailingOnly = TRUE)) {
   if (!passed) {
     stop("SMART sandbox tests require zero failures, errors and skips")
   }
-  if (!discovery_accepted) {
+  if (!asymmetric_accepted) {
     message(
       "Sandbox discovery acceptance gate is NOT MET; see sandbox.md and evidence.json"
     )
     if ("--require-compatible-discovery" %in% args) {
       stop(
-        "The pinned sandbox does not pass strict SMART discovery; release acceptance is required"
+        "The pinned sandbox does not support asymmetric SMART client setup"
       )
     }
   }

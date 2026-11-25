@@ -89,9 +89,9 @@ ordinary OAuth matrix. Evidence records the selected method and keeps synthetic 
 separate from external SMART conformance. Run without `--post` to verify the GET
 default. `--quick --post` runs only three SMART scenarios and is diagnostic.
 
-The unmodified Docker sandbox still fails strict discovery because its
-asymmetric authentication advertisement omits the required algorithm list.
-An external POST app flow has consequently not run. Once a compatible deployment
+The unmodified Docker sandbox passes discovery. Its asymmetric authentication
+advertisement omits the algorithm list required for asymmetric client setup.
+The external POST app flow remains open. Once a compatible deployment
 is available, repeat standalone/EHR and retained two-site scenarios using both
 outgoing methods, including POST in independent client verification. See [coverage and open external gates](coverage.md).
 

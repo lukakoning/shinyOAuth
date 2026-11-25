@@ -126,7 +126,7 @@ registration profile with EHR initiation, retained two-site connections and
 actual upstream verification results. Its simulator metadata/nonce corrections
 are explicit, and the client still validates signatures and claims. Repeating
 the applicable scenarios against an unmodified vendor or the
-[official sandbox](sandbox.md) remains open. The pinned Launcher advertises
-asymmetric support without required algorithm metadata; strict discovery still
-rejects it. Neither local fixture nor corrected Inferno results substitute for
-that unmodified-server acceptance gate.
+[official sandbox](sandbox.md) remains open. The pinned Launcher passes
+discovery. It advertises asymmetric support without the algorithm metadata
+required to set up an asymmetric client. The acceptance gate requires setup
+against the unmodified server.

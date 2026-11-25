@@ -1,4 +1,4 @@
-testthat::test_that("smart_discover identifies the pinned Launcher's missing algorithm metadata", {
+testthat::test_that("the pinned Launcher supports discovery and rejects incomplete asymmetric setup", {
   urls <- smart_sandbox_urls()
   metadata <- smart_sandbox_json(paste0(
     urls[["fhir"]],
@@ -13,14 +13,23 @@ testthat::test_that("smart_discover identifies the pinned Launcher's missing alg
   testthat::expect_null(
     metadata[["token_endpoint_auth_signing_alg_values_supported"]]
   )
-  # This is evidence of correct rejection, not a passing interoperability gate.
-  # Upstream revision and running image both omit the required algorithm list.
-  # Keep the response unchanged; do not strip the capability or inject RS384.
   for (base in c(urls[["fhir"]], paste0(urls[["fhir"]], "/"))) {
+    discovery <- shinyOAuth::smart_discover(base, allow_http_loopback = TRUE)
+    testthat::expect_identical(discovery[["fhir_base"]], base)
+    testthat::expect_identical(discovery[["metadata"]], metadata)
+    testthat::expect_s7_class(
+      shinyOAuth::smart_client(
+        discovery,
+        client_id = "sandbox-discovery-check",
+        redirect_uri = "http://localhost:18413/callback",
+        scopes = "profile"
+      ),
+      shinyOAuth::OAuthClient
+    )
     testthat::expect_error(
-      shinyOAuth::smart_discover(base, allow_http_loopback = TRUE),
-      "token_endpoint_auth_signing_alg_values_supported",
-      class = "shinyOAuth_parse_error"
+      smart_sandbox_asymmetric_client(discovery),
+      "advertised RS384 or ES384",
+      class = "shinyOAuth_config_error"
     )
   }
   testthat::expect_error(
@@ -131,9 +140,30 @@ testthat::test_that("SMART discovery validates real HTTP fixtures before accepti
     )
   }
   testthat::expect_identical(discover("valid")[["metadata"]], minimal)
-  for (scenario in c("missing", "plain", "sso", "duplicate")) {
+  for (scenario in c("missing", "plain", "duplicate")) {
     testthat::expect_error(discover(scenario), class = "shinyOAuth_parse_error")
   }
+  sso <- discover("sso")
+  testthat::expect_s7_class(
+    shinyOAuth::smart_client(
+      sso,
+      client_id = "discovery-check",
+      redirect_uri = "https://app.example/callback",
+      scopes = "profile"
+    ),
+    shinyOAuth::OAuthClient
+  )
+  testthat::expect_error(
+    shinyOAuth::smart_client(
+      sso,
+      client_id = "discovery-check",
+      redirect_uri = "https://app.example/callback",
+      scopes = character(),
+      identity = "openid"
+    ),
+    "requires issuer",
+    class = "shinyOAuth_config_error"
+  )
   for (scenario in c("relative", "offhost")) {
     testthat::expect_error(
       discover(scenario),

@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       require_compatible_discovery:
-        description: Require the positive external discovery gate (currently unmet by the pinned launcher)
+        description: Require discovery and asymmetric client setup with the pinned launcher
         type: boolean
         default: false
   pull_request:

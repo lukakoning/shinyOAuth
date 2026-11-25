@@ -103,11 +103,10 @@ are independent. Ordinary OAuth POST is also exercised by
 
 The official SMART Dev Sandbox uses an unmodified, digest-pinned Launcher v2.
 Its discovery still advertises asymmetric authentication without the required
-algorithm list. Strict `smart_discover()` rejects it before constructing a
-client or sending app credentials. Its FHIR proxy also permits uncredentialed
-reads. Therefore its 46 diagnostic checks establish metadata rejection,
-connectivity and synthetic data availability; they establish neither a complete
-SMART app flow nor resource authorization enforcement.
+algorithm list. `smart_discover()` accepts the snapshot. Public client setup
+succeeds, and asymmetric client setup rejects the missing metadata. Its FHIR
+proxy permits uncredentialed reads. The sandbox diagnostics cover metadata,
+client setup, connectivity and synthetic data availability.
 
 ## Independent client verification and unmodified external interoperability
 
@@ -139,12 +138,12 @@ result explaining the simulator corrections. The old unconditional
 `external_app_interoperability: not_implemented` placeholder is removed.
 It does not require every candidate sandbox to accept discovery: an unrelated
 Launcher defect cannot invalidate Inferno's request-verification results.
-Use `run-tests.R --require-compatible-discovery` for the separate strict Launcher
-discovery requirement. Neither gate treats diagnostic connectivity as app proof.
+Use `run-tests.R --require-compatible-discovery` to require both discovery and
+asymmetric client setup with the unmodified Launcher.
 
 | External scenario | Current status | What is still needed |
 | --- | --- | --- |
-| SMART discovery | Strictly accepted by corrected local Inferno; unmodified Launcher/hosted Inferno blockers remain | Compatible unmodified deployment and positive strict discovery. |
+| SMART discovery and client setup | Corrected local Inferno passes. The unmodified Launcher passes discovery and public setup. | Asymmetric setup with the unmodified Launcher and a compatible hosted Inferno deployment. |
 | Standalone, Patient/Practitioner and retained two-site connections | Implemented with actual Shiny actions and Inferno verification | Unmodified server/vendor qualification; the two Inferno instances use the same implementation. |
 | EHR entry for public/symmetric/RS384/ES384 registrations | Implemented using Inferno-generated launch URLs and per-registration verification | Unmodified vendor EHR validation; account/session-only EHR entry remains outside current support. |
 | SMART refresh narrowing | Inferno responses and retained client scope policy checked; Microsoft FHIR gate independently enforces Patient read/search permissions | Inferno does not enforce permissions or rotate refresh tokens; vendor and granular-scope qualification remain separate. |
@@ -153,7 +152,8 @@ discovery requirement. Neither gate treats diagnostic connectivity as app proof.
 | P6 shared issuer/resource topology | Generic strict fixture coverage | Separately configured external registrations and resource destinations. |
 | Inferno STU2.2 client suite | Pinned deployment, actual client verifier and sanitized evidence implemented | Qualify an upstream release with the simulator corrections; no hosted or certification pass is claimed. |
 
-On 2026-09-12 the strict sandbox gate was rerun against these pinned images:
+Before validation moved to client setup, the strict sandbox gate ran against
+these pinned images on 2026-09-12:
 all 46 diagnostic assertions passed, but `sandbox_discovery_accepted` remained
 false and the required gate exited unsuccessfully. The unmodified launcher
 still omits `token_endpoint_auth_signing_alg_values_supported`. No external app

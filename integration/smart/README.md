@@ -54,9 +54,9 @@ runner cleans up its own containers and data volumes.
 The strict local fixtures exercise package behavior. Inferno independently
 verifies client requests, but its two documented simulator corrections mean
 this is not an unmodified external or vendor interoperability result. The
-official SMART Launcher's missing asymmetric signing-algorithm advertisement
-still prevents strict discovery; passing its diagnostic rejection checks does
-not establish an application flow. Use `run-tests.R --require-compatible-discovery`
-to require a positive external discovery result. See [sandbox.md](sandbox.md),
+official SMART Launcher passes discovery and public client setup. Its missing
+signing-algorithm advertisement blocks asymmetric client setup. The sandbox
+diagnostics cover setup only. Use `run-tests.R --require-compatible-discovery`
+to require asymmetric client setup as well. See [sandbox.md](sandbox.md),
 [inferno.md](inferno.md) and the optional [Oracle validation path](oracle.md)
 for evidence and remaining gaps.
