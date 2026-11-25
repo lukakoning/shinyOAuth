@@ -49,7 +49,7 @@
 <ul><li><p>When shinyOAuth rejects a login callback, <code><a href="../reference/oauth_ui.html">oauth_ui()</a></code>, <code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code> and <code><a href="../reference/oauth_connections_ui.html">oauth_connections_ui()</a></code> now redirect the browser before showing the error, clearing sensitive callback data such as authorization codes from the address bar.</p></li>
 <li><p>Fixed an OpenID Connect token refresh failure after restoring a saved authorization with <code>offline_access</code> consent.</p></li>
 <li>
-<p>Provider discovery is more forgiving of incomplete or conflicting metadata for optional features, so apps can connect using the features they need.</p>
+<p>Provider discovery is more forgiving of incomplete or conflicting metadata for optional features which a client may not use:</p>
 <ul><li>Apps using HTTP Basic can discover providers that advertise JWT client authentication without listing its signing algorithms (<a href="https://github.com/lukakoning/shinyOAuth/issues/27" class="external-link">#27</a>).</li>
 <li>Discovery reports conflicting settings for signed or encrypted authorization responses (JARM) when the app selects the affected feature. With standard OpenID Connect discovery, incompatible ID token signing algorithms surface when you set up a client that validates ID tokens.</li>
 <li>Discovery can proceed if an unused mutual TLS (mTLS) endpoint falls outside the app’s allowed hosts. Any endpoint the app uses must pass its host policy.</li>

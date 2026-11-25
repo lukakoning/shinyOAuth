@@ -14,8 +14,7 @@
   authorization with `offline_access` consent.
 
 - Provider discovery is more forgiving of incomplete or conflicting
-  metadata for optional features, so apps can connect using the features
-  they need.
+  metadata for optional features which a client may not use:
 
   - Apps using HTTP Basic can discover providers that advertise JWT
     client authentication without listing its signing algorithms
