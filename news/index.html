@@ -48,11 +48,16 @@
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
 <ul><li><p>When shinyOAuth rejects a login callback, <code><a href="../reference/oauth_ui.html">oauth_ui()</a></code>, <code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code> and <code><a href="../reference/oauth_connections_ui.html">oauth_connections_ui()</a></code> now redirect the browser before showing the error, clearing sensitive callback data such as authorization codes from the address bar.</p></li>
 <li><p>Fixed an OpenID Connect token refresh failure after restoring a saved authorization with <code>offline_access</code> consent.</p></li>
-<li><p>Apps using HTTP Basic can now discover providers that advertise JWT client authentication without listing its signing algorithms (<a href="https://github.com/lukakoning/shinyOAuth/issues/27" class="external-link">#27</a>). Discovery also accepts conflicting settings for signed or encrypted authorization responses (JARM) when the app leaves the affected feature unused. Standard OpenID Connect discovery now reports incompatible ID token signing algorithms when you set up a client that validates ID tokens.</p></li>
-<li><p>Discovery can now succeed when a provider advertises an unused mutual TLS (mTLS) endpoint on a host your app hasn’t allowed. If your app needs that endpoint, its host must pass the app’s host policy.</p></li>
-<li><p><code><a href="../reference/smart_discover.html">smart_discover()</a></code> now works with SMART on FHIR providers that publish incomplete metadata for optional features. <code><a href="../reference/smart_client.html">smart_client()</a></code> checks the required metadata when you request OpenID Connect identity or private-key authentication.</p></li>
+<li>
+<p>Provider discovery is more forgiving of incomplete or conflicting metadata for optional features, so apps can connect using the features they need.</p>
+<ul><li>Apps using HTTP Basic can discover providers that advertise JWT client authentication without listing its signing algorithms (<a href="https://github.com/lukakoning/shinyOAuth/issues/27" class="external-link">#27</a>).</li>
+<li>Discovery reports conflicting settings for signed or encrypted authorization responses (JARM) when the app selects the affected feature. With standard OpenID Connect discovery, incompatible ID token signing algorithms surface when you set up a client that validates ID tokens.</li>
+<li>Discovery can proceed if an unused mutual TLS (mTLS) endpoint falls outside the app’s allowed hosts. Any endpoint the app uses must pass its host policy.</li>
+<li>
+<code><a href="../reference/smart_discover.html">smart_discover()</a></code> accepts SMART on FHIR providers with incomplete metadata for OpenID Connect identity or private-key authentication. <code><a href="../reference/smart_client.html">smart_client()</a></code> checks the required metadata when you select either feature.</li>
+<li>Discovery ignores vendor-specific signing and encryption metadata, so providers can use their own conventions in those fields.</li>
+</ul></li>
 <li><p>OAuth and OpenID Connect discovery now match advertised client authentication and PKCE methods case-sensitively. Advertised response modes also require exact case and spacing. Use the protocol spelling, such as <code>form_post</code>, in discovery metadata and when listing supported modes in <code><a href="../reference/oauth_provider.html">oauth_provider()</a></code>.</p></li>
-<li><p>Discovery now ignores vendor-specific signing and encryption metadata, so providers can use their own conventions in those fields.</p></li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.8.0" id="shinyoauth-080">shinyOAuth 0.8.0<a class="anchor" aria-label="anchor" href="#shinyoauth-080"></a></h2><p class="text-muted">CRAN release: 2026-11-17</p>
