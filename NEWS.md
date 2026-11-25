@@ -8,29 +8,27 @@
 * Fixed an OpenID Connect token refresh failure after restoring a saved
   authorization with `offline_access` consent.
 
-* Apps using HTTP Basic can now discover providers that advertise JWT client
-  authentication without listing its signing algorithms (#27). Discovery also
-  accepts conflicting settings for signed or encrypted authorization responses
-  (JARM) when the app leaves the affected feature unused. Standard OpenID
-  Connect discovery now reports incompatible ID token signing algorithms when
-  you set up a client that validates ID tokens.
+* Provider discovery is more forgiving of incomplete or conflicting metadata
+  for optional features which a client may not use:
 
-* Discovery can now succeed when a provider advertises an unused mutual TLS
-  (mTLS) endpoint on a host your app hasn't allowed. If your app needs that
-  endpoint, its host must pass the app's host policy.
-
-* `smart_discover()` now works with SMART on FHIR providers that publish
-  incomplete metadata for optional features. `smart_client()` checks the
-  required metadata when you request OpenID Connect identity or private-key
-  authentication.
+  - Apps using HTTP Basic can discover providers that advertise JWT client
+    authentication without listing its signing algorithms (#27).
+  - Discovery reports conflicting settings for signed or encrypted authorization
+    responses (JARM) when the app selects the affected feature. With standard
+    OpenID Connect discovery, incompatible ID token signing algorithms surface
+    when you set up a client that validates ID tokens.
+  - Discovery can proceed if an unused mutual TLS (mTLS) endpoint falls outside
+    the app's allowed hosts. Any endpoint the app uses must pass its host policy.
+  - `smart_discover()` accepts SMART on FHIR providers with incomplete metadata
+    for OpenID Connect identity or private-key authentication. `smart_client()`
+    checks the required metadata when you select either feature.
+  - Discovery ignores vendor-specific signing and encryption metadata, so
+    providers can use their own conventions in those fields.
 
 * OAuth and OpenID Connect discovery now match advertised client authentication
   and PKCE methods case-sensitively. Advertised response modes also require
   exact case and spacing. Use the protocol spelling, such as `form_post`, in
   discovery metadata and when listing supported modes in `oauth_provider()`.
-
-* Discovery now ignores vendor-specific signing and encryption metadata, so
-  providers can use their own conventions in those fields.
 
 # shinyOAuth 0.8.0
 
