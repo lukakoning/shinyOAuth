@@ -1023,3 +1023,28 @@ run exercised the verification suites and skipped both matrices and signing.
 
 The first production paired archive still awaits the signed link from run
 `45033763653`. [First paired matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/45033763653).
+
+## Weekly CI and release tiers, 2026-11-22
+
+`eeb824adde053454726d2eb645e5b59410689855` schedules the 39 OIDF and eight
+provider selections on Tuesdays at 03:23 UTC. Both aggregates have seven-day
+retention for the scheduled run. Manual release runs keep their artifact
+retention and signing gates. The regression test confirms that a successful
+scheduled attempt fails release retention before artifact lookup.
+[Workflow and measured runtimes](release-matrix.md#ci-tiers-and-measured-runtimes).
+
+The successful full OIDF and provider runs took 1h 52m 35s and 14m 42s.
+The OIDF `smoke/sync` job took 7m 06s within the full matrix, and the
+provider `basic/sync` run took 3m 18s. The PR tier keeps those selected
+checks. The event-condition check covered scheduled, standalone release,
+paired release, failed paired evidence and report-only cases. The first
+scheduled execution is pending.
+[Full OIDF matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/45017983714),
+[full provider matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/45032877223),
+[provider baseline](https://github.com/lukakoning/shinyOAuth/actions/runs/45031800118).
+
+## Scheduled matrix status, 2026-11-25
+
+The first scheduled matrix attempt ran on 2026-11-24 at `e168ed71` and
+was cancelled. The first successful weekly run remains pending.
+[Scheduled attempt](https://github.com/lukakoning/shinyOAuth/actions/runs/45319991873).

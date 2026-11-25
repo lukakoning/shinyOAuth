@@ -1,6 +1,6 @@
 # Declared OIDF client release matrix
 
-The [matrix](release-matrix.json) declares 39 required profile/transport pairs.
+The [matrix](release-matrix.json) declares the required profile/transport pairs.
 This is the OIDF client-evidence part of SA08. Provider interoperability,
 platform coverage, artifact authentication and durable publication need their
 own release decisions and evidence.
@@ -12,6 +12,7 @@ records all 39 selections at `92bedf1d` and the scope limits for that revision.
 | --- | --- | ---: |
 | `smoke`, `basic`, `config`, `form-post`, `form-post-cross-site`, `refresh` | sync and mirai | 12 |
 | `auth-post`, `auth-secret-jwt`, `auth-private-jwt` | sync and mirai | 6 |
+| `comprehensive-userinfo` | sync and mirai | 2 |
 | `fapi-dpop`, `fapi-dpop-full`, `fapi-oauth-dpop`, `fapi-oauth-dpop-reference` | sync and mirai | 8 |
 | `fapi-oauth-mtls`, `fapi-oauth-mtls-auth`, `fapi-mtls`, `fapi-mtls-auth` | sync and mirai | 8 |
 | `fapi-message-signing` | sync and mirai | 2 |
@@ -25,7 +26,7 @@ to fill missing entries.
 
 ## Check a selected revision
 
-Run from the repository root, supplying all 39 original sanitized client
+Run from the repository root, supplying all declared original sanitized client
 reports and a new output path:
 
 ```sh
@@ -60,6 +61,21 @@ the stored assessment against that result. JSON object-key order does not
 change the meaning of evidence; ordered arrays remain ordered. A recorded
 `gate_passed = true` alone is insufficient.
 
+## CI tiers and measured runtimes
+
+GitHub uses the following tiers for browser checks and release evidence.
+The timings are from successful hosted runs of the stated selections.
+
+| Tier | Scope | Measured runtime |
+| --- | --- | --- |
+| Pull request | Relevant changes run OIDF `smoke/sync` and provider `basic/sync` in their existing workflows. | The OIDF smoke job took 7m 06s in the declared matrix and 12m 09s on a fresh runner. The provider baseline run took 3m 18s. [Matrix smoke](https://github.com/lukakoning/shinyOAuth/actions/runs/45017983714), [fresh smoke](https://github.com/lukakoning/shinyOAuth/actions/runs/44399653873), [provider baseline](https://github.com/lukakoning/shinyOAuth/actions/runs/45031800118) |
+| Scheduled | Tuesdays at 03:23 UTC, run all 41 OIDF selections and eight provider selections at the latest default-branch commit. Keep the aggregate reports for seven days. | The earlier 39-selection OIDF run took 1h 52m 35s; the provider run took 14m 42s. [OIDF matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/45017983714), [provider matrix](https://github.com/lukakoning/shinyOAuth/actions/runs/45032877223) |
+| Release | Manually dispatch the full OIDF matrix on the selected branch or tag. Add `provider_companions` for the paired release evidence. Retain the signed release aggregates and link as described below. | Uses the same full selection sets. |
+
+The scheduled run exercises both aggregate gates with CI report retention.
+The link and signing jobs require a manual dispatch. GitHub runs the
+schedule on the default branch. [GitHub schedule documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
+
 ## Run the matrix on GitHub
 
 The manual **OpenID declared release matrix** workflow reads the matrix from
@@ -73,7 +89,7 @@ and the release-source check stay part of each selection. GitHub documents
 gh workflow run openid-release-matrix.yml --ref BRANCH_OR_TAG
 ```
 
-This dispatch starts all 39 selections; use `openid-conformance.yml` for a
+This dispatch starts all declared selections; use `openid-conformance.yml` for a
 single selection. The matrix does not stop other selections after one fails.
 The aggregate job downloads matching artifacts from its own workflow run and
 attempt, keeps their directories separate, and gives every client report to
@@ -98,7 +114,7 @@ To run only these preparation checks on GitHub, use the same workflow with
 gh workflow run openid-release-matrix.yml --ref BRANCH_OR_TAG -f report_checks_only=true
 ```
 
-The aggregate upload includes only the original sanitized `evidence.json`
+The manual release aggregate includes only the original sanitized `evidence.json`
 files and the summary, with a requested retention of 90 days. Repository and
 organization artifact policies still apply. The signing job attests the
 original ZIP of a successful attempt. Retain a verified archive for storage
@@ -209,7 +225,7 @@ its original inputs. [Saving a Sigstore bundle](https://cli.github.com/manual/gh
 
 ## Run OIDF and provider companions at one revision
 
-Enable `provider_companions` to run the 39 OIDF selections and the eight
+Enable `provider_companions` to run all declared OIDF selections and the eight
 `oidc-provider` browser selections from the same commit in one workflow.
 The link job requires both aggregate uploads from the current attempt.
 It records their names, IDs and original ZIP SHA-256 digests together with

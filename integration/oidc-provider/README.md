@@ -149,6 +149,13 @@ Each positive case validates its ID token, calls the API through
 again. Native introspection must confirm the current token's audience and
 scope before and after refresh. The original validated identity must survive
 refresh, including the provider's response without a replacement ID token.
+
+The `resource-refresh-narrowing` case starts with `api.read api.write` and
+refreshes with only `api.read`. Reads must keep working, while a write that
+succeeded before refresh must receive HTTP 403 with `insufficient_scope`
+afterward. The grant responses, introspection and connection scope checks
+must agree on the narrower permission set.
+
 Native UserInfo is disabled because an API-audience token cannot access it.
 The scope policy stays enabled: the package can warn that the API access-token
 scope omits the original OIDC/offline scopes. The harness requires the native
@@ -223,6 +230,12 @@ from its signed ID token. The app reports the claim after shinyOAuth validates
 the token. The test requires the two claim values to match and the authentication
 time to fall between the actual login interaction and code issuance.
 
+Refresh observes the `auth_time` in the provider's actual signed refresh
+ID token and the claim that shinyOAuth has validated after refresh. Both must
+equal the authentication time from the original login. This selected provider
+returns the claim on refresh. OIDC allows that claim to be omitted.
+[OIDC Core refresh response](https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.12.2).
+
 After the first refresh, the case signs out of the app and logs in again in
 the same Chrome tab. The provider's native login interaction must identify an
 active session whose authentication time matches the first ID token. The
@@ -240,6 +253,10 @@ The extended case passed in clean Windows browser runs at `45bffda8` with
 both `sync` and `mirai`. All four basic cases passed for each transport. The
 provider's signed second `auth_time` matched the app's validated claim and was
 three seconds later than the original authentication in both runs.
+
+At `48778c2a`, both transports passed the checks on the actual refresh ID
+token. The claim in that response and the app's validated claim agreed with
+the first login in both runs.
 
 ## Run the provider release matrix
 

@@ -129,6 +129,21 @@ Run `--profile form-post-cross-site --transport sync` or `--transport mirai`.
 It retains its two-of-thirty and loopback/Chrome limits; it does not replace
 the fourteen-module Basic selection or claim general deployment coverage.
 
+The `comprehensive-userinfo` selection uses the Comprehensive query variant
+with static registration and `client_secret_post`.
+
+```sh
+Rscript integration/openid/run-tests.R --profile comprehensive-userinfo --transport sync
+Rscript integration/openid/run-tests.R --profile comprehensive-userinfo --transport mirai
+```
+
+Two modules require the suite to accept the issued access token in the
+`Authorization` header of a UserInfo GET. The signed-response module also
+requires the suite to sign UserInfo and shinyOAuth to validate the RS256
+response for the same subject as the ID token. A third module requires the
+suite to omit `aud` from the ID token and the app to reject the login before
+any UserInfo request. See the [OIDC requirements](requirements-oidc.md#userinfo).
+
 Run the Configuration module selection:
 
 ```sh
@@ -618,7 +633,8 @@ cleanup and deployment boundaries described above.
 The [workflow](../../.github/workflows/openid-conformance.yml) runs preflight,
 API checks and smoke on pull requests affecting the package or this harness.
 Manual dispatch offers `smoke`, `basic`, `config`, `form-post`, `form-post-cross-site`, `refresh`,
-`auth-post`, `auth-secret-jwt`, `auth-private-jwt`, `shared-pool`, `fapi-dpop`,
+`auth-post`, `comprehensive-userinfo`, `auth-secret-jwt`, `auth-private-jwt`,
+`shared-pool`, `fapi-dpop`,
 `fapi-dpop-full`, `fapi-oauth-dpop`, `fapi-oauth-dpop-reference`,
 `fapi-oauth-mtls`, `fapi-oauth-mtls-auth`, `fapi-mtls`, `fapi-mtls-auth` and
 `fapi-message-signing`;
