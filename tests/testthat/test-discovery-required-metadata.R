@@ -314,3 +314,34 @@ test_that("OIDC discovery negotiates from validated algorithm metadata", {
 
   expect_identical(provider@allowed_algs, "ES256")
 })
+
+test_that("an ID token algorithm mismatch only blocks clients that validate ID tokens", {
+  metadata <- strict_oidc_metadata()
+  local_mocked_bindings(
+    .discover_fetch_response = function(...) NULL,
+    .discover_parse_json = function(...) metadata,
+    .package = "shinyOAuth"
+  )
+  create <- function(provider) {
+    oauth_client(
+      provider,
+      "client",
+      "secret",
+      "https://app.example.com/callback"
+    )
+  }
+  for (mode in list(c(TRUE, FALSE), c(FALSE, TRUE), c(FALSE, FALSE))) {
+    provider <- oauth_provider_oidc_discover(
+      metadata[["issuer"]],
+      id_token_allowed_algs = "ES256",
+      id_token_validation = mode[[1]],
+      use_nonce = mode[[2]]
+    )
+    expect_length(provider@id_token_allowed_algs, 0L)
+    if (any(mode)) {
+      expect_error(create(provider), "No supported ID token signing algorithms")
+    } else {
+      expect_s7_class(create(provider), OAuthClient)
+    }
+  }
+})

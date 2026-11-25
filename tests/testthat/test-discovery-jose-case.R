@@ -36,25 +36,25 @@ test_that("discovery never repairs case-sensitive JOSE algorithm identifiers", {
   expect_error(
     .discover_negotiate_algs(
       "RS256",
-      list(id_token_signing_alg_values_supported = "rs256"),
-      "https://example.test"
+      list(id_token_signing_alg_values_supported = "rs256")
     ),
     "invalid case"
   )
   expect_identical(
     .discover_negotiate_algs(
       "Ed25519",
-      list(id_token_signing_alg_values_supported = "Ed25519"),
-      "https://example.test"
+      list(id_token_signing_alg_values_supported = "Ed25519")
     ),
     "ED25519"
   )
   expect_identical(
     .discover_negotiate_algs(
       "EdDSA",
-      list(id_token_signing_alg_values_supported = "EdDSA"),
-      "https://example.test"
+      list(id_token_signing_alg_values_supported = "EdDSA")
     ),
     "EDDSA"
   )
+  expect_silent(.discover_validate_jose_metadata(list(
+    vendor_signing_alg_values_supported = list("rs256")
+  )))
 })

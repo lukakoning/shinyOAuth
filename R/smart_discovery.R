@@ -13,14 +13,14 @@
 #' retained exactly.
 #'
 #' This is separate from [oauth_provider_oidc_discover()]. OAuth-only SMART
-#' metadata need not contain OIDC issuer or signing-key information. Advertised
-#' `sso-openid-connect` requires both `issuer` and `jwks_uri`; their presence
-#' does not validate an identity or fetch OIDC metadata or keys.
+#' metadata need not contain OIDC issuer or signing-key information.
+#' [smart_client()] requires `issuer` and `jwks_uri` when the client selects
+#' OpenID Connect identity.
 #'
-#' Required SMART fields, conditional launch/SSO fields, and advertised
-#' asymmetric-authentication metadata are checked. S256 must be advertised and
-#' plain PKCE is rejected. Client-specific capability, scope, key and algorithm
-#' selection belongs to the application's registration configuration.
+#' Discovery checks required SMART fields, conditional launch fields and the
+#' format of optional metadata. S256 must be advertised and plain PKCE is
+#' rejected. [smart_client()] checks metadata required for the selected
+#' registration, including asymmetric client authentication.
 #' `scopes_supported` is informative, not an exhaustive permission allowlist.
 #' Its array may be empty. An empty `token_endpoint_auth_methods_supported`
 #' array permits public registrations; confidential registrations still require
@@ -288,8 +288,7 @@ smart_discovery_validate <- function(metadata, hosts, allow_http_loopback) {
   }
   required_urls <- c(
     "token_endpoint",
-    if (launch) "authorization_endpoint",
-    if (sso) c("issuer", "jwks_uri")
+    if (launch) "authorization_endpoint"
   )
   for (field in required_urls) {
     if (!field %in% names(metadata) || is.null(metadata[[field]])) {
@@ -346,27 +345,6 @@ smart_discovery_validate <- function(metadata, hosts, allow_http_loopback) {
       !"code" %in% metadata[["response_types_supported"]]
   ) {
     err_parse("SMART response_types_supported must include code for app launch")
-  }
-  if ("client-confidential-asymmetric" %in% capabilities) {
-    methods <- smart_discovery_array(
-      metadata,
-      "token_endpoint_auth_methods_supported",
-      TRUE
-    )
-    algorithms <- smart_discovery_array(
-      metadata,
-      "token_endpoint_auth_signing_alg_values_supported",
-      TRUE
-    )
-    smart_discovery_array(metadata, "scopes_supported", TRUE)
-    if (
-      !"private_key_jwt" %in% methods ||
-        !any(c("RS384", "ES384") %in% algorithms)
-    ) {
-      err_parse(
-        "SMART asymmetric capability requires private_key_jwt and RS384 or ES384 metadata"
-      )
-    }
   }
   invisible(TRUE)
 }

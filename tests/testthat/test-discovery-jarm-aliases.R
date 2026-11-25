@@ -1,4 +1,4 @@
-test_that("registered JARM metadata takes precedence and conflicting aliases fail", {
+test_that("JARM alias conflicts only prevent clients from using the affected feature", {
   metadata <- list(
     issuer = "https://issuer.example.com",
     authorization_endpoint = "https://issuer.example.com/auth",
@@ -6,7 +6,8 @@ test_that("registered JARM metadata takes precedence and conflicting aliases fai
     jwks_uri = "https://issuer.example.com/jwks",
     response_types_supported = list("code"),
     subject_types_supported = list("public"),
-    id_token_signing_alg_values_supported = list("RS256")
+    id_token_signing_alg_values_supported = list("RS256"),
+    response_modes_supported = list("query", "query.jwt")
   )
   document <- metadata
   local_mocked_bindings(
@@ -19,6 +20,16 @@ test_that("registered JARM metadata takes precedence and conflicting aliases fai
     encryption_alg = c("RSA-OAEP", "RSA-OAEP-256"),
     encryption_enc = c("A128CBC-HS256", "A256CBC-HS512")
   )
+  key <- openssl::rsa_keygen()
+  create <- function(provider, ...) {
+    oauth_client(
+      provider,
+      "client",
+      "secret",
+      "https://app.example.com/callback",
+      ...
+    )
+  }
   for (kind in names(fields)) {
     registered <- paste0("authorization_", kind, "_values_supported")
     legacy <- paste0("jarm_", kind, "_values_supported")
@@ -41,19 +52,32 @@ test_that("registered JARM metadata takes precedence and conflicting aliases fai
       )
     }
     document <- metadata
-    document[[registered]] <- as.list(expected)
-    document[[legacy]] <- as.list(expected[[1L]])
-    expect_error(
-      oauth_provider_oidc_discover(metadata[["issuer"]]),
-      "Conflicting discovery metadata",
-      class = "shinyOAuth_config_error"
-    )
-    document[[registered]] <- list()
-    expect_error(
-      oauth_provider_oidc_discover(metadata[["issuer"]]),
-      "Conflicting discovery metadata",
-      class = "shinyOAuth_config_error"
-    )
+    for (advertised in list(as.list(expected), list())) {
+      document[[registered]] <- advertised
+      document[[legacy]] <- as.list(expected[[1L]])
+      provider <- oauth_provider_oidc_discover(metadata[["issuer"]])
+      expect_s7_class(create(provider), OAuthClient)
+      if (kind == "signing_alg") {
+        expect_error(
+          create(provider, response_mode = "query.jwt"),
+          "Conflicting discovery metadata"
+        )
+      } else {
+        expect_s7_class(
+          create(provider, response_mode = "query.jwt"),
+          OAuthClient
+        )
+        expect_error(
+          create(
+            provider,
+            response_mode = "query.jwt",
+            jarm_encrypted_response_alg = "RSA-OAEP",
+            jarm_decryption_private_key = key
+          ),
+          "Conflicting discovery metadata"
+        )
+      }
+    }
     document[[legacy]] <- list()
     expect_length(
       S7::prop(oauth_provider_oidc_discover(metadata[["issuer"]]), legacy),

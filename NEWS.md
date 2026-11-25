@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Discovery defers ID token algorithm compatibility and conflicts in optional
+  JARM metadata until client setup. An mTLS alias outside the host allowlist
+  blocks requests that select it. SMART clients require asymmetric signing and
+  identity metadata when they select those features.
+
 * OAuth and OIDC discovery now accept providers that advertise JWT client
   authentication with missing signing algorithms. Operations that need a
   missing algorithm list fail when the client selects JWT authentication (#27).

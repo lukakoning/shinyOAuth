@@ -110,7 +110,7 @@ test_that("SMART OAuth-only metadata does not acquire OIDC or registration defau
   expect_identical(class(minimal), "list")
 })
 
-test_that("SMART SSO requires its own exact issuer and signing-key URL", {
+test_that("SMART SSO preserves exact URLs and requires them only for identity clients", {
   metadata <- smart_discovery_fixture()
   metadata[["capabilities"]] <- c(
     metadata[["capabilities"]],
@@ -122,9 +122,37 @@ test_that("SMART SSO requires its own exact issuer and signing-key URL", {
     value[["jwks_uri"]] <- "https://keys.example/keys"
     value[field] <- list(NULL)
     expect_error(
-      smart_discovery_read(value),
+      smart_discovery_read(
+        value,
+        endpoint_hosts = c("ehr.example", "login.example", "keys.example")
+      ),
       field,
       class = "shinyOAuth_parse_error"
+    )
+  }
+  for (field in c("issuer", "jwks_uri")) {
+    value <- smart_client_fixture(oidc = TRUE)[["metadata"]]
+    value[[field]] <- NULL
+    site <- smart_discovery_read(value)
+    expect_s7_class(
+      smart_client(
+        site,
+        "client",
+        "https://app.example/callback",
+        scopes = "user/Patient.r"
+      ),
+      OAuthClient
+    )
+    expect_error(
+      smart_client(
+        site,
+        "client",
+        "https://app.example/callback",
+        scopes = character(),
+        identity = "openid"
+      ),
+      field,
+      class = "shinyOAuth_config_error"
     )
   }
   metadata[["issuer"]] <- "https://login.example/tenant/"
@@ -238,42 +266,65 @@ test_that("SMART launch and PKCE capabilities are internally consistent", {
   expect_no_error(smart_discovery_read(metadata))
 })
 
-test_that("SMART asymmetric advertisements require the specified methods and algorithms", {
-  metadata <- smart_discovery_fixture()
-  metadata[["capabilities"]] <- c(
-    metadata[["capabilities"]],
-    "client-confidential-asymmetric"
-  )
-  metadata[["scopes_supported"]] <- list("patient/Patient.rs")
-  metadata[["token_endpoint_auth_methods_supported"]] <- list("private_key_jwt")
-  for (alg in c("RS384", "ES384")) {
-    metadata[["token_endpoint_auth_signing_alg_values_supported"]] <- list(alg)
-    expect_identical(smart_discovery_read(metadata)[["metadata"]], metadata)
+test_that("SMART missing asymmetric metadata only blocks asymmetric registrations", {
+  metadata <- smart_client_fixture()[["metadata"]]
+  key <- openssl::ec_keygen("P-384")
+  create <- function(site, ...) {
+    smart_client(
+      site,
+      "client",
+      "https://app.example/callback",
+      scopes = "user/Patient.r",
+      ...
+    )
   }
-  for (field in c(
-    "scopes_supported",
-    "token_endpoint_auth_methods_supported",
-    "token_endpoint_auth_signing_alg_values_supported"
-  )) {
-    value <- metadata
-    value[[field]] <- NULL
+  create_asymmetric <- function(site) {
+    create(
+      site,
+      token_auth_style = "private_key_jwt",
+      client_assertion_alg = "ES384",
+      client_assertion_private_key = key,
+      client_assertion_private_key_kid = "test-key"
+    )
+  }
+  omissions <- c(
+    scopes_supported = "scopes_supported",
+    token_endpoint_auth_methods_supported = "private_key_jwt",
+    token_endpoint_auth_signing_alg_values_supported = "advertised RS384 or ES384"
+  )
+  expect_s7_class(
+    create_asymmetric(smart_discovery_read(metadata)),
+    OAuthClient
+  )
+  for (field in names(omissions)) {
+    partial <- metadata
+    partial[[field]] <- NULL
+    site <- smart_discovery_read(partial)
+    expect_identical(site[["metadata"]], partial)
+    expect_s7_class(create(site), OAuthClient)
     expect_error(
-      smart_discovery_read(value),
-      field,
-      class = "shinyOAuth_parse_error"
+      create_asymmetric(site),
+      omissions[[field]],
+      class = "shinyOAuth_config_error"
     )
   }
   metadata[["token_endpoint_auth_signing_alg_values_supported"]] <- list(
     "RS256"
   )
-  expect_error(smart_discovery_read(metadata), "RS384 or ES384")
+  expect_error(
+    create_asymmetric(smart_discovery_read(metadata)),
+    "RS384 or ES384"
+  )
   metadata[["token_endpoint_auth_signing_alg_values_supported"]] <- list(
-    "RS384"
+    "ES384"
   )
   metadata[["token_endpoint_auth_methods_supported"]] <- list(
     "client_secret_basic"
   )
-  expect_error(smart_discovery_read(metadata), "private_key_jwt")
+  expect_error(
+    create_asymmetric(smart_discovery_read(metadata)),
+    "method is not advertised"
+  )
 })
 
 test_that("SMART optional recognized fields reject invalid present values", {
@@ -367,7 +418,6 @@ test_that("empty arrays cannot remove mandatory SMART capabilities and algorithm
     "grant_types_supported",
     "capabilities",
     "response_types_supported",
-    "token_endpoint_auth_methods_supported",
     "token_endpoint_auth_signing_alg_values_supported"
   )) {
     changed <- metadata

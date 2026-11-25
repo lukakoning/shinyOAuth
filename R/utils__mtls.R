@@ -216,6 +216,14 @@ resolve_provider_endpoint_url <- function(
   endpoint,
   prefer_mtls = FALSE
 ) {
+  resolution <- provider_endpoint_resolution(provider, endpoint, prefer_mtls)
+  if (!is.null(resolution[["problem"]])) {
+    err_config(resolution[["problem"]])
+  }
+  resolution[["url"]]
+}
+
+provider_endpoint_resolution <- function(provider, endpoint, prefer_mtls) {
   base_url <- switch(
     endpoint,
     token_endpoint = provider@token_url,
@@ -227,7 +235,7 @@ resolve_provider_endpoint_url <- function(
   )
 
   if (!isTRUE(prefer_mtls)) {
-    return(base_url)
+    return(list(url = base_url, problem = NULL))
   }
 
   alias_names <- switch(
@@ -237,13 +245,20 @@ resolve_provider_endpoint_url <- function(
   )
 
   for (alias_name in alias_names) {
+    problem <- provider_discovery_problem(
+      provider,
+      paste0("mtls_endpoint_aliases.", alias_name)
+    )
+    if (!is.null(problem)) {
+      return(list(url = NA_character_, problem = problem))
+    }
     alias_url <- provider@mtls_endpoint_aliases[[alias_name]] %||% NA_character_
     if (is_valid_string(alias_url)) {
-      return(alias_url)
+      return(list(url = alias_url, problem = NULL))
     }
   }
 
-  base_url
+  list(url = base_url, problem = NULL)
 }
 
 ## 1.3 Apply client certificates to requests -----------------------------------

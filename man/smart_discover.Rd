@@ -42,14 +42,14 @@ slash first. The supplied base and returned endpoint/issuer strings are
 retained exactly.
 
 This is separate from \code{\link[=oauth_provider_oidc_discover]{oauth_provider_oidc_discover()}}. OAuth-only SMART
-metadata need not contain OIDC issuer or signing-key information. Advertised
-\code{sso-openid-connect} requires both \code{issuer} and \code{jwks_uri}; their presence
-does not validate an identity or fetch OIDC metadata or keys.
+metadata need not contain OIDC issuer or signing-key information.
+\code{\link[=smart_client]{smart_client()}} requires \code{issuer} and \code{jwks_uri} when the client selects
+OpenID Connect identity.
 
-Required SMART fields, conditional launch/SSO fields, and advertised
-asymmetric-authentication metadata are checked. S256 must be advertised and
-plain PKCE is rejected. Client-specific capability, scope, key and algorithm
-selection belongs to the application's registration configuration.
+Discovery checks required SMART fields, conditional launch fields and the
+format of optional metadata. S256 must be advertised and plain PKCE is
+rejected. \code{\link[=smart_client]{smart_client()}} checks metadata required for the selected
+registration, including asymmetric client authentication.
 \code{scopes_supported} is informative, not an exhaustive permission allowlist.
 Its array may be empty. An empty \code{token_endpoint_auth_methods_supported}
 array permits public registrations; confidential registrations still require

@@ -169,6 +169,8 @@
 #'   for omitted revocation methods. Omitted introspection methods have no default.
 #'   Discovery also records missing algorithm lists for JWT authentication so
 #'   they can be checked when the client selects that method.
+#' @param discovery_problems Named character vector of configuration problems
+#'   recorded by discovery for features that need additional validation.
 #'
 #' @param jwks_uri Optional URL of the provider's public signing keys (JWKS).
 #'   Normally these are located through OIDC discovery. Set this for manual
@@ -602,6 +604,10 @@ OAuthProvider <- S7::new_class(
     mtls_client_certificate_bound_access_tokens = S7::new_property(
       S7::class_logical,
       default = FALSE
+    ),
+    discovery_problems = S7::new_property(
+      S7::class_character | NULL,
+      default = character()
     )
   ),
   validator = function(self) oauth_provider_validate(self)
@@ -672,7 +678,8 @@ OAuthProvider <- api_preserve_constructor(
   append = c(
     "token_target_mode",
     "token_response_scope_format",
-    "userinfo_id_selector_policy_id"
+    "userinfo_id_selector_policy_id",
+    "discovery_problems"
   )
 )
 
@@ -1216,6 +1223,15 @@ oauth_provider_validate <- function(self) {
   )
   if (!is.null(endpoint_problem)) {
     return(endpoint_problem)
+  }
+  problems <- self@discovery_problems
+  if (
+    length(problems) &&
+      (is.null(names(problems)) || anyDuplicated(names(problems)) ||
+        anyNA(c(names(problems), problems)) ||
+        !all(nzchar(c(names(problems), problems))))
+  ) {
+    return("OAuthProvider: discovery_problems must contain named, non-empty messages with unique names")
   }
   # Reuse for all properties (required vs optional mirrors your S7 defs)
   fields <- list(
@@ -2332,5 +2348,14 @@ provider_fingerprint <- function(provider) {
   if (!identical(target_mode, "none")) {
     components[["token_target_mode"]] <- target_mode
   }
+  problems <- provider_prop("discovery_problems", character())
+  if (length(problems)) {
+    components[["discovery_problems"]] <- as.list(problems)
+  }
   state_policy_digest(components)
+}
+
+provider_discovery_problem <- function(provider, field) {
+  problems <- provider@discovery_problems
+  if (field %in% names(problems)) problems[[field]] else NULL
 }

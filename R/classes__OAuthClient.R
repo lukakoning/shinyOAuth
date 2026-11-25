@@ -1698,6 +1698,15 @@ oauth_client_validate <- function(self) {
   if (!is.null(signing_algs_problem)) {
     return(signing_algs_problem)
   }
+  if (client_uses_mtls_endpoint(self)) {
+    problem <- provider_discovery_problem(
+      self@provider,
+      "mtls_endpoint_aliases.token_endpoint"
+    )
+    if (!is.null(problem)) {
+      return(problem)
+    }
+  }
   uses_pkce <- isTRUE(self@provider@use_pkce)
   if (identical(tok_style, "header")) {
     # For client_secret_basic (header) auth, a non-empty secret is required
@@ -1762,6 +1771,15 @@ oauth_client_validate <- function(self) {
   should_validate_id_token <-
     isTRUE(self@provider@id_token_validation) ||
     isTRUE(self@provider@use_nonce)
+  if (should_validate_id_token) {
+    problem <- provider_discovery_problem(
+      self@provider,
+      "id_token_signing_alg_values_supported"
+    )
+    if (!is.null(problem)) {
+      return(problem)
+    }
+  }
   if (length(hs_algs_enabled) > 0 && isTRUE(should_validate_id_token)) {
     if (length(hs_algs_enabled) != 1L) {
       return(
@@ -2226,6 +2244,21 @@ oauth_client_validate <- function(self) {
           "at least 2048 bits"
         )
       )
+    }
+  }
+
+  for (field in c(
+    if (isTRUE(jarm_response_mode)) "jarm_signing_alg_values_supported",
+    if (isTRUE(encrypted_jarm_enabled)) {
+      c(
+        "jarm_encryption_alg_values_supported",
+        "jarm_encryption_enc_values_supported"
+      )
+    }
+  )) {
+    problem <- provider_discovery_problem(self@provider, field)
+    if (!is.null(problem)) {
+      return(problem)
     }
   }
 

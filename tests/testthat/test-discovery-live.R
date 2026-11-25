@@ -50,6 +50,6 @@ test_that("live GitLab.com discovery returns an OIDC provider", {
 test_that("live Microsoft consumer tenant discovery returns an OIDC provider", {
   expect_live_oidc_discovery(
     "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
-    extra_hosts = c("graph.microsoft.com", "mtlsauth.microsoft.com")
+    extra_hosts = "graph.microsoft.com"
   )
 })

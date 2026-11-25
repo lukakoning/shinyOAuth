@@ -348,9 +348,16 @@ oauth_provider_oidc_discover <- function(
   }
   dots[["userinfo_allowed_algs"]] <- userinfo_allowed_algs
 
-  # 11) Negotiate allowed ID token algs
+  discovery_problems <- character()
   if (!.oauth_only) {
-    allowed_algs <- .discover_negotiate_algs(allowed_algs, disc, iss)
+    allowed_algs <- .discover_negotiate_algs(allowed_algs, disc)
+    if (!length(allowed_algs)) {
+      problem <- "No supported ID token signing algorithms found via OIDC discovery"
+      if (identical(id_token_profile, "fapi2")) {
+        err_config(problem)
+      }
+      discovery_problems[["id_token_signing_alg_values_supported"]] <- problem
+    }
   }
   par_required <- .discover_parse_optional_boolean(
     disc,
@@ -399,21 +406,8 @@ oauth_provider_oidc_discover <- function(
     disc[["response_modes_supported"]] %||% c("query", "fragment"),
     use.names = FALSE
   ))
-  jarm_signing_alg_values_supported <- .discover_jarm_metadata(
-    disc,
-    "authorization_signing_alg_values_supported",
-    "jarm_signing_alg_values_supported"
-  )
-  jarm_encryption_alg_values_supported <- .discover_jarm_metadata(
-    disc,
-    "authorization_encryption_alg_values_supported",
-    "jarm_encryption_alg_values_supported"
-  )
-  jarm_encryption_enc_values_supported <- .discover_jarm_metadata(
-    disc,
-    "authorization_encryption_enc_values_supported",
-    "jarm_encryption_enc_values_supported"
-  )
+  jarm <- .discover_jarm_metadata(disc)
+  discovery_problems <- c(discovery_problems, jarm[["problems"]])
   token_endpoint_auth_signing_alg_values_supported <- toupper(as.character(
     unlist(
       disc[["token_endpoint_auth_signing_alg_values_supported"]] %||%
@@ -433,10 +427,18 @@ oauth_provider_oidc_discover <- function(
       "authorization_response_iss_parameter_supported"
     )
   mtls_endpoint_aliases <- .discover_extract_mtls_endpoint_aliases(disc)
-  .discover_validate_endpoint_aliases(
+  untrusted_aliases <- .discover_untrusted_mtls_aliases(
     mtls_endpoint_aliases,
-    .discover_allowed_alias_hosts()
+    allowed_hosts_vec
   )
+  for (alias in untrusted_aliases) {
+    discovery_problems[[paste0("mtls_endpoint_aliases.", alias)]] <- paste0(
+      "Discovered mTLS endpoint alias ",
+      alias,
+      " is outside the allowed hosts"
+    )
+    mtls_endpoint_aliases[[alias]] <- NULL
+  }
   tls_client_certificate_bound_access_tokens <-
     .discover_parse_optional_boolean(
       disc,
@@ -474,9 +476,6 @@ oauth_provider_oidc_discover <- function(
     request_uri_parameter_supported = request_uri_parameter_supported,
     request_uri_registration_required = request_uri_registration_required,
     response_modes_supported = response_modes_supported,
-    jarm_signing_alg_values_supported = jarm_signing_alg_values_supported,
-    jarm_encryption_alg_values_supported = jarm_encryption_alg_values_supported,
-    jarm_encryption_enc_values_supported = jarm_encryption_enc_values_supported,
     token_endpoint_auth_signing_alg_values_supported = token_endpoint_auth_signing_alg_values_supported,
     endpoint_auth_metadata = discover_endpoint_auth_metadata(disc, .oauth_only),
     dpop_signing_alg_values_supported = dpop_signing_alg_values_supported,
@@ -494,6 +493,7 @@ oauth_provider_oidc_discover <- function(
     allowed_token_types = allowed_token_types,
     jwks_host_issuer_match = jwks_host_issuer_match
   )
+  provider_args <- c(provider_args, jarm[["values"]])
   duplicate_dot_names <- intersect(
     names(provider_args),
     names(dots) %||% character(0)
@@ -504,7 +504,11 @@ oauth_provider_oidc_discover <- function(
   provider_args[["infer_oidc_from_issuer"]] <- !.oauth_only
   dots[["infer_oidc_from_issuer"]] <- NULL
 
-  do.call(oauth_provider, c(provider_args, dots))
+  provider <- do.call(oauth_provider, c(provider_args, dots))
+  if (length(discovery_problems)) {
+    provider@discovery_problems <- discovery_problems
+  }
+  provider
 }
 
 # 2 Discovery helpers ----------------------------------------------------------
@@ -816,32 +820,15 @@ oauth_provider_oidc_discover <- function(
     "response_modes_supported",
     "grant_types_supported",
     "acr_values_supported",
-    "id_token_encryption_alg_values_supported",
-    "id_token_encryption_enc_values_supported",
-    "userinfo_signing_alg_values_supported",
-    "userinfo_encryption_alg_values_supported",
-    "userinfo_encryption_enc_values_supported",
-    "request_object_signing_alg_values_supported",
-    "request_object_encryption_alg_values_supported",
-    "request_object_encryption_enc_values_supported",
-    "token_endpoint_auth_signing_alg_values_supported",
     "display_values_supported",
     "claim_types_supported",
     "claims_supported",
     "claims_locales_supported",
     "ui_locales_supported",
     "code_challenge_methods_supported",
-    "dpop_signing_alg_values_supported",
-    "jarm_signing_alg_values_supported",
-    "jarm_encryption_alg_values_supported",
-    "jarm_encryption_enc_values_supported",
-    "authorization_signing_alg_values_supported",
-    "authorization_encryption_alg_values_supported",
-    "authorization_encryption_enc_values_supported",
     "introspection_endpoint_auth_methods_supported",
-    "introspection_endpoint_auth_signing_alg_values_supported",
     "revocation_endpoint_auth_methods_supported",
-    "revocation_endpoint_auth_signing_alg_values_supported"
+    DISCOVERY_OPTIONAL_JOSE_FIELDS
   )
   for (field in optional_string_arrays) {
     .discover_validate_optional_string_array(disc, field)
@@ -850,26 +837,30 @@ oauth_provider_oidc_discover <- function(
   invisible(TRUE)
 }
 
-# Registered JARM metadata is authoritative. Accept legacy aliases only when
-# absent, and reject inconsistent documents rather than silently choosing one.
-.discover_jarm_metadata <- function(disc, registered, legacy) {
-  values <- function(field) {
-    as.character(unlist(disc[[field]] %||% character(), use.names = FALSE))
-  }
-  if (!is.null(disc[[registered]])) {
+# Record conflicts for the client that selects the affected JARM feature.
+.discover_jarm_metadata <- function(disc) {
+  values <- list()
+  problems <- character()
+  for (kind in c("signing_alg", "encryption_alg", "encryption_enc")) {
+    registered <- paste0("authorization_", kind, "_values_supported")
+    legacy <- paste0("jarm_", kind, "_values_supported")
+    supported <- as.character(unlist(disc[[registered]], use.names = FALSE))
+    alias <- as.character(unlist(disc[[legacy]], use.names = FALSE))
     if (
-      !is.null(disc[[legacy]]) && !setequal(values(registered), values(legacy))
+      !is.null(disc[[registered]]) &&
+        !is.null(disc[[legacy]]) &&
+        !setequal(supported, alias)
     ) {
-      err_config(paste(
+      problems[[legacy]] <- paste(
         "Conflicting discovery metadata:",
         registered,
         "and",
         legacy
-      ))
+      )
     }
-    return(values(registered))
+    values[[legacy]] <- if (is.null(disc[[registered]])) alias else supported
   }
-  values(legacy)
+  list(values = values, problems = problems)
 }
 
 #' Internal: require HTTPS for OIDC metadata URLs
@@ -1071,28 +1062,6 @@ oauth_provider_oidc_discover <- function(
 #' @keywords internal
 #' @noRd
 .discover_allowed_hosts <- function() {
-  opt_allowed <- getOption("shinyOAuth.allowed_hosts", default = NULL)
-
-  if (!is.null(opt_allowed) && length(opt_allowed) > 0) {
-    return(opt_allowed)
-  }
-
-  NULL
-}
-
-#' Internal: compute the host allowlist used for discovered mTLS aliases
-#'
-#' RFC 8705 allows `mtls_endpoint_aliases` to live on a different host or port
-#' than the issuer. Discovery therefore applies the explicit
-#' `shinyOAuth.allowed_hosts` allowlist when present, but otherwise falls back
-#' to the general `is_ok_host()` policy instead of implicitly pinning aliases to
-#' the issuer host.
-#'
-#' @return Host vector that discovered mTLS aliases are allowed to trust, or
-#'   `NULL` when the general host policy should apply.
-#' @keywords internal
-#' @noRd
-.discover_allowed_alias_hosts <- function() {
   opt_allowed <- getOption("shinyOAuth.allowed_hosts", default = NULL)
 
   if (!is.null(opt_allowed) && length(opt_allowed) > 0) {
@@ -1511,34 +1480,18 @@ oauth_provider_oidc_discover <- function(
   value
 }
 
-#' Validate discovered mTLS endpoint aliases
-#'
-#' Applies host validation to discovered mTLS aliases.
-#'
-#' By default this uses the package's general `is_ok_host()` policy so RFC 8705
-#' aliases may live on a different host or port than the issuer. When callers
-#' configure an explicit host allowlist, aliases must satisfy that allowlist.
-#'
-#' @param mtls_endpoint_aliases Named list of discovered mTLS alias URLs.
-#' @param allowed_hosts_vec Optional host vector used for endpoint validation.
-#' @return Invisibly returns `TRUE` on success. Otherwise this function raises a
-#'   validation error.
-#' @keywords internal
-#' @noRd
-.discover_validate_endpoint_aliases <- function(
-  mtls_endpoint_aliases,
-  allowed_hosts_vec
-) {
-  if (!length(mtls_endpoint_aliases)) {
-    return(invisible(TRUE))
-  }
-
-  for (alias_url in unname(mtls_endpoint_aliases)) {
-    .discover_require_https(alias_url, "OIDC mTLS endpoint alias")
-    validate_endpoint(alias_url, allowed_hosts_vec)
-  }
-
-  invisible(TRUE)
+# An untrusted alias must block mTLS selection without exposing it as a URL.
+.discover_untrusted_mtls_aliases <- function(aliases, allowed_hosts) {
+  trusted <- vapply(
+    aliases,
+    function(url) {
+      .discover_require_https(url, "OIDC mTLS endpoint alias")
+      validate_endpoint(url, "*")
+      is_ok_host(url, allowed_hosts = allowed_hosts)
+    },
+    logical(1)
+  )
+  names(aliases)[!trusted]
 }
 
 
@@ -1637,36 +1590,40 @@ oauth_provider_oidc_discover <- function(
 #'
 #' @param allowed_algs Caller allowlist of supported algorithms.
 #' @param disc Discovery document.
-#' @param iss Discovery issuer.
 #' @return Negotiated algorithm vector.
 #'
 #' @keywords internal
 #' @noRd
-.discover_negotiate_algs <- function(allowed_algs, disc, iss) {
+.discover_negotiate_algs <- function(allowed_algs, disc) {
   .discover_validate_jose_metadata(disc)
   disc_algs <- disc[["id_token_signing_alg_values_supported"]]
 
   aa <- toupper(as.character(allowed_algs %||% character(0)))
   da <- toupper(as.character(disc_algs))
 
-  overlap <- intersect(aa, da)
-
-  if (length(overlap) == 0) {
-    err_config(
-      c(
-        "x" = "No supported ID token signing algorithms found via OIDC discovery",
-        "!" = paste0("Provider advertises: ", paste(da, collapse = ", ")),
-        "!" = paste0("Allowed algorithms: ", paste(aa, collapse = ", ")),
-        "i" = paste0(
-          "You may adjust `allowed_algs` to accommodate the provider's supported algorithms"
-        )
-      ),
-      context = list(issuer = iss, discovery_alg_values = da)
-    )
-  }
-
-  overlap
+  intersect(aa, da)
 }
+
+DISCOVERY_OPTIONAL_JOSE_FIELDS <- c(
+  "id_token_encryption_alg_values_supported",
+  "id_token_encryption_enc_values_supported",
+  "userinfo_signing_alg_values_supported",
+  "userinfo_encryption_alg_values_supported",
+  "userinfo_encryption_enc_values_supported",
+  "request_object_signing_alg_values_supported",
+  "request_object_encryption_alg_values_supported",
+  "request_object_encryption_enc_values_supported",
+  "token_endpoint_auth_signing_alg_values_supported",
+  "dpop_signing_alg_values_supported",
+  "jarm_signing_alg_values_supported",
+  "jarm_encryption_alg_values_supported",
+  "jarm_encryption_enc_values_supported",
+  "authorization_signing_alg_values_supported",
+  "authorization_encryption_alg_values_supported",
+  "authorization_encryption_enc_values_supported",
+  "introspection_endpoint_auth_signing_alg_values_supported",
+  "revocation_endpoint_auth_signing_alg_values_supported"
+)
 
 #' Validate case-sensitive discovery JOSE identifiers
 #'
@@ -1718,10 +1675,9 @@ oauth_provider_oidc_discover <- function(
     "A192GCM",
     "A256GCM"
   )
-  fields <- grep(
-    "(signing|encryption)_(alg|enc)_values_supported$",
+  fields <- intersect(
     names(disc),
-    value = TRUE
+    c("id_token_signing_alg_values_supported", DISCOVERY_OPTIONAL_JOSE_FIELDS)
   )
   for (field in fields) {
     values <- unlist(disc[[field]], use.names = FALSE)

@@ -131,14 +131,17 @@ oauth21_endpoint_settings <- function(client, provider, endpoint) {
   } else {
     style %in% MTLS_TOKEN_AUTH_STYLES || bound
   }
-  url <- resolve_provider_endpoint_url(
+  resolution <- provider_endpoint_resolution(
     provider,
     paste0(endpoint, "_endpoint"),
     mtls
   )
+  url <- resolution[["url"]]
   https <- oauth21_https(url)
   if (endpoint == "userinfo" && !mtls) {
-    alias <- resolve_provider_endpoint_url(provider, "userinfo_endpoint", TRUE)
+    alias <- provider_endpoint_resolution(provider, "userinfo_endpoint", TRUE)[[
+      "url"
+    ]]
     if (
       !identical(https, oauth21_https(alias)) &&
         (is.null(client) || (cert && https))
@@ -258,7 +261,7 @@ oauth21_endpoint_settings <- function(client, provider, endpoint) {
     mtls = mtls,
     mtls_backend = mtls_backend,
     mtls_credentials = mtls_credentials,
-    problem = method[["problem"]],
+    problem = resolution[["problem"]] %||% method[["problem"]],
     confidential = !style %in% c("public") &&
       !(style == "body" && !has_secret) &&
       !identical(credentials, FALSE),

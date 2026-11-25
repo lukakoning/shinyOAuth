@@ -218,6 +218,7 @@ smart_client <- function(
   identity_scopes <- smart_identity_scopes(identity)
   if (length(identity_scopes)) {
     require_capability("sso-openid-connect")
+    smart_require_identity_metadata(metadata)
     scopes <- union(scopes, identity_scopes)
     required_scopes <- union(required_scopes, identity_scopes)
   }
@@ -275,6 +276,7 @@ smart_client <- function(
     require_capability("permission-v2")
   }
   if (identical(token_auth_style, "private_key_jwt")) {
+    smart_require_asymmetric_metadata(metadata, methods)
     if (
       !is_valid_string(client_assertion_alg) ||
         !client_assertion_alg %in% c("RS384", "ES384") ||
@@ -406,6 +408,27 @@ smart_identity_scopes <- function(identity) {
     openid = "openid",
     fhirUser = c("openid", "fhirUser")
   )
+}
+
+smart_require_identity_metadata <- function(metadata) {
+  for (field in c("issuer", "jwks_uri")) {
+    if (is.null(metadata[[field]])) {
+      err_config(paste("SMART OpenID Connect identity requires", field))
+    }
+  }
+}
+
+smart_require_asymmetric_metadata <- function(metadata, methods) {
+  if (!"private_key_jwt" %in% methods) {
+    err_config(
+      "SMART asymmetric registration requires advertised private_key_jwt"
+    )
+  }
+  if (is.null(metadata[["scopes_supported"]])) {
+    err_config(
+      "SMART asymmetric registration requires scopes_supported metadata"
+    )
+  }
 }
 
 smart_assert_client_policy <- function(client) {
@@ -648,15 +671,17 @@ smart_validate_registration_policy <- function(client) {
   ) {
     err_config("SMART registration authentication method is not advertised")
   }
-  if (
-    style == "private_key_jwt" &&
+  if (style == "private_key_jwt") {
+    smart_require_asymmetric_metadata(metadata, methods)
+    if (
       !client@client_assertion_alg %in%
         smart_discovery_array(
           metadata,
           "token_endpoint_auth_signing_alg_values_supported"
         )
-  ) {
-    err_config("SMART client assertion algorithm is not advertised")
+    ) {
+      err_config("SMART client assertion algorithm is not advertised")
+    }
   }
   modes <- smart_discovery_array(metadata, "response_modes_supported")
   if (length(modes) && !(client@response_mode %||% "query") %in% modes) {
@@ -675,6 +700,7 @@ smart_validate_registration_policy <- function(client) {
   identity_scopes <- smart_identity_scopes(policy[["identity"]])
   if (length(identity_scopes)) {
     require_capability("sso-openid-connect")
+    smart_require_identity_metadata(metadata)
     if (!all(identity_scopes %in% scopes)) {
       err_config("SMART identity scopes are required")
     }

@@ -456,7 +456,7 @@ testthat::test_that("discovery allows separate-host mTLS aliases when allowed_ho
   )
 })
 
-testthat::test_that("explicit allowed_hosts still constrains discovered mTLS aliases", {
+testthat::test_that("an untrusted mTLS alias only blocks clients that use it", {
   testthat::local_mocked_bindings(
     .discover_fetch_response = function(req, issuer) {
       structure(list(), class = "mock_discovery_response")
@@ -470,7 +470,10 @@ testthat::test_that("explicit allowed_hosts still constrains discovered mTLS ali
         response_types_supported = list("code"),
         subject_types_supported = list("public"),
         id_token_signing_alg_values_supported = list("RS256"),
-        token_endpoint_auth_methods_supported = list("tls_client_auth"),
+        token_endpoint_auth_methods_supported = list(
+          "client_secret_basic",
+          "tls_client_auth"
+        ),
         mtls_endpoint_aliases = list(
           token_endpoint = "https://mtls.example.com/token"
         )
@@ -480,13 +483,41 @@ testthat::test_that("explicit allowed_hosts still constrains discovered mTLS ali
   )
   withr::local_options(list(shinyOAuth.allowed_hosts = "issuer.example.com"))
 
+  issuer <- "https://issuer.example.com"
+  provider <- oauth_provider_oidc_discover(issuer)
+  testthat::expect_s7_class(
+    oauth_client(
+      provider,
+      "client",
+      "secret",
+      "https://issuer.example.com/callback"
+    ),
+    OAuthClient
+  )
+  testthat::expect_identical(
+    resolve_provider_endpoint_url(provider, "token_endpoint"),
+    provider@token_url
+  )
   testthat::expect_error(
-    oauth_provider_oidc_discover(
-      issuer = "https://issuer.example.com",
-      token_auth_style = "tls_client_auth"
+    resolve_provider_endpoint_url(
+      provider,
+      "token_endpoint",
+      prefer_mtls = TRUE
     ),
     class = "shinyOAuth_config_error",
-    regexp = "Allowed hosts"
+    regexp = "outside the allowed hosts"
+  )
+  mtls_provider <- oauth_provider_oidc_discover(
+    issuer,
+    token_auth_style = "tls_client_auth"
+  )
+  testthat::expect_error(
+    oauth_client(
+      mtls_provider,
+      "client",
+      redirect_uri = "https://issuer.example.com/callback"
+    ),
+    "outside the allowed hosts"
   )
 })
 

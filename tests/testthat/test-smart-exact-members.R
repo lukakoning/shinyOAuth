@@ -168,31 +168,47 @@ test_that("SMART snapshots and required metadata require exact member names", {
       }
     )
   }
-  for (field in c(
+  required <- c(
     "authorization_endpoint",
     "token_endpoint",
-    "issuer",
-    "jwks_uri",
     "capabilities",
     "grant_types_supported",
-    "code_challenge_methods_supported",
+    "code_challenge_methods_supported"
+  )
+  identity <- c("issuer", "jwks_uri")
+  asymmetric <- c(
     "scopes_supported",
     "token_endpoint_auth_methods_supported",
     "token_endpoint_auth_signing_alg_values_supported"
-  )) {
+  )
+  key <- openssl::ec_keygen("P-384")
+  for (field in c(required, identity, asymmetric)) {
     altered <- site
     names(altered[["metadata"]])[
       names(altered[["metadata"]]) == field
     ] <- paste0(field, "Alias")
+    uses_asymmetric <- field %in% asymmetric
     expect_error(
       smart_client(
         altered,
         "example",
         "https://app.example/callback",
         scopes = "user/Patient.r",
-        identity = "fhirUser"
+        identity = "fhirUser",
+        token_auth_style = if (uses_asymmetric) "private_key_jwt" else "public",
+        client_assertion_alg = "ES384",
+        client_assertion_private_key = if (uses_asymmetric) key else NULL,
+        client_assertion_private_key_kid = if (uses_asymmetric) {
+          "example-key"
+        } else {
+          NULL
+        }
       ),
-      class = "shinyOAuth_parse_error"
+      class = if (field %in% required) {
+        "shinyOAuth_parse_error"
+      } else {
+        "shinyOAuth_config_error"
+      }
     )
   }
 })
