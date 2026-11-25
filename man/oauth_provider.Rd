@@ -423,7 +423,9 @@ duplicate \code{iss} members are rejected. Defaults to \code{FALSE}.}
 \code{revocation} authentication metadata. Each entry has \code{methods} and
 \code{signing_algs} character vectors (or \code{NULL} for omitted metadata).
 Discovery retains these fields and applies the RFC 8414 Basic-auth default
-for omitted revocation methods. Omitted introspection methods have no default.}
+for omitted revocation methods. Omitted introspection methods have no default.
+Discovery also records missing algorithm lists for JWT authentication so
+they can be checked when the client selects that method.}
 
 \item{...}{Deprecated renamed arguments accepted temporarily for backward
 compatibility.}

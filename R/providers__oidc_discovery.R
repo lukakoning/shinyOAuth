@@ -478,7 +478,7 @@ oauth_provider_oidc_discover <- function(
     jarm_encryption_alg_values_supported = jarm_encryption_alg_values_supported,
     jarm_encryption_enc_values_supported = jarm_encryption_enc_values_supported,
     token_endpoint_auth_signing_alg_values_supported = token_endpoint_auth_signing_alg_values_supported,
-    endpoint_auth_metadata = discover_endpoint_auth_metadata(disc),
+    endpoint_auth_metadata = discover_endpoint_auth_metadata(disc, .oauth_only),
     dpop_signing_alg_values_supported = dpop_signing_alg_values_supported,
     authorization_response_iss_parameter_supported = authorization_response_iss_parameter_supported,
     mtls_endpoint_aliases = mtls_endpoint_aliases,
@@ -784,18 +784,6 @@ oauth_provider_oidc_discover <- function(
         context = list(jwks_uri = jwks_uri)
       )
     }
-  }
-  if (
-    oauth_only &&
-      any(
-        c("private_key_jwt", "client_secret_jwt") %in%
-          unlist(disc[["token_endpoint_auth_methods_supported"]])
-      ) &&
-      is.null(disc[["token_endpoint_auth_signing_alg_values_supported"]])
-  ) {
-    err_parse(
-      "OAuth discovery requires token_endpoint_auth_signing_alg_values_supported for JWT client authentication"
-    )
   }
   if (
     oauth_only &&

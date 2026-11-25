@@ -1690,6 +1690,14 @@ oauth_client_validate <- function(self) {
   tok_style <- normalize_token_auth_style(
     self@provider@token_auth_style %||% "header"
   )
+  signing_algs_problem <- endpoint_auth_signing_algs_problem(
+    self@provider,
+    "token",
+    tok_style
+  )
+  if (!is.null(signing_algs_problem)) {
+    return(signing_algs_problem)
+  }
   uses_pkce <- isTRUE(self@provider@use_pkce)
   if (identical(tok_style, "header")) {
     # For client_secret_basic (header) auth, a non-empty secret is required

@@ -135,15 +135,35 @@ test_that("OAuth discovery retains endpoint, JWT client auth and PAR checks", {
   )
   base <- metadata
   metadata[["token_endpoint_auth_methods_supported"]] <- list("private_key_jwt")
+  provider <- oauth_provider_oauth_discover(
+    base[["issuer"]],
+    token_auth_style = "private_key_jwt"
+  )
+  signing_key <- openssl::ec_keygen("P-256")
   expect_error(
-    oauth_provider_oauth_discover(
-      base[["issuer"]],
-      token_auth_style = "private_key_jwt"
+    oauth_client(
+      provider = provider,
+      client_id = "client",
+      redirect_uri = "https://app.example.com/callback",
+      client_assertion_private_key = signing_key
     ),
-    class = "shinyOAuth_parse_error"
+    "token_endpoint_auth_signing_alg_values_supported"
   )
   metadata[["token_endpoint_auth_signing_alg_values_supported"]] <- list(
     "ES256"
+  )
+  provider <- oauth_provider_oauth_discover(
+    base[["issuer"]],
+    token_auth_style = "private_key_jwt"
+  )
+  expect_s7_class(
+    oauth_client(
+      provider = provider,
+      client_id = "client",
+      redirect_uri = "https://app.example.com/callback",
+      client_assertion_private_key = signing_key
+    ),
+    OAuthClient
   )
   metadata[["pushed_authorization_request_endpoint"]] <- paste0(
     base[["issuer"]],

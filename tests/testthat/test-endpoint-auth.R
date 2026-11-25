@@ -145,12 +145,126 @@ test_that("discovery preserves independent authentication metadata and omission 
   omitted <- discover_endpoint_auth_metadata(list())
   expect_null(omitted[["introspection"]][["methods"]])
   expect_null(omitted[["introspection"]][["signing_algs"]])
-  expect_error(
-    discover_endpoint_auth_metadata(list(
-      introspection_endpoint_auth_methods_supported = list("private_key_jwt")
-    )),
-    "requires signing algorithm"
+})
+
+test_that("incomplete JWT metadata only blocks endpoints using JWT authentication", {
+  issuer <- "https://issuer.example.com"
+  methods <- as.list(c(
+    "client_secret_basic",
+    "client_secret_post",
+    "client_secret_jwt",
+    "private_key_jwt",
+    "none"
+  ))
+  doc <- list(
+    issuer = issuer,
+    authorization_endpoint = paste0(issuer, "/oauth2/v1/authorize"),
+    token_endpoint = paste0(issuer, "/oauth2/v1/token"),
+    jwks_uri = paste0(issuer, "/oauth2/v1/keys"),
+    introspection_endpoint = paste0(issuer, "/oauth2/v1/introspect"),
+    revocation_endpoint = paste0(issuer, "/oauth2/v1/revoke"),
+    response_types_supported = list("code"),
+    subject_types_supported = list("public"),
+    id_token_signing_alg_values_supported = list("RS256"),
+    code_challenge_methods_supported = list("S256"),
+    token_endpoint_auth_methods_supported = methods,
+    introspection_endpoint_auth_methods_supported = methods,
+    revocation_endpoint_auth_methods_supported = methods
   )
+  requests <- 0L
+  local_mocked_bindings(
+    .discover_fetch_response = function(req, issuer) {
+      httr2::response(
+        url = req[["url"]],
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(jsonlite::toJSON(doc, auto_unbox = TRUE))
+      )
+    },
+    req_with_retry = function(req, ...) {
+      requests <<- requests + 1L
+      httr2::response(
+        url = req[["url"]],
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw('{"active":true}')
+      )
+    },
+    .package = "shinyOAuth"
+  )
+  token <- OAuthToken(
+    access_token = "access",
+    refresh_token = "refresh",
+    expires_at = as.numeric(Sys.time()) + 60
+  )
+  new_client <- function(provider, endpoint_auth = list()) {
+    oauth_client(
+      provider = provider,
+      client_id = "client",
+      client_secret = strrep("s", 32),
+      redirect_uri = "https://app.example.com/callback",
+      endpoint_auth = endpoint_auth
+    )
+  }
+
+  for (discover in list(
+    oauth_provider_oidc_discover,
+    oauth_provider_oauth_discover
+  )) {
+    for (style in c("header", "body")) {
+      provider <- discover(issuer, token_auth_style = style)
+      expect_identical(provider@token_auth_style, style)
+      client <- new_client(provider)
+      expect_true(introspect_token(client, token)[["active"]])
+      expect_true(revoke_token(client, token)[["revoked"]])
+    }
+  }
+  expect_s7_class(
+    new_client(oauth_provider_oidc_discover(
+      issuer,
+      token_auth_style = "client_secret_jwt"
+    )),
+    OAuthClient
+  )
+
+  overrides <- list(
+    introspection = list(token_auth_style = "client_secret_jwt"),
+    revocation = list(
+      token_auth_style = "private_key_jwt",
+      client_assertion_private_key = openssl::ec_keygen("P-256")
+    )
+  )
+  client <- new_client(oauth_provider_oidc_discover(issuer), overrides)
+  expect_error(
+    introspect_token(client, token),
+    "introspection_endpoint_auth_signing_alg_values_supported",
+    class = "shinyOAuth_config_error"
+  )
+  expect_error(
+    revoke_token(client, token),
+    "revocation_endpoint_auth_signing_alg_values_supported",
+    class = "shinyOAuth_config_error"
+  )
+  expect_identical(requests, 8L)
+
+  doc[["introspection_endpoint_auth_signing_alg_values_supported"]] <- list(
+    "HS256"
+  )
+  client <- new_client(oauth_provider_oidc_discover(issuer), overrides)
+  expect_true(introspect_token(client, token)[["active"]])
+  expect_error(
+    revoke_token(client, token),
+    "revocation_endpoint_auth_signing_alg_values_supported",
+    class = "shinyOAuth_config_error"
+  )
+  expect_identical(requests, 9L)
+
+  doc[["revocation_endpoint_auth_signing_alg_values_supported"]] <- list(
+    "ES256"
+  )
+  client <- new_client(oauth_provider_oidc_discover(issuer), overrides)
+  expect_true(revoke_token(client, token)[["revoked"]])
+  expect_identical(requests, 10L)
 })
 
 test_that("JWT token clients use independent Basic credentials and headers at other endpoints", {

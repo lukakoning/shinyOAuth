@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* OAuth and OIDC discovery now accept providers that advertise JWT client
+  authentication with missing signing algorithms. Operations that need a
+  missing algorithm list fail when the client selects JWT authentication (#27).
+
 * Added a declared OpenID client conformance matrix and release evidence
   workflow. Verified bundles include a per-profile summary of suite verdicts
   and coverage limits.

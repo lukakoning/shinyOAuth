@@ -97,23 +97,31 @@ endpoint_auth_metadata_problem <- function(metadata) {
       (length(metadata) &&
         (is.null(names(metadata)) ||
           anyDuplicated(names(metadata)) ||
-          !all(names(metadata) %in% c("introspection", "revocation"))))
+          !all(names(metadata) %in% c("token", "introspection", "revocation"))))
   ) {
     return(
-      "endpoint_auth_metadata must contain introspection/revocation metadata"
+      "endpoint_auth_metadata must contain token, introspection or revocation metadata"
     )
   }
+  fields <- c("methods", "signing_algs", "require_signing_algs")
   for (entry in metadata) {
     if (
       !is.list(entry) ||
         (length(entry) &&
           (is.null(names(entry)) ||
             anyDuplicated(names(entry)) ||
-            !all(names(entry) %in% c("methods", "signing_algs"))))
+            !all(names(entry) %in% fields)))
     ) {
-      return("endpoint_auth_metadata entries require methods/signing_algs")
+      return("endpoint_auth_metadata entries contain invalid fields")
     }
-    for (value in entry) {
+    if (
+      "require_signing_algs" %in%
+        names(entry) &&
+        !is_scalar_logical(entry[["require_signing_algs"]])
+    ) {
+      return("endpoint_auth_metadata require_signing_algs must be logical")
+    }
+    for (value in entry[c("methods", "signing_algs")]) {
       if (
         !is.null(value) &&
           (!is.character(value) || anyNA(value) || !all(nzchar(value)))
@@ -128,41 +136,56 @@ endpoint_auth_metadata_problem <- function(metadata) {
   NULL
 }
 
-discover_endpoint_auth_metadata <- function(disc) {
+discover_endpoint_auth_metadata <- function(disc, oauth_only = FALSE) {
   out <- list()
-  for (endpoint in c("introspection", "revocation")) {
+  # OIDC Discovery makes the token endpoint algorithm list optional.
+  for (endpoint in c(if (oauth_only) "token", "introspection", "revocation")) {
     methods <- disc[[paste0(endpoint, "_endpoint_auth_methods_supported")]]
-    algs <- disc[[paste0(
-      endpoint,
-      "_endpoint_auth_signing_alg_values_supported"
-    )]]
-    if (
-      any(unlist(methods) %in% c("private_key_jwt", "client_secret_jwt")) &&
-        is.null(algs)
-    ) {
-      err_parse(paste0(
-        "Discovery ",
-        endpoint,
-        " JWT authentication requires signing algorithm metadata"
-      ))
+    if (endpoint == "revocation") {
+      methods <- methods %||% "client_secret_basic"
     }
-    out[[endpoint]] <- list(
-      methods = if (is.null(methods)) {
-        NULL
-      } else {
-        unlist(methods, use.names = FALSE)
-      },
-      signing_algs = if (is.null(algs)) {
-        NULL
-      } else {
-        unlist(algs, use.names = FALSE)
-      }
+    methods <- unlist(methods, use.names = FALSE)
+    algs <- unlist(
+      disc[[paste0(endpoint, "_endpoint_auth_signing_alg_values_supported")]],
+      use.names = FALSE
     )
-    if (endpoint == "revocation" && is.null(methods)) {
-      out[[endpoint]][["methods"]] <- "client_secret_basic"
+    if (endpoint != "token") {
+      out[[endpoint]] <- list(methods = methods, signing_algs = algs)
+    }
+    if (
+      !length(algs) &&
+        any(methods %in% c("private_key_jwt", "client_secret_jwt"))
+    ) {
+      out[[endpoint]][["require_signing_algs"]] <- TRUE
     }
   }
   out
+}
+
+endpoint_auth_signing_algs_problem <- function(provider, endpoint, style) {
+  metadata_endpoint <- if (endpoint == "par") "token" else endpoint
+  metadata <- provider@endpoint_auth_metadata[[metadata_endpoint]]
+  if (
+    !isTRUE(metadata[["require_signing_algs"]]) ||
+      !style %in% c("private_key_jwt", "client_secret_jwt")
+  ) {
+    return(NULL)
+  }
+  algs <- if (metadata_endpoint == "token") {
+    provider@token_endpoint_auth_signing_alg_values_supported
+  } else {
+    metadata[["signing_algs"]]
+  }
+  if (!length(algs)) {
+    return(paste0(
+      "JWT client authentication at the ",
+      endpoint,
+      " endpoint requires ",
+      metadata_endpoint,
+      "_endpoint_auth_signing_alg_values_supported metadata"
+    ))
+  }
+  NULL
 }
 
 endpoint_auth_policy_digest <- function(config) {
@@ -209,11 +232,14 @@ resolve_endpoint_auth_method <- function(
     } else {
       return(list(
         style = style,
-        problem = "Configured endpoint authentication method is not advertised"
+        problem = "authentication method is not advertised"
       ))
     }
   }
-  list(style = style, problem = NULL)
+  list(
+    style = style,
+    problem = endpoint_auth_signing_algs_problem(provider, endpoint, style)
+  )
 }
 
 endpoint_auth_client <- function(client, endpoint) {
@@ -243,7 +269,8 @@ endpoint_auth_client <- function(client, endpoint) {
     err_config(paste0(
       "endpoint_auth$",
       endpoint,
-      ": authentication method is not advertised"
+      ": ",
+      method[["problem"]]
     ))
   }
   style <- method[["style"]]
