@@ -134,8 +134,12 @@ interop_resource_app_matches <- function(row, context) {
     identical(refresh[["refresh_error_is_access_error"]], FALSE)
 }
 
-interop_resource_provider_matches <- function(row, lock) {
+interop_resource_provider_matches <- function(row, lock, narrowing) {
   provider <- row[["provider"]]
+  indicators <- list(target = row[["target"]])
+  if (narrowing) {
+    indicators[["narrow_scope"]] <- TRUE
+  }
   if (
     !identical(provider[["run_id"]], row[["case_id"]]) ||
       !identical(provider[["provider_version"]], lock[["provider_version"]]) ||
@@ -143,7 +147,7 @@ interop_resource_provider_matches <- function(row, lock) {
       !identical(provider[["client_auth_type"]], "client_secret_basic") ||
       !identical(
         provider[["resource_indicators"]],
-        list(target = row[["target"]])
+        indicators
       ) ||
       !identical(
         provider[["features"]],
@@ -178,6 +182,14 @@ interop_resource_provider_matches <- function(row, lock) {
   } else {
     "authorization.error"
   }
+  if (narrowing) {
+    writes <- c(8L, 12L)
+    types <- append(
+      append(types, "resource", after = 7L),
+      "resource",
+      after = 11L
+    )
+  }
   if (
     !identical(
       vapply(events, function(event) event[["type"]], character(1)),
@@ -197,6 +209,42 @@ interop_resource_provider_matches <- function(row, lock) {
         isTRUE(events[[1L]][["requested_resource_matches"]]) &&
         identical(events[[1L]][["resource_known"]], FALSE)
     )
+  }
+  if (narrowing) {
+    for (phase in seq_along(writes)) {
+      event <- events[[writes[[phase]]]]
+      broad <- phase == 1L
+      if (
+        !identical(event[["status"]], if (broad) 200L else 403L) ||
+          !identical(event[["target"]], row[["target"]]) ||
+          !identical(event[["operation"]], "write") ||
+          !is.null(event[["probe"]]) ||
+          !identical(
+            event[["error"]],
+            if (broad) NULL else "insufficient_scope"
+          ) ||
+          !identical(event[["scope_matches"]], broad) ||
+          !interop_resource_true(
+            event,
+            c(
+              "token_present",
+              "token_valid",
+              "audience_matches",
+              "current_token_used"
+            )
+          )
+      ) {
+        return(FALSE)
+      }
+    }
+    events <- events[-writes]
+    if (
+      !isTRUE(events[[5L]][["response_scope_matches"]]) ||
+        !isTRUE(events[[8L]][["response_scope_matches"]]) ||
+        !isTRUE(events[[8L]][["refresh_scope_read_only"]])
+    ) {
+      return(FALSE)
+    }
   }
   if (
     !identical(events[[1L]][["prompt"]], "login") ||
@@ -323,8 +371,10 @@ interop_resource_row_matches <- function(row, context, selection, lock) {
     if (!identical(row[[name]], selection[[name]])) return(FALSE)
   }
   request <- row[["authorization_request"]]
+  narrowing <- isTRUE(selection[["narrow_scope"]])
   if (
     !identical(request[["method"]], "GET") ||
+      (narrowing && !isTRUE(request[["scopes_match"]])) ||
       !interop_resource_true(
         request,
         c("resource_matches", "direct", "pkce_s256")
@@ -347,7 +397,7 @@ interop_resource_row_matches <- function(row, context, selection, lock) {
         row[["resource_uri"]],
         paste0(row[["provider_origin"]], "/resource/", row[["target"]])
       ) ||
-      !interop_resource_provider_matches(row, lock) ||
+      !interop_resource_provider_matches(row, lock, narrowing) ||
       !interop_resource_app_matches(row, context)
   ) {
     return(FALSE)
@@ -405,6 +455,23 @@ interop_resource_row_matches <- function(row, context, selection, lock) {
         )
     ) {
       return(FALSE)
+    }
+  }
+  if (narrowing) {
+    for (phase in 1:2) {
+      scope <- row[["reads"]][[phase]][["scope_narrowing"]]
+      broad <- phase == 1L
+      if (
+        !interop_resource_true(
+          scope,
+          c("granted_scopes_match", "read_scope")
+        ) ||
+          !identical(scope[["write_scope"]], broad) ||
+          !identical(scope[["write_succeeded"]], broad) ||
+          !identical(scope[["write_rejected"]], !broad)
+      ) {
+        return(FALSE)
+      }
     }
   }
   probe <- row[["probes"]]
@@ -532,6 +599,26 @@ interop_resource_mutations <- function(report) {
         list("probes", "wrong_audience")
       )) {
         paths <- c(paths, list(c(base, path)))
+      }
+      if (identical(row[["id"]], "resource-refresh-narrowing")) {
+        paths <- c(
+          paths,
+          list(c(base, "authorization_request", "scopes_match"))
+        )
+        for (phase in 1:2) {
+          for (field in c(
+            "granted_scopes_match",
+            "read_scope",
+            "write_scope",
+            "write_succeeded",
+            "write_rejected"
+          )) {
+            paths <- c(
+              paths,
+              list(c(base, list("reads", phase, "scope_narrowing", field)))
+            )
+          }
+        }
       }
     } else {
       paths <- c(paths, list(c(base, list("app", "error_code"))))

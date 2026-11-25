@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import Provider from 'oidc-provider';
 import { advancedOptions, observeAdvanced, senderFacts } from './advanced-provider.mjs';
-import { resourceOptions, resourceFacts, resourceResponse, observeResource } from './resource-provider.mjs';
+import { resourceOptions, resourceFacts, resourceGrantFacts, resourceResponse, observeResource } from './resource-provider.mjs';
 
 const lock = JSON.parse(readFileSync(new URL('./provider-lock.json', import.meta.url)));
 const version = JSON.parse(readFileSync(new URL('./node_modules/oidc-provider/package.json', import.meta.url))).version;
@@ -140,9 +140,7 @@ export function fixture(config) {
       refresh_token_present: typeof body.refresh_token === 'string',
       refresh_token_rotated: params.grant_type === 'refresh_token'
         ? params.refresh_token === previousRefresh && body.refresh_token !== previousRefresh : null,
-      ...(resources ? { ...resourceFacts(ctx, config),
-        audience_matches: ctx.oidc.entities.AccessToken?.aud === `${config.issuer}/resource/${config.resource_indicators.target}`,
-        scope_matches: ctx.oidc.entities.AccessToken?.scope === 'api.read' } : {}),
+      ...(resources ? resourceGrantFacts(ctx, config) : {}),
       ...(advanced ? { sender_bound: config.advanced.sender === 'dpop' ? typeof state.dpopJkt === 'string' && state.dpopJkt === state.requestJkt
         : config.advanced.sender === 'mtls' ? typeof state.mtlsThumbprint === 'string' && state.mtlsThumbprint === config.mtls_thumbprint : true } : {}),
     });

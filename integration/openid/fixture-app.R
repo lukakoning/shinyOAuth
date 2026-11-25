@@ -885,7 +885,14 @@ openid_fixture_app <- function(config) {
           )
           invisible(NULL)
         }
-        result <- tryCatch(connection[["refresh"]](), error = identity)
+        result <- tryCatch(
+          if (isTRUE(config[["resource_indicators"]][["narrow_scope"]])) {
+            connection[["refresh"]](scopes = "api.read")
+          } else {
+            connection[["refresh"]]()
+          },
+          error = identity
+        )
         if (inherits(result, "promise")) {
           promises::then(
             result,

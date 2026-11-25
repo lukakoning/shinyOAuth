@@ -7,6 +7,8 @@ interop_run_resources <- function(
   selection
 ) {
   id <- paste(format(openssl::rand_bytes(16)), collapse = "")
+  narrowing <- isTRUE(selection[["narrow_scope"]])
+  scopes <- c("openid", "profile", "offline_access", "api.read")
   config <- list(
     run_id = id,
     client_id = paste0("client-", id),
@@ -14,11 +16,14 @@ interop_run_resources <- function(
     client_auth_type = "client_secret_basic",
     response_mode = "query",
     redirect_uri = paste0(transport[["origin"]], "/"),
-    scopes = c("openid", "profile", "offline_access", "api.read"),
+    scopes = if (narrowing) c(scopes, "api.write") else scopes,
     extra_auth_params = list(prompt = "consent"),
     resource_indicators = list(target = selection[["target"]]),
     transport = context[["transport"]]
   )
+  if (narrowing) {
+    config[["resource_indicators"]][["narrow_scope"]] <- TRUE
+  }
   stack <- interop_start(environment, config)
   config[["issuer"]] <- config[["provider_origin"]] <- stack[["origin"]]
   config[["resource"]] <- paste0(
@@ -69,6 +74,15 @@ interop_run_resources <- function(
       "S256"
     ) &&
       isTRUE(grepl("^[A-Za-z0-9_-]{43}$", query[["code_challenge"]]))
+    if (narrowing) {
+      scope <- query[["scope"]]
+      request_evidence[["scopes_match"]] <- is.character(scope) &&
+        length(scope) == 1L &&
+        identical(
+          sort(strsplit(scope, " ", fixed = TRUE)[[1L]]),
+          sort(config[["scopes"]])
+        )
+    }
   })
   openid_browser_value(tab, "document.querySelector('#login').click()")
   if (positive) {
