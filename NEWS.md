@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* Fixed OIDC refresh failures when restored authorization scope history is
+  decoded as a list.
+
 * Discovery defers ID token algorithm compatibility and conflicts in optional
   JARM metadata until client setup. An mTLS alias outside the host allowlist
   blocks requests that select it. SMART clients require asymmetric signing and

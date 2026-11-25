@@ -50,7 +50,7 @@ authorization_refresh_consent <- function(client, scopes) {
   ) {
     return(character())
   }
-  intersect(scopes, "offline_access")
+  intersect(as_scope_tokens(scopes), "offline_access")
 }
 
 # Ordinary OAuth accepts provider evidence beyond the configured permissions.

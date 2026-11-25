@@ -123,6 +123,34 @@ test_that("explicit narrowing validates syntax, grant, configuration and require
   )
 })
 
+test_that("OIDC refresh consent accepts decoded scope history as character tokens", {
+  client <- ordinary_oidc_fixture()[["client"]]
+  token <- narrowing_token()
+  history <- list("openid", "read", "write", "offline_access")
+  consent <- authorization_refresh_consent(client, history)
+  expect_identical(consent, "offline_access")
+  expect_identical(
+    authorization_retained_scopes(client, token, history),
+    c("read", "write", "offline_access")
+  )
+  expect_identical(
+    refresh_scope_request(client, token, "read", refresh_consent = consent),
+    list(scopes = "read", required_scopes = character())
+  )
+
+  absent <- authorization_refresh_consent(client, NULL)
+  expect_identical(absent, character())
+  expect_error(
+    refresh_scope_request(
+      client,
+      token,
+      c("read", "offline_access"),
+      refresh_consent = absent
+    ),
+    "covered"
+  )
+})
+
 for (omitted in c(FALSE, TRUE)) {
   test_that(
     paste("scope request controls explicit and omitted responses", omitted),
