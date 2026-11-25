@@ -2,6 +2,9 @@
 
 ## shinyOAuth (development version)
 
+- Fixed OIDC refresh failures when restored authorization scope history
+  is decoded as a list.
+
 - Discovery defers ID token algorithm compatibility and conflicts in
   optional JARM metadata until client setup. An mTLS alias outside the
   host allowlist blocks requests that select it. SMART clients require
@@ -16,7 +19,9 @@
 
 - Added a declared OpenID client conformance matrix and release evidence
   workflow. Verified bundles include a per-profile summary of suite
-  verdicts and coverage limits.
+  verdicts and coverage limits. Weekly CI runs the full OpenID and
+  provider browser matrices. Manual runs can sign and retain evidence
+  for a selected commit.
 
 - OAuth and OIDC discovery now match advertised client authentication
   and PKCE methods case-sensitively. Incorrectly cased identifiers no

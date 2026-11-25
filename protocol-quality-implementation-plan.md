@@ -140,7 +140,7 @@ review](https://lukakoning.github.io/integration/openid/release-review.md).
 | C11-C12 | Four full mTLS selections and the 29-module Message Signing selection | mTLS simulated-server enforcement/registration limits and exact signing/callback configurations remain explicit. |
 | C13-C14 | Pinned second-provider public/confidential code/refresh/browser flows and the declared advanced-flow/lifecycle selections | All four browser selections record verified source and private installation identity. Provider interoperability evidence remains scoped to each tested revision. |
 | C15 | Rejected-callback URL cleanup, selected HTTPS cross-site success/denial, provider request counts before the FAPI login click and requirement-selected regressions | Production consent and initiation controls, other proxy/browser/cookie-policy cases and named cryptography gaps stay open. |
-| C16 / SA08 | CI smoke, manual larger selections, acquisition/source checks, a verified hosted matrix and published table for all 39 OIDF selections at `92bedf1d`, and signing and verification at `30774baa` | The first signing-enabled matrix is in progress. Shared storage and matching companion evidence for the chosen release revision remain open. |
+| C16 / SA08 | PR smoke and baseline, weekly full OIDF and provider matrices, manual release gates, a verified 39-selection OIDF matrix at `92bedf1d`, and signed release tooling | First successful weekly execution and signed production replay are pending. Shared storage and matching evidence for the chosen release revision remain open. |
 
 Use the implemented commands in the [environment
 README](https://lukakoning.github.io/integration/openid/README.md).
@@ -3576,6 +3576,16 @@ the metadata, receipt and Markdown against both aggregate replays.
 Packaging the first genuine paired attempt awaits its signed link.
 [Release
 review](https://lukakoning.github.io/integration/openid/release-review.html#portable-paired-evidence-2026-11-22).
+
+C16 CI tiers (2026-11-22). `eeb824ad` schedules the full 39-selection
+OIDF and eight-selection provider matrices weekly. The schedule uses
+current default-branch source and seven-day artifact retention. Manual
+release dispatch keeps the signature and paired-link gates. The CI tier
+table records the measured runtimes used to retain the scoped PR checks.
+[CI
+tiers](https://lukakoning.github.io/integration/openid/release-matrix.html#ci-tiers-and-measured-runtimes),
+[release
+review](https://lukakoning.github.io/integration/openid/release-review.html#weekly-ci-and-release-tiers-2026-11-22).
 
 Add the OpenID Foundation (OIDF) Relying Party tests first. Once that
 gate works, extend it to FAPI 2.0, then add `oidc-provider` for
